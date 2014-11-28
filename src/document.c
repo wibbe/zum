@@ -7,6 +7,7 @@
 #include <memory.h>
 #include <string.h>
 #include <stdio.h>
+#include <string.h>
 
 #define DEFAULT_ROW_COUNT 10
 #define DEFAULT_COL_COUNT 10
@@ -64,13 +65,13 @@ static void write_row(FILE * file, int row)
 {
   char cell[STRING_LEN];
 
-  for (int i = 0; i < doc_width; ++i)
+  for (int column = 0; column < doc_width; ++column)
   {
-    string_utf8(cell, *doc_get_cell_text(i, row));
+    string_utf8(cell, *doc_get_cell_text(column, row));
 
     fprintf(file, "%s", cell);
-    if (i < (doc_width - 1))
-      fprintf(file, ", ");
+    if (column < (doc_width - 1))
+      fprintf(file, ",");
   }
   fprintf(file, "\n");
 }
@@ -89,18 +90,68 @@ void doc_save(String filename)
   {
     fprintf(file, "%d", doc_column_width[i]);
     if (i < (doc_width - 1))
-      fprintf(file, ", ");
+      fprintf(file, ",");
   }
   fprintf(file, "\n");
 
-  for (int i = 0; i < doc_height; ++i)
-    write_row(file, i);
+  for (int row = 0; row < doc_height; ++row)
+    write_row(file, row);
 
   fclose(file);
+
+  string_copy(doc_filename, filename);
 }
 
-void doc_load(String filename)
+static char * read_cell(char * it, String cell)
 {
+  char * start = it;
+
+  while (*it != ',' && *it != '\0' && *it != '\n')
+    ++it;
+
+  char curr = *it;
+  *it = '\0';
+
+  string_set(cell, start);
+  *it = curr;
+  return it;
+}
+
+static void read_column_sizes(char * data)
+{
+  String cell;
+  char * it = data;
+
+  while (1)
+  {
+    it = read_cell(it, cell);
+    if (*it == '\n' || *it == '\0')
+      return;
+
+
+  }
+}
+
+int doc_load(String filename)
+{
+  char filename_utf8[STRING_LEN];
+  string_utf8(filename_utf8, filename);
+
+  FILE * file = fopen(filename_utf8, "w");
+  if (!file)
+    return 0;
+
+  fseek(file, 0, SEEK_END);
+  const long size = ftell(file);
+  fseek(file, 0, SEEK_SET);
+
+  char * data = malloc(size);
+  fread(data, size, 1, file);
+  fclose(file);
+
+
+  free(data);
+  return 0;
 }
 
 int doc_get_column_width(int column)

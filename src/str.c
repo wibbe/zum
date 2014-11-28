@@ -6,9 +6,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-String EMPTY_STR = {
-  0
-};
+String EMPTY_STR = { 0 };
 
 int string_len(String str)
 {
@@ -110,5 +108,9 @@ void string_utf8(char * dest, String source)
 {
   int i = 0;
   while (source[i] != 0)
+  {
     dest += tb_utf8_unicode_to_char(dest, source[i]);
+    ++i;
+  }
+  *dest = '\0';
 }

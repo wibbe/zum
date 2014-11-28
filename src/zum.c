@@ -28,7 +28,17 @@ int main(int argc, char * argv[])
     return 1;
   }
 
-  doc_create_empty();
+  if (argc > 1)
+  {
+    String filename;
+    string_set(filename, argv[1]);
+
+    if (!doc_load(filename))
+      doc_create_empty();
+  }
+  else
+    doc_create_empty();
+
   update_cursor();
   draw_interface();
 

@@ -27,7 +27,7 @@ void parse_and_execute_command(String command)
         String filename;
         string_copy(filename, command);
         string_erase_char(filename, 0);
-        string_erase_char(filename, 1);
+        string_erase_char(filename, 0);
         if (string_len(filename) > 0)
           doc_save(filename);
       }

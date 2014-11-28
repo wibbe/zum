@@ -12,7 +12,7 @@ int doc_get_row_count();
 int doc_get_column_count();
 
 void doc_save(String filename);
-void doc_load(String filename);
+int doc_load(String filename);
 
 String * doc_get_filename();
 
