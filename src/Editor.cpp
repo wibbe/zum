@@ -118,58 +118,6 @@ void navigateDown()
     currentIndex_.y++;
 }
 
-void handleNavigateEvent(struct tb_event * event)
-{
-  switch (event->key)
-  {
-    case TB_KEY_ARROW_LEFT:
-      pushCommandKey('h');
-      break;
-
-    case TB_KEY_ARROW_RIGHT:
-      pushCommandKey('l');
-      break;
-
-    case TB_KEY_ARROW_UP:
-      pushCommandKey('k');
-      break;
-
-    case TB_KEY_ARROW_DOWN:
-      pushCommandKey('j');
-      break;
-
-    case TB_KEY_CTRL_R:
-      pushCommandKey('U');
-      break;
-
-    default:
-      {
-        switch (event->ch)
-        {
-          case ':':
-            {
-              editMode_ = EditorMode::COMMAND;
-              editLine_.clear();
-              editLinePos_ = 0;
-            }
-            break;
-
-          case 'i':
-            {
-              editMode_ = EditorMode::EDIT;
-              editLine_ = doc::getCellText(currentIndex_);
-              editLinePos_ = editLine_.size();
-            }
-            break;
-
-          default:
-            pushCommandKey(event->ch);
-        }
-      }
-      break;
-  }
-}
-
 void handleTextInput(struct tb_event * event)
 {
   switch (event->key)
@@ -219,6 +167,62 @@ void handleTextInput(struct tb_event * event)
   }
 }
 
+void handleNavigateEvent(struct tb_event * event)
+{
+  switch (event->key)
+  {
+    case TB_KEY_ARROW_LEFT:
+      pushEditCommandKey('h');
+      break;
+
+    case TB_KEY_ARROW_RIGHT:
+      pushEditCommandKey('l');
+      break;
+
+    case TB_KEY_ARROW_UP:
+      pushEditCommandKey('k');
+      break;
+
+    case TB_KEY_ARROW_DOWN:
+      pushEditCommandKey('j');
+      break;
+
+    case TB_KEY_CTRL_R:
+      pushEditCommandKey('U');
+      break;
+
+    case TB_KEY_ESC:
+      clearEditCommandSequence();
+      break;
+
+    default:
+      {
+        switch (event->ch)
+        {
+          case ':':
+            {
+              editMode_ = EditorMode::COMMAND;
+              editLine_.clear();
+              editLinePos_ = 0;
+            }
+            break;
+
+          case 'i':
+            {
+              editMode_ = EditorMode::EDIT;
+              editLine_ = doc::getCellText(currentIndex_);
+              editLinePos_ = editLine_.size();
+            }
+            break;
+
+          default:
+            pushEditCommandKey(event->ch);
+        }
+      }
+      break;
+  }
+}
+
 void handleEditEvent(struct tb_event * event)
 {
   handleTextInput(event);
@@ -252,7 +256,7 @@ void handleCommandEvent(struct tb_event * event)
   switch (event->key)
   {
     case TB_KEY_ENTER:
-      parseAndExecute(editLine_);
+      executeAppCommands(editLine_);
       editMode_ = EditorMode::NAVIGATE;
       break;
 
@@ -346,16 +350,10 @@ void drawHeaders()
 
   // Draw row header
   const int y_end = doc::getRowCount() < (tb_height() - 2) ? doc::getRowCount() : tb_height() - 2;
-  for (int y = 0; y < tb_height() - 2; ++y)
+  for (int y = 0; y < y_end; ++y)
   {
     const uint16_t color = (y + currentScroll_.y) == currentIndex_.y ? TB_REVERSE | TB_DEFAULT : TB_DEFAULT;
-
-    Str header;
-
-    if (y >= currentScroll_.y && y < y_end)
-      header = doc::rowToLabel(y);
-
-    drawText(0, y - currentScroll_.x + 1, ROW_HEADER_WIDTH, color, color, header);
+    drawText(0, y - currentScroll_.x + 1, ROW_HEADER_WIDTH, color, color, doc::rowToLabel(y + currentScroll_.y));
   }
 }
 

@@ -6,7 +6,12 @@
 #include "Editor.h"
 #include "Commands.h"
 
-int application_running = 1;
+static bool applicationRunning_ = true;
+
+void quitApplication()
+{
+  applicationRunning_ = false;
+}
 
 int main(int argc, char * argv[])
 {
@@ -30,7 +35,7 @@ int main(int argc, char * argv[])
 
   struct tb_event event;
 
-  while (application_running)
+  while (applicationRunning_)
   {
     if (tb_peek_event(&event, 100) > 0)
     {
@@ -48,7 +53,7 @@ int main(int argc, char * argv[])
       }
 
       // Only update cursor and redraw interface when we have recievied an event
-      executeCommandLine();
+      executeEditCommands();
       updateCursor();
       drawInterface();
     }

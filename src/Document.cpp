@@ -35,9 +35,13 @@ namespace doc {
 
   enum class EditAction
   {
-    kCellText,
-    kColumnWidth,
-    kUndoRedo
+    CellText,
+    ColumnWidth,
+    UndoRedo,
+    AddColumn,
+    RemoveColumn,
+    AddRow,
+    RemoveRow
   };
 
   struct UndoState
@@ -56,11 +60,6 @@ namespace doc {
   static Document currentDoc_;
   static std::vector<UndoState> undoStack_;
   static std::vector<UndoState> redoStack_;
-
-  static int cellCount()
-  {
-    return currentDoc_.width_ * currentDoc_.height_;
-  }
 
   void createEmpty()
   {
@@ -114,7 +113,7 @@ namespace doc {
   {
     if (!undoStack_.empty())
     {
-      redoStack_.emplace_back(currentDoc_, getCursorPos(), EditAction::kUndoRedo);
+      redoStack_.emplace_back(currentDoc_, getCursorPos(), EditAction::UndoRedo);
 
       UndoState const& state = undoStack_.back();
       currentDoc_ = state.doc_;
@@ -132,7 +131,7 @@ namespace doc {
   {
     if (!redoStack_.empty())
     {
-      undoStack_.emplace_back(currentDoc_, getCursorPos(), EditAction::kUndoRedo);
+      undoStack_.emplace_back(currentDoc_, getCursorPos(), EditAction::UndoRedo);
 
       UndoState const& state = redoStack_.back();
       currentDoc_ = state.doc_;
@@ -146,7 +145,7 @@ namespace doc {
     return false;
   }
 
-  Str const& getFilename()
+  Str getFilename()
   {
     return currentDoc_.filename_;
   }
@@ -246,12 +245,12 @@ namespace doc {
 
   int getRowCount()
   {
-    return currentDoc_.width_;
+    return currentDoc_.height_;
   }
 
   int getColumnCount()
   {
-    return currentDoc_.height_;
+    return currentDoc_.width_;
   }
 
   static int get_cell_index(int x, int y)
@@ -276,7 +275,7 @@ namespace doc {
     assert(idx.x < currentDoc_.width_);
     assert(idx.y < currentDoc_.height_);
 
-    takeUndoSnapshot(EditAction::kCellText, false);
+    takeUndoSnapshot(EditAction::CellText, false);
 
     Cell & cell = getCell(idx);
     cell.text = text;
@@ -285,7 +284,7 @@ namespace doc {
   void increaseColumnWidth(int column)
   {
     assert(column < currentDoc_.width_);
-    takeUndoSnapshot(EditAction::kColumnWidth, true);
+    takeUndoSnapshot(EditAction::ColumnWidth, true);
 
     currentDoc_.columnWidth_[column]++;
   }
@@ -296,9 +295,99 @@ namespace doc {
 
     if (currentDoc_.columnWidth_[column] > 3)
     {
-      takeUndoSnapshot(EditAction::kColumnWidth, true);
+      takeUndoSnapshot(EditAction::ColumnWidth, true);
       currentDoc_.columnWidth_[column]--;
     }
+  }
+
+  void addColumn(int column)
+  {
+    assert(column < currentDoc_.width_);
+    takeUndoSnapshot(EditAction::AddColumn, true);
+
+    currentDoc_.width_++;
+    currentDoc_.columnWidth_.insert(currentDoc_.columnWidth_.begin() + column + 1, kDefaultColumnWidth);
+
+    std::unordered_map<Index, Cell> newCells;
+
+    for (std::pair<Index, Cell> cell : currentDoc_.cells_)
+    {
+      if (cell.first.x > column)
+        cell.first.x++;
+
+      newCells.insert(cell);
+    }
+
+    currentDoc_.cells_ = std::move(newCells);
+  }
+
+  void addRow(int row)
+  {
+    assert(row < currentDoc_.height_);
+    takeUndoSnapshot(EditAction::AddRow, true);
+
+    currentDoc_.height_++;
+
+    std::unordered_map<Index, Cell> newCells;
+
+    for (std::pair<Index, Cell> cell : currentDoc_.cells_)
+    {
+      if (cell.first.y > row)
+        cell.first.y++;
+
+      newCells.insert(cell);
+    }
+
+    currentDoc_.cells_ = std::move(newCells);
+  }
+
+  void removeColumn(int column)
+  {
+    takeUndoSnapshot(EditAction::RemoveColumn, false);
+
+    currentDoc_.width_--;
+
+    if (column == currentDoc_.columnWidth_.size() - 1)
+      currentDoc_.columnWidth_.pop_back();
+    else
+      currentDoc_.columnWidth_.erase(currentDoc_.columnWidth_.begin() + column);
+
+    std::unordered_map<Index, Cell> newCells;
+
+    for (std::pair<Index, Cell> cell : currentDoc_.cells_)
+    {
+      if (cell.first.x != column)
+      {
+        if (cell.first.x > column)
+          cell.first.x--;
+
+        newCells.insert(cell);
+      }
+    }
+
+    currentDoc_.cells_ = std::move(newCells);
+  }
+
+  void removeRow(int row)
+  {
+    takeUndoSnapshot(EditAction::RemoveRow, false);
+
+    currentDoc_.height_--;
+
+    std::unordered_map<Index, Cell> newCells;
+
+    for (std::pair<Index, Cell> cell : currentDoc_.cells_)
+    {
+      if (cell.first.y != row)
+      {
+        if (cell.first.y > row)
+          cell.first.y--;
+
+        newCells.insert(cell);
+      }
+    }
+
+    currentDoc_.cells_ = std::move(newCells);
   }
 
   Str rowToLabel(int row)

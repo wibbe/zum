@@ -6,96 +6,183 @@
 
 #include <functional>
 
-extern int application_running;
-
 static Str commandSequence_;
 
-struct Command
+struct EditCommand
 {
-  uint32_t key;
+  uint32_t key[2];
   bool manualRepeat;
+  Str desciption;
   std::function<void (int)> command;
 };
 
+struct AppCommand
+{
+  Str id;
+  Str desciption;
+  std::function<void (Str const&)> command;
+};
+
 // List of all commands we support
-static std::vector<Command> commands_ = {
+static std::vector<EditCommand> editCommands_ = {
   { // Paste into current cell and move down
-    'p', false,
+    {'p', 0}, false,
+    Str("Paste to the current cell and move down"),
     [] (int) { 
       doc::setCellText(getCursorPos(), getYankBuffer());
       navigateDown();
     }
   },
   { // Paste into current cell and move right
-    'P', false,
+    {'P', 0}, false,
+    Str("Paste to the current cell and move right"),
     [] (int) { 
       doc::setCellText(getCursorPos(), getYankBuffer());
       navigateRight();
     }
   },
-  { // Clear current cell and move down
-    'd', false,
+  { // Clear current cell
+    {'d', 'd'}, false,
+    Str("Clear the current cell"),
     [] (int) { 
       doc::setCellText(getCursorPos(), Str::EMPTY);
-      navigateDown();
     }
   },
-  { // Clear current cell and move right
-    'D', false,
+  { // Clear current cell
+    {'d', 'w'}, false,
+    Str("Clear the current cell"),
     [] (int) { 
       doc::setCellText(getCursorPos(), Str::EMPTY);
-      navigateRight();
+    }
+  },
+  {
+    {'d', 'c'}, false,
+    Str("Delete the current column"),
+    [] (int) { 
+      Index pos = getCursorPos();
+      doc::removeColumn(pos.x);
+
+      if (pos.x >= doc::getColumnCount())
+        pos.x--;
+
+      setCursorPos(pos);
+    }
+  },
+  {
+    {'d', 'r'}, false,
+    Str("Delete the current row"),
+    [] (int) { 
+      Index pos = getCursorPos();
+      doc::removeRow(pos.y);
+
+      if (pos.y >= doc::getRowCount())
+        pos.y--;
+      
+      setCursorPos(pos);
     }
   },
   { // Yank the current cell
-    'y', false,
+    {'y', 0}, false,
+    Str("Yank from the current cell"),
     [] (int) { yankCurrentCell(); }
   },
   { // Increase column width
-    '+', false,
+    {'+', 0}, false,
+    Str("Increase current column with"),
     [] (int) { doc::increaseColumnWidth(getCursorPos().x); }
   },
   { // Decrease column with
-    '-', false,
+    {'-', 0}, false,
+    Str("Decrease current column width"),
     [] (int) { doc::decreaseColumnWidth(getCursorPos().x); }
   },
   { // Undo
-    'u', false,
+    {'u', 0}, false,
+    Str("Undo"),
     [] (int) { doc::undo(); }
   },
   { // Redo
-    'U', false,
-    [] (int) { doc::undo(); }
+    {'U', 0}, false,
+    Str("Redo"),
+    [] (int) { doc::redo(); }
   },
   { // Left
-    'h', false,
+    {'h', 0}, false,
+    Str("Move left"),
     [] (int) { navigateLeft(); }
   },
   { // Right
-    'l', false,
+    {'l', 0}, false,
+    Str("Move right"),
     [] (int) { navigateRight(); }
   },
   { // Up
-    'k', false,
+    {'k', 0}, false,
+    Str("Move up"),
     [] (int) { navigateUp(); }
   },
   { // Down
-    'j', false,
+    {'j', 0}, false,
+    Str("Move down"),
     [] (int) { navigateDown(); }
   },
-  { // Jump to line
-    '#', true,
+  { // Jump to row
+    {'#', 0}, true,
+    Str("Jump to row"),
     [] (int line) {
       const Index pos = getCursorPos();
       setCursorPos(Index(pos.x, line - 1));
     }
+  },
+  {
+    {'a', 'c'}, false,
+    Str("Insert a new column after the current column"),
+    [] (int) { doc::addColumn(getCursorPos().x); }
+  },
+  {
+    {'a', 'r'}, false,
+    Str("Insert a new row after the current row"),
+    [] (int) { doc::addRow(getCursorPos().y); }
+  },
+};
+
+extern void quitApplication();
+
+static std::vector<AppCommand> appCommands_ = {
+  { 
+    Str("q"),
+    Str("Quit application"),
+    [] (Str const& arg) { quitApplication(); }
+  },
+  {
+    Str("n"),
+    Str("New document"),
+    [] (Str const& arg) { doc::createEmpty(); }
+  },
+  {
+    Str("w"),
+    Str("Save document"),
+    [] (Str const& arg) {
+      if (arg.empty() && !doc::getFilename().empty())
+        doc::save(doc::getFilename());
+      else if (!arg.empty())
+        doc::save(arg);
+    }
+  },
+  {
+    Str("e"),
+    Str("Open document"),
+    [] (Str const& arg) {
+      if (!arg.empty())
+        doc::load(arg);
+    }
   }
 };
 
-static bool getCommand(uint32_t key, Command ** command)
+static bool getEditCommand(uint32_t key1, uint32_t key2, EditCommand ** command)
 {
-  for (auto & cmd : commands_)
-    if (cmd.key == key)
+  for (auto & cmd : editCommands_)
+    if (cmd.key[0] == key1 && (cmd.key[1] == 0 || cmd.key[1] == key2))
     {
       if (command)
         *command = &cmd;
@@ -105,25 +192,50 @@ static bool getCommand(uint32_t key, Command ** command)
   return false;
 }
 
+static bool getAppCommand(Str const& line, AppCommand ** command)
+{
+  for (auto & cmd : appCommands_)
+    if (line.starts_with(cmd.id))
+    {
+      if (command)
+        *command = &cmd;
+      return true;
+    }
 
-void pushCommandKey(uint32_t ch)
+  return false;
+}
+
+void pushEditCommandKey(uint32_t ch)
 {
   commandSequence_.append(ch);
 }
 
-void executeCommandLine()
+void clearEditCommandSequence()
+{
+  commandSequence_.clear();
+}
+
+void executeEditCommands()
 {
   if (!commandSequence_.empty())
   {
-    Command * command = nullptr;
+    EditCommand * command = nullptr;
     int count = 0;
 
-    for (auto ch : commandSequence_)
+    for (int i = 0; i < commandSequence_.size(); ++i)
     {
-      if (ch >= '0' && ch <= '9')
-        count = count * 10 + (ch - '0');
+      const auto ch1 = commandSequence_[i];
+      const auto ch2 = (i + 1) < commandSequence_.size() ? commandSequence_[i + 1] : 0;
+
+      if (ch1 >= '0' && ch1 <= '9')
+        count = count * 10 + (ch1 - '0');
       else if (!command)
-        getCommand(ch, &command);
+      {
+        // If we found a command that uses two keys, increase i by one
+        if (getEditCommand(ch1, ch2, &command))
+          if (command->key[1] != 0)
+            i++;
+      }
     }
 
     if (command) 
@@ -143,30 +255,30 @@ void executeCommandLine()
 }
 
 
-void parseAndExecute(Str const& command)
+void executeAppCommands(Str commandLine)
 {
-  if (command.empty())
-    return;
-
-  switch (command[0])
+  while (!commandLine.empty())
   {
-    case 'q':
-      application_running = 0;
-      break;
-
-    case 'n':
-      doc::createEmpty();
-      break;
-
-    case 'w':
+    AppCommand * command = nullptr;
+    if (getAppCommand(commandLine, &command))
+    {
+      commandLine.pop_front(command->id.size());
+      
+      Str arg;
+      if (commandLine.front() == ' ')
       {
-        Str filename = command;
-        filename.erase(0);
-        filename.erase(0);
-
-        if (!filename.empty())
-          doc::save(filename);
+        commandLine.pop_front();
+        while (!commandLine.empty() && commandLine.front() != ' ')
+        {
+          arg.append(commandLine.front());
+          commandLine.pop_front();
+        }
       }
+
+      command->command(arg);
+    }
+    else
+      break;
   }
 }
 

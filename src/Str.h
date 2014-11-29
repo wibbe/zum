@@ -28,8 +28,12 @@ class Str
     Str & append(Str const& str);
     Str & append(char_type ch);
 
+    char_type front() const { return data_.front(); }
+
     void insert(uint32_t pos, char_type ch);
     void erase(uint32_t pos);
+
+    bool starts_with(Str const& str) const;
 
     int size() const { return data_.size(); }
     bool empty() const { return data_.size() == 0; }
@@ -38,6 +42,9 @@ class Str
     iterator end() { return data_.end(); }
     const_iterator begin() const { return data_.begin(); }
     const_iterator end() const { return data_.end(); }
+
+    void pop_back();
+    void pop_front(uint32_t count = 1);
 
     std::string utf8() const;
 

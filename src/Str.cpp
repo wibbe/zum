@@ -76,6 +76,32 @@ void Str::erase(uint32_t pos)
   data_.erase(data_.begin() + pos);
 }
 
+bool Str::starts_with(Str const& str) const
+{
+  if (size() < str.size())
+    return false;
+
+  for (int i = 0; i < str.size(); ++i)
+    if (data_[i] != str[i])
+      return false;
+
+  return true;
+}
+
+void Str::pop_back()
+{
+  data_.pop_back();
+}
+
+void Str::pop_front(uint32_t count)
+{
+  for (int i = 0; i < (data_.size() - count); ++i)
+    data_[i] = data_[i + count];
+
+  for (; count > 0; --count)
+    data_.pop_back();
+}
+
 std::string Str::utf8() const
 {
   std::string result;

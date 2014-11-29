@@ -9,5 +9,7 @@ enum class Movement
   CellDown
 };
 
-void pushCommandKey(uint32_t ch);
-void executeCommandLine();
+void pushEditCommandKey(uint32_t ch);
+void clearEditCommandSequence();
+void executeEditCommands();
+void executeAppCommands(Str commandLine);
