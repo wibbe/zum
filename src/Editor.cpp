@@ -9,20 +9,29 @@
 
 static const int ROW_HEADER_WIDTH = 6;
 
+struct ColumnInfo
+{
+  ColumnInfo(int column, int x, int width)
+    : column_(column),
+      x_(x),
+      width_(width)
+  { }
+
+  int column_;
+  int x_;
+  int width_;
+};
+
 EditorMode editMode_ = EditorMode::NAVIGATE;
-int current_row_scroll = 0;
-int current_column_scroll = 0;
 
 extern int application_running;
-
-typedef struct {
-  int x;
-  int width;
-} ColumnInfo;
 
 #define CELL_BUFFER_LEN 1024
 static struct tb_cell cell_buffer[CELL_BUFFER_LEN];
 
+static std::vector<ColumnInfo> drawColumnInfo_;
+
+static Index currentScroll_(0, 0);
 static Index currentIndex_(0, 0);
   
 int editLinePos_ = 0;
@@ -30,9 +39,9 @@ static Str editLine_;
 static Str yankBuffer_;
 
 extern void parseAndExecute(Str const& command);
-extern void complete_command(String command);
+extern Str completeCommand(Str const& command);
 
-void update_cursor()
+void updateCursor()
 {
   switch (editMode_)
   {
@@ -50,54 +59,71 @@ void update_cursor()
   }
 }
 
-void navigate_left()
+Index getCursorPos()
+{
+  return currentIndex_;
+}
+
+void setCursorPos(Index const& idx)
+{
+  currentIndex_ = idx;
+}
+
+void navigateLeft()
 {
   if (currentIndex_.x > 0)
    currentIndex_.x--;
 
-  if (currentIndex_.x < current_column_scroll)
-    current_column_scroll = currentIndex_.x;
+  if (currentIndex_.x < currentScroll_.x)
+    currentScroll_.x = currentIndex_.x;
 }
 
-void navigate_right()
+void navigateRight()
 {
   if (currentIndex_.x < (doc::getColumnCount() - 1))
    currentIndex_.x++;
+
+ if (!drawColumnInfo_.empty() && currentIndex_.x > drawColumnInfo_.back().column_)
+    currentScroll_.x++;
 }
 
-void navigate_up()
+void navigateUp()
 {
   if (currentIndex_.y > 0)
     currentIndex_.y--;
 
-  if (currentIndex_.y < current_row_scroll)
-    current_row_scroll = currentIndex_.y;
+  if (currentIndex_.y < currentScroll_.y)
+    currentScroll_.y = currentIndex_.y;
 }
 
-void navigate_down()
+void navigateDown()
 {
   if (currentIndex_.y < (doc::getRowCount() - 1))
     currentIndex_.y++;
 }
 
-void handle_navigate_event(struct tb_event * event)
+void handleNavigateEvent(struct tb_event * event)
 {
   switch (event->key)
   {
     case TB_KEY_ARROW_LEFT:
-      navigate_left();
+      navigateLeft();
       break;
 
     case TB_KEY_ARROW_RIGHT:
-      navigate_right();
+      navigateRight();
       break;
 
     case TB_KEY_ARROW_UP:
-      navigate_up();
+      navigateUp();
       break;
 
     case TB_KEY_ARROW_DOWN:
-      navigate_down();
+      navigateDown();
+      break;
+
+    case TB_KEY_CTRL_R:
+      doc::redo();
       break;
 
     default:
@@ -126,16 +152,28 @@ void handle_navigate_event(struct tb_event * event)
 
           case 'p':
             doc::setCellText(currentIndex_, yankBuffer_);
-            navigate_down();
+            navigateDown();
             break;
 
           case 'P':
             doc::setCellText(currentIndex_, yankBuffer_);
-            navigate_right();
+            navigateRight();
             break;
 
           case 'd':
             doc::setCellText(currentIndex_, Str::EMPTY);
+            break;
+
+          case 'u':
+            doc::undo();
+            break;
+
+          case '+':
+            doc::increaseColumnWidth(currentIndex_.x);
+            break;
+
+          case '-':
+            doc::decreaseColumnWidth(currentIndex_.x);
             break;
 
         }
@@ -144,7 +182,7 @@ void handle_navigate_event(struct tb_event * event)
   }
 }
 
-void handle_text_input(struct tb_event * event)
+void handleTextInput(struct tb_event * event)
 {
   switch (event->key)
   {
@@ -193,9 +231,9 @@ void handle_text_input(struct tb_event * event)
   }
 }
 
-void handle_edit_event(struct tb_event * event)
+void handleEditEvent(struct tb_event * event)
 {
-  handle_text_input(event);
+  handleTextInput(event);
 
   switch (event->key)
   {
@@ -206,22 +244,22 @@ void handle_edit_event(struct tb_event * event)
     case TB_KEY_TAB:
       doc::setCellText(currentIndex_, editLine_);
       editLine_.clear();
-      navigate_right();
+      navigateRight();
       editMode_ = EditorMode::NAVIGATE;
       break;
 
     case TB_KEY_ENTER:
       doc::setCellText(currentIndex_, editLine_);
       editLine_.clear();
-      navigate_down();
+      navigateDown();
       editMode_ = EditorMode::NAVIGATE;
       break;
   }
 }
 
-void handle_command_event(struct tb_event * event)
+void handleCommandEvent(struct tb_event * event)
 {
-  handle_text_input(event);
+  handleTextInput(event);
 
   switch (event->key)
   {
@@ -240,20 +278,20 @@ void handle_command_event(struct tb_event * event)
   }
 }
 
-void handle_key_event(struct tb_event * event)
+void handleKeyEvent(struct tb_event * event)
 {
   switch (editMode_)
   {
     case EditorMode::NAVIGATE:
-      handle_navigate_event(event);
+      handleNavigateEvent(event);
       break;
 
     case EditorMode::EDIT:
-      handle_edit_event(event);
+      handleEditEvent(event);
       break;
 
     case EditorMode::COMMAND:
-      handle_command_event(event);
+      handleCommandEvent(event);
       break;
   }
 }
@@ -274,77 +312,89 @@ void drawText(int x, int y, int len, uint16_t fg, uint16_t bg, Str const& str)
   }
 }
 
-static int draw_column_count = 0;
-static ColumnInfo draw_column_info[128];
-
-void draw_headers()
+void calculateColumDrawWidths()
 {
-  // Calculate the with of the columns we should display
-  memset(draw_column_info, 0, sizeof(draw_column_info));
-  draw_column_count = 0;
+  drawColumnInfo_.clear();
 
   int x = ROW_HEADER_WIDTH;
-  for (int i = current_column_scroll; i < doc::getColumnCount(); ++i, ++draw_column_count)
+  for (int i = currentScroll_.x; i < doc::getColumnCount(); ++i)
   {
     const int width = doc::getColumnWidth(i);
-
-    draw_column_info[draw_column_count].x = x;
-    draw_column_info[draw_column_count].width = width;
+    drawColumnInfo_.emplace_back(i, x, width);
 
     x += width;
     if (x >= tb_width())
       break;
   }
+}
 
+void drawInterface()
+{
+  calculateColumDrawWidths();
+
+  tb_set_clear_attributes(TB_DEFAULT, TB_DEFAULT);
+  tb_clear();
+
+  drawHeaders();
+  drawWorkspace();
+  drawCommandLine();
+
+  tb_present();
+}
+
+void drawHeaders()
+{
   // Draw column header
-  for (int x = 0; x < draw_column_count; ++x)
+  for (int x = 0; x < drawColumnInfo_.size(); ++x)
   {
-    const uint16_t color = (x + current_column_scroll) == currentIndex_.x ? TB_REVERSE | TB_DEFAULT : TB_DEFAULT;
+    const uint16_t color = (x + currentScroll_.x) == currentIndex_.x ? TB_REVERSE | TB_DEFAULT : TB_DEFAULT;
 
     Str header;
     header.append(' ')
-          .append((char)('A' + x + current_column_scroll));
+          .append((char)('A' + x + currentScroll_.x));
 
-    drawText(draw_column_info[x].x, 0, draw_column_info[x].width, color, color, header);
+    drawText(drawColumnInfo_[x].x_, 0, drawColumnInfo_[x].width_, color, color, header);
   }
 
   // Draw row header
   const int y_end = doc::getRowCount() < (tb_height() - 2) ? doc::getRowCount() : tb_height() - 2;
   for (int y = 0; y < tb_height() - 2; ++y)
   {
-    const uint16_t color = (y + current_row_scroll) == currentIndex_.y ? TB_REVERSE | TB_DEFAULT : TB_DEFAULT;
+    const uint16_t color = (y + currentScroll_.y) == currentIndex_.y ? TB_REVERSE | TB_DEFAULT : TB_DEFAULT;
 
     Str header;
 
-    if (y >= current_row_scroll && y < y_end)
+    if (y >= currentScroll_.y && y < y_end)
       header = doc::rowToLabel(y);
 
-    drawText(0, y - current_column_scroll + 1, ROW_HEADER_WIDTH, color, color, header);
+    drawText(0, y - currentScroll_.x + 1, ROW_HEADER_WIDTH, color, color, header);
   }
 }
 
-void draw_workspace()
+void drawWorkspace()
 {
   const int y_end = doc::getRowCount() < (tb_height() - 2) ? doc::getRowCount() : tb_height() - 1;
 
-  for (int y = current_row_scroll; y < y_end; ++y)
+  for (int y = currentScroll_.y; y < y_end; ++y)
   {
-    for (int x = 0; x < draw_column_count; ++x)
+    for (int x = 0; x < drawColumnInfo_.size(); ++x)
     {
-      const int selected = x == currentIndex_.x && y == currentIndex_.y;
+      const int selected = drawColumnInfo_[x].column_ == currentIndex_.x && y == currentIndex_.y;
       const uint16_t color = selected ? TB_REVERSE | TB_DEFAULT : TB_DEFAULT;
 
-      const int width = doc::getColumnWidth(x + current_column_scroll);
+      const int width = doc::getColumnWidth(x + currentScroll_.x);
 
       if (selected && editMode_ == EditorMode::EDIT)
-        drawText(draw_column_info[x + current_column_scroll].x, y + 1, width, color, color, editLine_);
+        drawText(drawColumnInfo_[x + currentScroll_.x].x_, y + 1, width, 
+                 color, color, editLine_);
       else
-        drawText(draw_column_info[x + current_column_scroll].x, y + 1, width, color, color, doc::getCellText(Index(x + current_column_scroll, y)));
+        drawText(drawColumnInfo_[x + currentScroll_.x].x_, y + 1, width, 
+                 color, color, doc::getCellText(Index(drawColumnInfo_[x].column_, y)));
     }
   }
 }
 
-void draw_commandline()
+void drawCommandLine()
 {
   Str infoLine;
   Str commandLine;

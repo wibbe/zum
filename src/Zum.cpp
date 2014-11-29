@@ -7,18 +7,6 @@
 
 int application_running = 1;
 
-void draw_interface()
-{
-  tb_set_clear_attributes(TB_DEFAULT, TB_DEFAULT);
-  tb_clear();
-
-  draw_headers();
-  draw_workspace();
-  draw_commandline();
-
-  tb_present();
-}
-
 int main(int argc, char * argv[])
 {
   int result = tb_init();
@@ -36,8 +24,8 @@ int main(int argc, char * argv[])
   else
     doc::createEmpty();
 
-  update_cursor();
-  draw_interface();
+  updateCursor();
+  drawInterface();
 
   struct tb_event event;
   while (application_running && tb_poll_event(&event))
@@ -45,7 +33,7 @@ int main(int argc, char * argv[])
     switch (event.type)
     {
       case TB_EVENT_KEY:
-        handle_key_event(&event);
+        handleKeyEvent(&event);
         break;
 
       case TB_EVENT_RESIZE:
@@ -55,8 +43,8 @@ int main(int argc, char * argv[])
         break;
     }
 
-    update_cursor();
-    draw_interface();
+    updateCursor();
+    drawInterface();
   }
 
   tb_shutdown();

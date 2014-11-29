@@ -1,118 +1,105 @@
 
 #include "Str.h"
-#include "termbox.h"
 
+#include "termbox.h"
 #include <stdarg.h>
 #include <stdio.h>
-#include <assert.h>
-
 #include <algorithm>
 
-String EMPTY_STR = { 0 };
+Str Str::EMPTY;
 
-int string_len(String str)
+Str::Str()
+{ }
+
+Str::Str(const char * str)
 {
-  int len = 0;
-  for (; str[len] != 0 && len < STRING_LEN; ++len)
-  { }
-
-  return len;
+  set(str);
 }
 
-void string_append(String dest, String source)
-{
-  int start = 0;
-  while (dest[start] != 0 && start < STRING_LEN)
-    start++;
+Str::Str(Str const& str)
+  : data_(str.begin(), str.end())
+{ }
 
-  int i = 0;
-  while (source[i] != 0 && start < STRING_LEN)
+Str::Str(Str && str)
+  : data_(std::move(str.data_))
+{ }
+
+Str & Str::operator = (Str const& copy)
+{
+  data_.clear();
+  data_.reserve(copy.size());
+  for (auto ch : copy)
+    data_.push_back(ch);
+
+  return *this;
+}
+
+void Str::set(const char * str)
+{
+  data_.clear();
+  const char * it = str;
+
+  while (*it)
   {
-    dest[start] = source[i];
-    ++i;
-    ++start;
-  }
-
-  dest[start] = 0;
-}
-
-void string_append_char(String dest, uint32_t character)
-{
-  int start = 0;
-  while (dest[start] != 0 && start < STRING_LEN)
-    start++;
-
-  dest[start] = character;
-  dest[start + 1] = 0;
-}
-
-void string_insert_char(String dest, uint32_t pos, uint32_t character)
-{
-  assert(pos < STRING_LEN);
-
-  for (int i = STRING_LEN - 2; i >= 0; --i)
-  {
-    dest[i + 1] = dest[i];
-
-    if (i == pos)
-    {
-      dest[i] = character;
-      break;
-    }
+    char_type ch;
+    it += tb_utf8_char_to_unicode(&ch, it);
+    data_.push_back(ch);
   }
 }
 
-void string_erase_char(String dest, uint32_t pos)
+void Str::clear()
 {
-  for (uint32_t i = pos; i < (STRING_LEN - 1); ++i)
-    dest[i] = dest[i + 1];
+  data_.clear();
 }
 
-void string_copy(String dest, String source)
+Str & Str::append(Str const& str)
 {
-  for (int i = 0; i < STRING_LEN; ++i)
-    dest[i] = source[i];
+  data_.reserve(size() + str.size());
+  for (auto ch : str)
+    data_.push_back(ch);
+  return *this;
 }
 
-void string_set(String dest, const char * source)
+Str & Str::append(char_type ch)
 {
-  const char * sit = source;
-  uint32_t * dit = dest;
+  data_.push_back(ch);
+  return *this;
+}
 
-  while (*sit)
+void Str::insert(uint32_t pos, char_type ch)
+{
+  data_.insert(data_.begin() + pos, ch);
+}
+
+void Str::erase(uint32_t pos)
+{
+  data_.erase(data_.begin() + pos);
+}
+
+std::string Str::utf8() const
+{
+  std::string result;
+
+  for (auto const& ch : data_)
   {
-    tb_utf8_char_to_unicode(dit, sit);
-    ++sit;
-    ++dit;
+    char str[7];
+    char * it = str + tb_utf8_unicode_to_char(str, ch);
+    *it = '\0';
+    result += str;
   }
-  *dit = 0;
+
+  return result;
 }
 
-void string_clear(String dest)
+Str Str::format(const char * fmt, ...)
 {
-  for (int i = 0; i < STRING_LEN; ++i)
-    dest[i] = 0;
-}
-
-void string_fmt(String dest, const char * fmt, ...)
-{
-  char buffer[STRING_LEN];
+  static const int LEN = 1024;
+  char buffer[LEN];
 
   va_list argp;
   va_start(argp, fmt);
-  vsnprintf(buffer, STRING_LEN, fmt, argp);
+  vsnprintf(buffer, LEN, fmt, argp);
   va_end(argp);
 
-  string_set(dest, buffer);
-}
-
-void string_utf8(char * dest, String source)
-{
-  int i = 0;
-  while (source[i] != 0)
-  {
-    dest += tb_utf8_unicode_to_char(dest, source[i]);
-    ++i;
-  }
-  *dest = '\0';
+  return Str(buffer);
 }

@@ -3,6 +3,7 @@
 #define EDITOR_H
 
 #include "termbox.h"
+#include "Types.h"
 
 enum class EditorMode 
 {
@@ -15,11 +16,15 @@ extern int editor_mode;
 extern int current_row;
 extern int current_column;
 
-void handle_key_event(struct tb_event * event);
-void update_cursor();
+Index getCursorPos();
+void setCursorPos(Index const& idx);
 
-void draw_headers();
-void draw_workspace();
-void draw_commandline();
+void handleKeyEvent(struct tb_event * event);
+void updateCursor();
+
+void drawInterface();
+void drawHeaders();
+void drawWorkspace();
+void drawCommandLine();
 
 #endif

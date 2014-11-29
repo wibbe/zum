@@ -1,26 +1,48 @@
 
-#ifndef STR_H
-#define STR_H
+#pragma once
 
-#include <stdint.h>
+#include <vector>
+#include <string>
 
-#define STRING_LEN 512
-typedef uint32_t String[STRING_LEN];
+class Str
+{
+  public:
+    typedef uint32_t char_type;
+    typedef std::vector<char_type>::iterator iterator;
+    typedef std::vector<char_type>::const_iterator const_iterator;
 
-extern String EMPTY_STR;
+    static Str EMPTY;
 
-int string_len(String str);
-void string_append(String dest, String source);
-void string_append_char(String dest, uint32_t character);
+  public:
+    Str();
+    explicit Str(const char * str);
+    Str(Str const& str);
+    Str(Str && str);
 
-void string_insert_char(String dest, uint32_t pos, uint32_t character);
-void string_erase_char(String dest, uint32_t pos);
+    Str & operator = (Str const& copy);
+    char_type operator [] (uint32_t idx) const { return data_[idx]; }
 
-void string_set(String dest, const char * source);
-void string_clear(String dest);
-void string_copy(String dest, String source);
-void string_fmt(String dest, const char * fmt, ...);
+    void set(const char * str);
+    void clear();
 
-void string_utf8(char * dest, String source);
+    Str & append(Str const& str);
+    Str & append(char_type ch);
 
-#endif
+    void insert(uint32_t pos, char_type ch);
+    void erase(uint32_t pos);
+
+    int size() const { return data_.size(); }
+    bool empty() const { return data_.size() == 0; }
+
+    iterator begin() { return data_.begin(); }
+    iterator end() { return data_.end(); }
+    const_iterator begin() const { return data_.begin(); }
+    const_iterator end() const { return data_.end(); }
+
+    std::string utf8() const;
+
+    static Str format(const char * fmt, ...);
+
+  private:
+    std::vector<char_type> data_;
+};

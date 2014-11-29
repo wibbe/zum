@@ -34,6 +34,7 @@ void parseAndExecute(Str const& command)
   }
 }
 
-void complete_command(String command)
+Str completeCommand(Str const& command)
 {
+  return Str::EMPTY;
 }
