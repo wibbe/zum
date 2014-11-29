@@ -12,12 +12,18 @@ enum class EditorMode
   COMMAND
 };
 
-extern int editor_mode;
-extern int current_row;
-extern int current_column;
+EditorMode getEditorMode();
 
 Index getCursorPos();
 void setCursorPos(Index const& idx);
+
+Str getYankBuffer();
+void yankCurrentCell();
+
+void navigateLeft();
+void navigateRight();
+void navigateUp();
+void navigateDown();
 
 void handleKeyEvent(struct tb_event * event);
 void updateCursor();

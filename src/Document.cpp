@@ -68,7 +68,7 @@ namespace doc {
     currentDoc_.width_ = kDefaultRowCount;
     currentDoc_.height_ = kDefaultColumnCount;
     currentDoc_.columnWidth_.resize(kDefaultColumnCount, kDefaultColumnWidth);
-    currentDoc_.filename_.set("[NoName]");
+    currentDoc_.filename_ = Str::EMPTY;
   }
 
   void close()
@@ -294,7 +294,7 @@ namespace doc {
   {
     assert(column < currentDoc_.width_);
 
-    if (currentDoc_.columnWidth_[column] > 1)
+    if (currentDoc_.columnWidth_[column] > 3)
     {
       takeUndoSnapshot(EditAction::kColumnWidth, true);
       currentDoc_.columnWidth_[column]--;

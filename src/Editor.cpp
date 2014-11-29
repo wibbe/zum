@@ -2,6 +2,7 @@
 #include "Editor.h"
 #include "Document.h"
 #include "Str.h"
+#include "Commands.h"
 
 #include <memory.h>
 #include <stdarg.h>
@@ -69,6 +70,21 @@ void setCursorPos(Index const& idx)
   currentIndex_ = idx;
 }
 
+EditorMode getEditorMode()
+{
+  return editMode_;
+}
+
+Str getYankBuffer()
+{
+  return yankBuffer_;
+}
+
+void yankCurrentCell()
+{
+  yankBuffer_ = doc::getCellText(currentIndex_);
+}
+
 void navigateLeft()
 {
   if (currentIndex_.x > 0)
@@ -107,23 +123,23 @@ void handleNavigateEvent(struct tb_event * event)
   switch (event->key)
   {
     case TB_KEY_ARROW_LEFT:
-      navigateLeft();
+      pushCommandKey('h');
       break;
 
     case TB_KEY_ARROW_RIGHT:
-      navigateRight();
+      pushCommandKey('l');
       break;
 
     case TB_KEY_ARROW_UP:
-      navigateUp();
+      pushCommandKey('k');
       break;
 
     case TB_KEY_ARROW_DOWN:
-      navigateDown();
+      pushCommandKey('j');
       break;
 
     case TB_KEY_CTRL_R:
-      doc::redo();
+      pushCommandKey('U');
       break;
 
     default:
@@ -146,36 +162,8 @@ void handleNavigateEvent(struct tb_event * event)
             }
             break;
 
-          case 'y':
-            yankBuffer_ = doc::getCellText(currentIndex_);
-            break;
-
-          case 'p':
-            doc::setCellText(currentIndex_, yankBuffer_);
-            navigateDown();
-            break;
-
-          case 'P':
-            doc::setCellText(currentIndex_, yankBuffer_);
-            navigateRight();
-            break;
-
-          case 'd':
-            doc::setCellText(currentIndex_, Str::EMPTY);
-            break;
-
-          case 'u':
-            doc::undo();
-            break;
-
-          case '+':
-            doc::increaseColumnWidth(currentIndex_.x);
-            break;
-
-          case '-':
-            doc::decreaseColumnWidth(currentIndex_.x);
-            break;
-
+          default:
+            pushCommandKey(event->ch);
         }
       }
       break;
@@ -415,7 +403,13 @@ void drawCommandLine()
       break;
   }
 
-  infoLine = doc::getFilename();
+  { // Costruct the info line
+    Str filename = doc::getFilename();
+    if (filename.empty())
+      filename.set("[NoName]");
+
+    infoLine = filename;
+  }
 
   drawText(0, tb_height() - 2, tb_width(), TB_REVERSE | TB_DEFAULT, TB_REVERSE | TB_DEFAULT, infoLine);
   drawText(0, tb_height() - 1, tb_width(), TB_DEFAULT, TB_DEFAULT, commandLine);

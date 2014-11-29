@@ -4,6 +4,7 @@
 #include "termbox.h"
 #include "Document.h"
 #include "Editor.h"
+#include "Commands.h"
 
 int application_running = 1;
 
@@ -28,26 +29,34 @@ int main(int argc, char * argv[])
   drawInterface();
 
   struct tb_event event;
-  while (application_running && tb_poll_event(&event))
+
+  while (application_running)
   {
-    switch (event.type)
+    if (tb_peek_event(&event, 100) > 0)
     {
-      case TB_EVENT_KEY:
-        handleKeyEvent(&event);
-        break;
+      switch (event.type)
+      {
+        case TB_EVENT_KEY:
+          handleKeyEvent(&event);
+          break;
 
-      case TB_EVENT_RESIZE:
-        break;
+        case TB_EVENT_RESIZE:
+          break;
 
-      default:
-        break;
+        default:
+          break;
+      }
+
+      // Only update cursor and redraw interface when we have recievied an event
+      executeCommandLine();
+      updateCursor();
+      drawInterface();
     }
-
-    updateCursor();
-    drawInterface();
+    else
+    {
+    }
   }
 
   tb_shutdown();
-
   return 0;
 }
