@@ -1,27 +1,26 @@
 
-#ifndef DOCUMENT_H
-#define DOCUMENT_H
+#pragma once
 
-#include "str.h"
+#include "Types.h"
 
-void doc_create_empty();
-void doc_close();
+namespace doc {
 
-int doc_get_column_width(int column);
-int doc_get_row_count();
-int doc_get_column_count();
+  void createEmpty();
+  void close();
 
-void doc_save(String filename);
-int doc_load(String filename);
+  int getColumnWidth(int column);
+  int getRowCount();
+  int getColumnCount();
 
-String * doc_get_filename();
+  void save(Str const& filename);
+  int load(Str const& filename);
 
+  Str const& getFilename();
 
-String * doc_get_cell_text(int x, int y);
-void doc_set_cell_text(int x, int y, String text);
+  Str const& getCellText(Index const& idx);
+  void setCellText(Index const& idx, Str const& text);
 
-void doc_row_to_label(String dest, int row);
-void doc_column_to_label(String dest, int col);
+  Str rowToLabel(int row);
+  Str columnTolabel(int col);
 
-
-#endif
+}

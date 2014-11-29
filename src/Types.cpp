@@ -1,0 +1,105 @@
+
+#include "Types.h"
+
+#include "termbox.h"
+#include <stdarg.h>
+#include <stdio.h>
+#include <algorithm>
+
+Str Str::EMPTY;
+
+Str::Str()
+{ }
+
+Str::Str(const char * str)
+{
+  set(str);
+}
+
+Str::Str(Str const& str)
+  : data_(str.begin(), str.end())
+{ }
+
+Str::Str(Str && str)
+  : data_(std::move(str.data_))
+{ }
+
+Str & Str::operator = (Str const& copy)
+{
+  data_.clear();
+  data_.reserve(copy.size());
+  for (auto ch : copy)
+    data_.push_back(ch);
+
+  return *this;
+}
+
+void Str::set(const char * str)
+{
+  data_.clear();
+  const char * it = str;
+
+  while (*it)
+  {
+    char_type ch;
+    it += tb_utf8_char_to_unicode(&ch, it);
+    data_.push_back(ch);
+  }
+}
+
+void Str::clear()
+{
+  data_.clear();
+}
+
+Str & Str::append(Str const& str)
+{
+  data_.reserve(size() + str.size());
+  for (auto ch : str)
+    data_.push_back(ch);
+  return *this;
+}
+
+Str & Str::append(char_type ch)
+{
+  data_.push_back(ch);
+  return *this;
+}
+
+void Str::insert(uint32_t pos, char_type ch)
+{
+  data_.insert(data_.begin() + pos, ch);
+}
+
+void Str::erase(uint32_t pos)
+{
+  data_.erase(data_.begin() + pos);
+}
+
+std::string Str::utf8() const
+{
+  std::string result;
+
+  for (auto const& ch : data_)
+  {
+    char str[7];
+    char * it = str + tb_utf8_unicode_to_char(str, ch);
+    *it = '\0';
+    result += str;
+  }
+
+  return result;
+}
+
+Str Str::format(const char * fmt, ...)
+{
+  static const int LEN = 1024;
+  char buffer[LEN];
+
+  va_list argp;
+  va_start(argp, fmt);
+  vsnprintf(buffer, LEN, fmt, argp);
+  va_end(argp);
+
+  return Str(buffer);
+}

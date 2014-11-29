@@ -1,10 +1,12 @@
 
-#include "str.h"
+#include "Str.h"
 #include "termbox.h"
 
 #include <stdarg.h>
 #include <stdio.h>
 #include <assert.h>
+
+#include <algorithm>
 
 String EMPTY_STR = { 0 };
 

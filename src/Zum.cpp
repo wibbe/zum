@@ -2,8 +2,8 @@
 #include <stdio.h>
 
 #include "termbox.h"
-#include "document.h"
-#include "editor.h"
+#include "Document.h"
+#include "Editor.h"
 
 int application_running = 1;
 
@@ -30,14 +30,11 @@ int main(int argc, char * argv[])
 
   if (argc > 1)
   {
-    String filename;
-    string_set(filename, argv[1]);
-
-    if (!doc_load(filename))
-      doc_create_empty();
+    if (!doc::load(Str(argv[1])))
+      doc::createEmpty();
   }
   else
-    doc_create_empty();
+    doc::createEmpty();
 
   update_cursor();
   draw_interface();

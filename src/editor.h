@@ -4,11 +4,11 @@
 
 #include "termbox.h"
 
-enum EditorMode
+enum class EditorMode 
 {
-  NAVIGATE_MODE,
-  EDIT_MODE,
-  COMMAND_MODE
+  NAVIGATE,
+  EDIT,
+  COMMAND
 };
 
 extern int editor_mode;
