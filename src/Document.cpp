@@ -32,6 +32,7 @@ namespace doc {
     std::vector<int> columnWidth_;
     std::unordered_map<Index, Cell> cells_;
     Str filename_;
+    bool readOnly_;
   };
 
   enum class EditAction
@@ -69,6 +70,7 @@ namespace doc {
     currentDoc_.height_ = kDefaultColumnCount;
     currentDoc_.columnWidth_.resize(kDefaultColumnCount, kDefaultColumnWidth);
     currentDoc_.filename_ = Str::EMPTY;
+    currentDoc_.readOnly_ = false;
   }
 
   void close()
@@ -78,6 +80,7 @@ namespace doc {
     currentDoc_.filename_ = Str::EMPTY;
     currentDoc_.cells_.clear();
     currentDoc_.columnWidth_.clear();
+    currentDoc_.readOnly_ = true;
     undoStack_.clear();
     redoStack_.clear();
   }
@@ -151,6 +154,11 @@ namespace doc {
     return currentDoc_.filename_;
   }
 
+  bool isReadOnly()
+  {
+    return currentDoc_.readOnly_;
+  }
+
   bool save(Str const& filename)
   {
     std::ofstream file(filename.utf8().c_str());
@@ -179,18 +187,11 @@ namespace doc {
     return true;
   }
 
-  bool load(Str const& filename)
+  static bool loadDocument(std::istream & stream)
   {
-    std::ifstream file(filename.utf8().c_str());
-    if (!file.is_open())
-      return false;
-
-    // Start by closing thr current document
-    close();
-
     { // Read column width
       std::string line, cell;
-      std::getline(file, line);
+      std::getline(stream, line);
       std::stringstream lineStream(line);
 
       while (std::getline(lineStream, cell, ','))
@@ -206,7 +207,7 @@ namespace doc {
     { // Read cell data
       // For each line
       std::string line;
-      while (std::getline(file, line))
+      while (std::getline(stream, line))
       {
         std::stringstream lineStream(line);
         std::string cellText;
@@ -233,7 +234,38 @@ namespace doc {
       }
     }
 
+    return true;
+  }
+
+  bool load(Str const& filename)
+  {
+    std::ifstream file(filename.utf8().c_str());
+    if (!file.is_open())
+      return false;
+
+    // Start by closing thr current document
+    close();
+
+    if (!loadDocument(file))
+      return false;
+
     currentDoc_.filename_ = filename;
+    currentDoc_.readOnly_ = false;
+
+    return true;
+  }
+
+  bool loadRaw(std::string const& data, Str const& filename)
+  {
+    std::istringstream buffer(data);
+
+    close();
+
+    if (!loadDocument(buffer))
+      return false;
+
+    currentDoc_.filename_ = filename;
+    currentDoc_.readOnly_ = true;
 
     return true;
   }
@@ -276,6 +308,9 @@ namespace doc {
     assert(idx.x < currentDoc_.width_);
     assert(idx.y < currentDoc_.height_);
 
+    if (currentDoc_.readOnly_)
+      return;
+
     takeUndoSnapshot(EditAction::CellText, false);
 
     Cell & cell = getCell(idx);
@@ -285,6 +320,10 @@ namespace doc {
   void increaseColumnWidth(int column)
   {
     assert(column < currentDoc_.width_);
+
+    if (currentDoc_.readOnly_)
+      return;
+
     takeUndoSnapshot(EditAction::ColumnWidth, true);
 
     currentDoc_.columnWidth_[column]++;
@@ -293,6 +332,9 @@ namespace doc {
   void decreaseColumnWidth(int column)
   {
     assert(column < currentDoc_.width_);
+
+    if (currentDoc_.readOnly_)
+      return;
 
     if (currentDoc_.columnWidth_[column] > 3)
     {
@@ -304,6 +346,10 @@ namespace doc {
   void addColumn(int column)
   {
     assert(column < currentDoc_.width_);
+
+    if (currentDoc_.readOnly_)
+      return;
+
     takeUndoSnapshot(EditAction::AddColumn, true);
 
     currentDoc_.width_++;
@@ -325,6 +371,10 @@ namespace doc {
   void addRow(int row)
   {
     assert(row < currentDoc_.height_);
+
+    if (currentDoc_.readOnly_)
+      return;
+
     takeUndoSnapshot(EditAction::AddRow, true);
 
     currentDoc_.height_++;
@@ -344,6 +394,11 @@ namespace doc {
 
   void removeColumn(int column)
   {
+    assert(column < doc::getColumnCount());
+
+    if (currentDoc_.readOnly_)
+      return;
+
     takeUndoSnapshot(EditAction::RemoveColumn, false);
 
     currentDoc_.width_--;
@@ -371,6 +426,11 @@ namespace doc {
 
   void removeRow(int row)
   {
+    assert(row < getRowCount());
+
+    if (currentDoc_.readOnly_)
+      return;
+
     takeUndoSnapshot(EditAction::RemoveRow, false);
 
     currentDoc_.height_--;
@@ -393,7 +453,7 @@ namespace doc {
 
   Str rowToLabel(int row)
   {
-    return Str::format("%5d", row + 1);
+    return Str::format("%d", row + 1);
   }
 
   Str columnTolabel(int col)
@@ -415,7 +475,6 @@ namespace doc {
       const int value = std::pow(26, power);
       if (value > col)
       {
-        //result.append('A');
         power--;
 
         if (power < 0)
@@ -433,31 +492,6 @@ namespace doc {
       }
     }
 
-    // Special case to handle col == 0
-    //if (result.empty())
-    //  result.append('A');
-
     return result;
-/*
-
-    do
-    {
-      const int reminder = col % 26;
-      if (reminder > 0)
-      {
-        result.append('A' + (reminder - 1));
-        col -= reminder * 26;
-      }
-      else
-      {
-        result.append('A' + (col - 1));
-        col -= col;
-      }
-    }
-    while (col > 0);
-
-
-    */
   }
-
 }

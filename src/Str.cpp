@@ -47,9 +47,10 @@ void Str::set(const char * str)
   }
 }
 
-void Str::clear()
+Str & Str::clear()
 {
   data_.clear();
+  return *this;
 }
 
 Str & Str::append(Str const& str)

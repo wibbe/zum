@@ -23,7 +23,7 @@ class Str
     char_type operator [] (uint32_t idx) const { return data_[idx]; }
 
     void set(const char * str);
-    void clear();
+    Str & clear();
 
     Str & append(Str const& str);
     Str & append(char_type ch);

@@ -3,132 +3,128 @@
 #include "Editor.h"
 #include "Document.h"
 #include "Commands.h"
-
-#include <functional>
+#include "Help.h"
 
 static Str commandSequence_;
-
-struct EditCommand
-{
-  uint32_t key[2];
-  bool manualRepeat;
-  Str desciption;
-  std::function<void (int)> command;
-};
-
-struct AppCommand
-{
-  Str id;
-  Str desciption;
-  std::function<void (Str const&)> command;
-};
 
 // List of all commands we support
 static std::vector<EditCommand> editCommands_ = {
   { // Paste into current cell and move down
     {'p', 0}, false,
-    Str("Paste to the current cell and move down"),
-    [] (int) { 
-      doc::setCellText(getCursorPos(), getYankBuffer());
-      navigateDown();
+    "Paste to the current cell and move down",
+    [] (int) {
+      if (!doc::isReadOnly())
+      {
+        doc::setCellText(getCursorPos(), getYankBuffer());
+        navigateDown();
+      }
     }
   },
   { // Paste into current cell and move right
     {'P', 0}, false,
-    Str("Paste to the current cell and move right"),
-    [] (int) { 
-      doc::setCellText(getCursorPos(), getYankBuffer());
-      navigateRight();
+    "Paste to the current cell and move right",
+    [] (int) {
+      if (!doc::isReadOnly())
+      {
+        doc::setCellText(getCursorPos(), getYankBuffer());
+        navigateRight();
+      }
     }
   },
   { // Clear current cell
     {'d', 'd'}, false,
-    Str("Clear the current cell"),
+    "Clear the current cell",
     [] (int) { 
       doc::setCellText(getCursorPos(), Str::EMPTY);
     }
   },
   { // Clear current cell
     {'d', 'w'}, false,
-    Str("Clear the current cell"),
+    "Clear the current cell",
     [] (int) { 
       doc::setCellText(getCursorPos(), Str::EMPTY);
     }
   },
   {
     {'d', 'c'}, false,
-    Str("Delete the current column"),
-    [] (int) { 
-      Index pos = getCursorPos();
-      doc::removeColumn(pos.x);
+    "Delete the current column",
+    [] (int) {
+      if (!doc::isReadOnly())
+      {
+        Index pos = getCursorPos();
+        doc::removeColumn(pos.x);
 
-      if (pos.x >= doc::getColumnCount())
-        pos.x--;
+        if (pos.x >= doc::getColumnCount())
+          pos.x--;
 
-      setCursorPos(pos);
+        setCursorPos(pos);
+      }
     }
   },
   {
     {'d', 'r'}, false,
-    Str("Delete the current row"),
+    "Delete the current row",
     [] (int) { 
-      Index pos = getCursorPos();
-      doc::removeRow(pos.y);
+      if (!doc::isReadOnly())
+      {
+        Index pos = getCursorPos();
+        doc::removeRow(pos.y);
 
-      if (pos.y >= doc::getRowCount())
-        pos.y--;
-      
-      setCursorPos(pos);
+        if (pos.y >= doc::getRowCount())
+          pos.y--;
+        
+        setCursorPos(pos);
+      }
     }
   },
   { // Yank the current cell
     {'y', 0}, false,
-    Str("Yank from the current cell"),
+    "Yank from the current cell",
     [] (int) { yankCurrentCell(); }
   },
   { // Increase column width
     {'+', 0}, false,
-    Str("Increase current column with"),
+    "Increase current column with",
     [] (int) { doc::increaseColumnWidth(getCursorPos().x); }
   },
   { // Decrease column with
     {'-', 0}, false,
-    Str("Decrease current column width"),
+    "Decrease current column width",
     [] (int) { doc::decreaseColumnWidth(getCursorPos().x); }
   },
   { // Undo
     {'u', 0}, false,
-    Str("Undo"),
+    "Undo",
     [] (int) { doc::undo(); }
   },
   { // Redo
     {'U', 0}, false,
-    Str("Redo"),
+    "Redo",
     [] (int) { doc::redo(); }
   },
   { // Left
     {'h', 0}, false,
-    Str("Move left"),
+    "Move left",
     [] (int) { navigateLeft(); }
   },
   { // Right
     {'l', 0}, false,
-    Str("Move right"),
+    "Move right",
     [] (int) { navigateRight(); }
   },
   { // Up
     {'k', 0}, false,
-    Str("Move up"),
+    "Move up",
     [] (int) { navigateUp(); }
   },
   { // Down
     {'j', 0}, false,
-    Str("Move down"),
+    "Move down",
     [] (int) { navigateDown(); }
   },
   { // Jump to row
     {'#', 0}, true,
-    Str("Jump to row"),
+    "Jump to row",
     [] (int line) {
       const Index pos = getCursorPos();
       setCursorPos(Index(pos.x, line - 1));
@@ -136,12 +132,12 @@ static std::vector<EditCommand> editCommands_ = {
   },
   {
     {'a', 'c'}, false,
-    Str("Insert a new column after the current column"),
+    "Insert a new column after the current column",
     [] (int) { doc::addColumn(getCursorPos().x); }
   },
   {
     {'a', 'r'}, false,
-    Str("Insert a new row after the current row"),
+    "Insert a new row after the current row",
     [] (int) { doc::addRow(getCursorPos().y); }
   },
 };
@@ -151,17 +147,20 @@ extern void quitApplication();
 static std::vector<AppCommand> appCommands_ = {
   { 
     Str("q"),
-    Str("Quit application"),
+    "",
+    "Quit application",
     [] (Str const& arg) { quitApplication(); }
   },
   {
     Str("n"),
-    Str("New document"),
+    "",
+    "New document",
     [] (Str const& arg) { doc::createEmpty(); }
   },
   {
     Str("w"),
-    Str("Save document"),
+    "[filename]",
+    "Save document",
     [] (Str const& arg) {
       if (arg.empty() && !doc::getFilename().empty())
         doc::save(doc::getFilename());
@@ -171,10 +170,23 @@ static std::vector<AppCommand> appCommands_ = {
   },
   {
     Str("e"),
-    Str("Open document"),
+    "filename",
+    "Open document",
     [] (Str const& arg) {
       if (!arg.empty())
+      {
+        setCursorPos(Index(0, 0));
         doc::load(arg);
+      }
+    }
+  },
+  {
+    Str("help"),
+    "",
+    "Show help documentation",
+    [] (Str const& arg) {
+      setCursorPos(Index(0, 0));
+      doc::loadRaw(getHelpDocument(), Str("[Help]"));
     }
   }
 };
@@ -203,6 +215,16 @@ static bool getAppCommand(Str const& line, AppCommand ** command)
     }
 
   return false;
+}
+
+std::vector<EditCommand> const& getEditCommands()
+{
+  return editCommands_;
+}
+
+std::vector<AppCommand> const& getAppCommands()
+{
+  return appCommands_;
 }
 
 void pushEditCommandKey(uint32_t ch)

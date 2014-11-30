@@ -24,6 +24,7 @@ set(SOURCE
     src/Editor.cpp
     src/Document.cpp
     src/Commands.cpp
+    src/Help.cpp
     src/3rdparty/termbox/termbox.c
     src/3rdparty/termbox/utf8.c
 )

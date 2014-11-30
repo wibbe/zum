@@ -8,7 +8,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-static const int ROW_HEADER_WIDTH = 6;
+static const int ROW_HEADER_WIDTH = 8;
 
 struct ColumnInfo
 {
@@ -223,9 +223,12 @@ void handleNavigateEvent(struct tb_event * event)
 
           case 'i':
             {
-              editMode_ = EditorMode::EDIT;
-              editLine_ = doc::getCellText(currentIndex_);
-              editLinePos_ = editLine_.size();
+              if (!doc::isReadOnly())
+              {
+                editMode_ = EditorMode::EDIT;
+                editLine_ = doc::getCellText(currentIndex_);
+                editLinePos_ = editLine_.size();
+              }
             }
             break;
 
@@ -370,7 +373,18 @@ void drawHeaders()
     const uint16_t color = row == currentIndex_.y ? TB_REVERSE | TB_DEFAULT : TB_DEFAULT;
 
     if (row < doc::getRowCount())
-      drawText(0, y, ROW_HEADER_WIDTH, color, color, doc::rowToLabel(row));
+    {
+      const Str columnNumber = doc::rowToLabel(row);
+
+      Str header;
+      while (header.size() < (ROW_HEADER_WIDTH - columnNumber.size() - 1))
+        header.append(' ');
+
+      header.append(columnNumber)
+            .append(' ');
+
+      drawText(0, y, ROW_HEADER_WIDTH, color, color, header);
+    }
   }
 }
 
@@ -401,18 +415,22 @@ void drawCommandLine()
 {
   Str infoLine;
   Str commandLine;
+  Str::char_type mode;
 
   switch (editMode_)
   {
     case EditorMode::NAVIGATE:
+      mode = 'N';
       commandLine = doc::getCellText(currentIndex_);
       break;
 
     case EditorMode::EDIT:
+      mode = 'I';
       commandLine = editLine_;
       break;
 
     case EditorMode::COMMAND:
+      mode = ':';
       commandLine.append(':')
                  .append(editLine_);
       break;
@@ -424,6 +442,25 @@ void drawCommandLine()
       filename.set("[NoName]");
 
     infoLine = filename;
+
+    Str pos;
+    pos.append(doc::columnTolabel(currentIndex_.x))
+       .append(doc::rowToLabel(currentIndex_.y));
+
+    const int maxFileAreaSize = tb_width() - pos.size() - 5;
+    if (filename.size() > maxFileAreaSize)
+      filename.pop_front(filename.size() - maxFileAreaSize);
+    while (filename.size() < maxFileAreaSize)
+      filename.append(' ');
+
+    infoLine.clear()
+            .append(filename)
+            .append(' ')
+            .append(pos)
+            .append(' ')
+            .append(' ')
+            .append(mode)
+            .append(' ');
   }
 
   drawText(0, tb_height() - 2, tb_width(), TB_REVERSE | TB_DEFAULT, TB_REVERSE | TB_DEFAULT, infoLine);
