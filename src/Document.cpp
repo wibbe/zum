@@ -17,6 +17,7 @@
 #include <fstream>
 #include <sstream>
 #include <unordered_map>
+#include <cmath>
 
 namespace doc {
 
@@ -397,6 +398,66 @@ namespace doc {
 
   Str columnTolabel(int col)
   {
+    int power = 0;
+    for (int i = 0; i < 10; ++i)
+    {
+      const int value = std::pow(26, i);
+      if (value > col)
+      {
+        power = i;
+        break;
+      }
+    }
+
+    Str result;
+    while (power >= 0)
+    {
+      const int value = std::pow(26, power);
+      if (value > col)
+      {
+        //result.append('A');
+        power--;
+
+        if (power < 0)
+          result.append('A');
+      }
+      else
+      {
+        const int division = col / value;
+        const int remainder = col % value;
+
+        result.append('A' + division);
+
+        col = remainder;
+        power--;
+      }
+    }
+
+    // Special case to handle col == 0
+    //if (result.empty())
+    //  result.append('A');
+
+    return result;
+/*
+
+    do
+    {
+      const int reminder = col % 26;
+      if (reminder > 0)
+      {
+        result.append('A' + (reminder - 1));
+        col -= reminder * 26;
+      }
+      else
+      {
+        result.append('A' + (col - 1));
+        col -= col;
+      }
+    }
+    while (col > 0);
+
+
+    */
   }
 
 }
