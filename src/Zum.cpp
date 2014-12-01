@@ -7,10 +7,16 @@
 #include "Commands.h"
 
 static bool applicationRunning_ = true;
+static int timeout_ = 0;
 
 void quitApplication()
 {
   applicationRunning_ = false;
+}
+
+void clearTimeout()
+{
+  timeout_ = 0;
 }
 
 int main(int argc, char * argv[])
@@ -25,10 +31,10 @@ int main(int argc, char * argv[])
   if (argc > 1)
   {
     if (!doc::load(Str(argv[1])))
-      doc::createEmpty();
+      doc::createEmpty(Str::EMPTY);
   }
   else
-    doc::createEmpty();
+    doc::createEmpty(Str::EMPTY);
 
   updateCursor();
   drawInterface();
@@ -59,6 +65,13 @@ int main(int argc, char * argv[])
     }
     else
     {
+      timeout_++;
+      if (timeout_ > 20)
+      {
+        clearFlashMessage();
+        drawInterface();
+        clearTimeout();
+      }
     }
   }
 

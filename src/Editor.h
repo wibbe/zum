@@ -5,7 +5,7 @@
 #include "termbox.h"
 #include "Types.h"
 
-enum class EditorMode 
+enum class EditorMode
 {
   NAVIGATE,
   EDIT,
@@ -27,6 +27,9 @@ void navigateDown();
 
 void handleKeyEvent(struct tb_event * event);
 void updateCursor();
+
+void clearFlashMessage();
+void flashMessage(Str const& message);
 
 void drawInterface();
 void drawHeaders();

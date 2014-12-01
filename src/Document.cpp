@@ -63,13 +63,13 @@ namespace doc {
   static std::vector<UndoState> undoStack_;
   static std::vector<UndoState> redoStack_;
 
-  void createEmpty()
+  void createEmpty(Str const& filename)
   {
     close();
     currentDoc_.width_ = kDefaultRowCount;
     currentDoc_.height_ = kDefaultColumnCount;
     currentDoc_.columnWidth_.resize(kDefaultColumnCount, kDefaultColumnWidth);
-    currentDoc_.filename_ = Str::EMPTY;
+    currentDoc_.filename_ = filename;
     currentDoc_.readOnly_ = false;
   }
 
@@ -163,7 +163,10 @@ namespace doc {
   {
     std::ofstream file(filename.utf8().c_str());
     if (!file.is_open())
+    {
+      flashMessage(Str("Could not save document!"));
       return false;
+    }
 
     // Write header info
     for (int i = 0; i < currentDoc_.width_; ++i)
@@ -184,6 +187,7 @@ namespace doc {
     }
 
     currentDoc_.filename_ = filename;
+    flashMessage(Str("Document saved!"));
     return true;
   }
 
@@ -241,7 +245,10 @@ namespace doc {
   {
     std::ifstream file(filename.utf8().c_str());
     if (!file.is_open())
+    {
+      flashMessage(Str("Could not open document!"));
       return false;
+    }
 
     // Start by closing thr current document
     close();
@@ -493,5 +500,40 @@ namespace doc {
     }
 
     return result;
+  }
+
+  Index parseCellRef(Str const& str)
+  {
+    Index idx(0, 0);
+
+    if (str.empty())
+      return idx;
+
+    int i = 0;
+    while ((i < str.size()) && str[i] >= 'A' && str[i] <= 'Z')
+    {
+      idx.x *= 26;
+      idx.x += str[i] - 'A';
+      i++;
+    }
+
+    while ((i < str.size()) && str[i] >= '0' && str[i] <= '9')
+    {
+      idx.y *= 10;
+      idx.y += str[i] - '0';
+      i++;
+    }
+
+    if (idx.y > 0)
+      idx.y--;
+
+    if (idx.x >= getColumnCount())
+      idx.x = getColumnCount() - 1;
+    if (idx.y >= getRowCount())
+      idx.y = getRowCount() - 1;
+
+
+
+    return idx;
   }
 }

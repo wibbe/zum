@@ -34,13 +34,15 @@ static std::vector<ColumnInfo> drawColumnInfo_;
 
 static Index currentScroll_(0, 0);
 static Index currentIndex_(0, 0);
-  
+
 int editLinePos_ = 0;
 static Str editLine_;
 static Str yankBuffer_;
+static Str flashMessage_;
 
 extern void parseAndExecute(Str const& command);
 extern Str completeCommand(Str const& command);
+extern void clearTimeout();
 
 void updateCursor()
 {
@@ -218,6 +220,7 @@ void handleNavigateEvent(struct tb_event * event)
               editMode_ = EditorMode::COMMAND;
               editLine_.clear();
               editLinePos_ = 0;
+              clearFlashMessage();
             }
             break;
 
@@ -228,6 +231,7 @@ void handleNavigateEvent(struct tb_event * event)
                 editMode_ = EditorMode::EDIT;
                 editLine_ = doc::getCellText(currentIndex_);
                 editLinePos_ = editLine_.size();
+                clearFlashMessage();
               }
             }
             break;
@@ -337,6 +341,19 @@ void calculateColumDrawWidths()
   }
 }
 
+void clearFlashMessage()
+{
+  flashMessage_.clear();
+  clearTimeout();
+}
+
+void flashMessage(Str const& message)
+{
+  flashMessage_ = message;
+  clearTimeout();
+}
+
+
 void drawInterface()
 {
   calculateColumDrawWidths();
@@ -441,8 +458,6 @@ void drawCommandLine()
     if (filename.empty())
       filename.set("[NoName]");
 
-    infoLine = filename;
-
     Str pos;
     pos.append(doc::columnTolabel(currentIndex_.x))
        .append(doc::rowToLabel(currentIndex_.y));
@@ -462,6 +477,9 @@ void drawCommandLine()
             .append(mode)
             .append(' ');
   }
+
+  if (!flashMessage_.empty())
+    commandLine = flashMessage_;
 
   drawText(0, tb_height() - 2, tb_width(), TB_REVERSE | TB_DEFAULT, TB_REVERSE | TB_DEFAULT, infoLine);
   drawText(0, tb_height() - 1, tb_width(), TB_DEFAULT, TB_DEFAULT, commandLine);

@@ -5,7 +5,7 @@
 
 namespace doc {
 
-  void createEmpty();
+  void createEmpty(Str const& filename);
   void close();
 
   int getColumnWidth(int column);
@@ -37,5 +37,7 @@ namespace doc {
 
   Str rowToLabel(int row);
   Str columnTolabel(int col);
+
+  Index parseCellRef(Str const& str);
 
 }

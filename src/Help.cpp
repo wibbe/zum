@@ -2,6 +2,8 @@
 #include "Help.h"
 #include "Commands.h"
 
+#include <string.h>
+
 static const char * helpStrHeader_ = R"RAW(80
 
                                ZUM DOCUMENTATION
@@ -13,11 +15,11 @@ not mean every command in Vim maps to a corresponding command in Zum.
 
 Zum has three editing modes:
 
-* Navigation Mode - This is the mode the application starts in. This mode is 
+* Navigation Mode - This is the mode the application starts in. This mode is
                     used to traverse the spreadsheet and make modifications to
                     the document.
 
-* Cell Edit Mode - By pressing 'i' in navigation mode the application switches 
+* Cell Edit Mode - By pressing 'i' in navigation mode the application switches
                    to cell edit mode. It is then possible to edit the content of
                    a single cell in the document.
 
@@ -31,7 +33,7 @@ Below is a list of all commands that exists in for the different modes.
 )RAW";
 
 static const char * helpStrNavCmd_ = R"RAW(
-                                NAVIGATION MODE                                   
+                                NAVIGATION MODE
 
 The commands listed below can be used in the navigation mode.
 
@@ -39,7 +41,7 @@ KEY COMBO     DESCRIPTION
 )RAW";
 
 static const char * helpStrAppCmd_ = R"RAW(
-                                 COMMAND MODE                               
+                                 COMMAND MODE
 
 The commands listed below can be used in the command mode.
 

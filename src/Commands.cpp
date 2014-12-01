@@ -32,16 +32,9 @@ static std::vector<EditCommand> editCommands_ = {
     }
   },
   { // Clear current cell
-    {'d', 'd'}, false,
-    "Clear the current cell",
-    [] (int) { 
-      doc::setCellText(getCursorPos(), Str::EMPTY);
-    }
-  },
-  { // Clear current cell
     {'d', 'w'}, false,
     "Clear the current cell",
-    [] (int) { 
+    [] (int) {
       doc::setCellText(getCursorPos(), Str::EMPTY);
     }
   },
@@ -51,29 +44,39 @@ static std::vector<EditCommand> editCommands_ = {
     [] (int) {
       if (!doc::isReadOnly())
       {
-        Index pos = getCursorPos();
-        doc::removeColumn(pos.x);
+        if (doc::getColumnCount() > 1)
+        {
+          Index pos = getCursorPos();
+          doc::removeColumn(pos.x);
 
-        if (pos.x >= doc::getColumnCount())
-          pos.x--;
+          if (pos.x >= doc::getColumnCount())
+            pos.x--;
 
-        setCursorPos(pos);
+          setCursorPos(pos);
+        }
+        else
+          flashMessage(Str("Not allowed to delete the last column"));
       }
     }
   },
   {
     {'d', 'r'}, false,
     "Delete the current row",
-    [] (int) { 
+    [] (int) {
       if (!doc::isReadOnly())
       {
-        Index pos = getCursorPos();
-        doc::removeRow(pos.y);
+        if (doc::getRowCount() > 1)
+        {
+          Index pos = getCursorPos();
+          doc::removeRow(pos.y);
 
-        if (pos.y >= doc::getRowCount())
-          pos.y--;
-        
-        setCursorPos(pos);
+          if (pos.y >= doc::getRowCount())
+            pos.y--;
+
+          setCursorPos(pos);
+        }
+        else
+          flashMessage(Str("Not allowed to delete the last row"));
       }
     }
   },
@@ -122,30 +125,32 @@ static std::vector<EditCommand> editCommands_ = {
     "Move down",
     [] (int) { navigateDown(); }
   },
-  { // Jump to row
-    {'#', 0}, true,
-    "Jump to row",
-    [] (int line) {
-      const Index pos = getCursorPos();
-      setCursorPos(Index(pos.x, line - 1));
-    }
-  },
   {
     {'a', 'c'}, false,
     "Insert a new column after the current column",
-    [] (int) { doc::addColumn(getCursorPos().x); }
+    [] (int) {
+      Index idx = getCursorPos();
+      doc::addColumn(idx.x);
+      idx.x += 1;
+      setCursorPos(idx);
+    }
   },
   {
     {'a', 'r'}, false,
     "Insert a new row after the current row",
-    [] (int) { doc::addRow(getCursorPos().y); }
+    [] (int) {
+      Index idx = getCursorPos();
+      doc::addRow(idx.y);
+      idx.y += 1;
+      setCursorPos(idx);
+    }
   },
 };
 
 extern void quitApplication();
 
 static std::vector<AppCommand> appCommands_ = {
-  { 
+  {
     Str("q"),
     "",
     "Quit application",
@@ -154,14 +159,17 @@ static std::vector<AppCommand> appCommands_ = {
   {
     Str("n"),
     "",
-    "New document",
-    [] (Str const& arg) { doc::createEmpty(); }
+    "Create a new document",
+    [] (Str const& arg) {
+      doc::createEmpty(arg);
+    }
   },
   {
     Str("w"),
     "[filename]",
-    "Save document",
+    "Save the current document",
     [] (Str const& arg) {
+      bool saved = false;
       if (arg.empty() && !doc::getFilename().empty())
         doc::save(doc::getFilename());
       else if (!arg.empty())
@@ -171,7 +179,7 @@ static std::vector<AppCommand> appCommands_ = {
   {
     Str("e"),
     "filename",
-    "Open document",
+    "Open a document",
     [] (Str const& arg) {
       if (!arg.empty())
       {
@@ -260,7 +268,7 @@ void executeEditCommands()
       }
     }
 
-    if (command) 
+    if (command)
     {
       if (count == 0)
         count = 1;
@@ -285,7 +293,7 @@ void executeAppCommands(Str commandLine)
     if (getAppCommand(commandLine, &command))
     {
       commandLine.pop_front(command->id.size());
-      
+
       Str arg;
       if (commandLine.front() == ' ')
       {
@@ -298,6 +306,13 @@ void executeAppCommands(Str commandLine)
       }
 
       command->command(arg);
+    }
+    else if ((commandLine.front() >= '0' && commandLine.front() <= '9') ||
+             (commandLine.front() >= 'A' && commandLine.front() <= 'Z'))
+    {
+      const Index idx = doc::parseCellRef(commandLine);
+      setCursorPos(idx);
+      break;
     }
     else
       break;
