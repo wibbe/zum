@@ -6,6 +6,8 @@
 enum class Token
 {
   Number,
+  Cell,
+  Operator,
   Identifier,
   LeftParenthesis,
   RightParenthesis,

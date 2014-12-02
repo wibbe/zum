@@ -53,3 +53,47 @@ class Str
   private:
     std::vector<char_type> data_;
 };
+
+inline bool isDigit(Str::char_type ch)
+{
+  return (ch >= '0' && ch <= '9');
+}
+
+inline bool isWhitespace(Str::char_type ch)
+{
+  return (ch == ' ' || ch == '\t');
+}
+
+inline bool isAlpha(Str::char_type ch)
+{
+  return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z');
+}
+
+inline bool isUpperAlpha(Str::char_type ch)
+{
+  return (ch >= 'A' && ch <= 'Z');
+}
+
+inline bool isLowerAlpha(Str::char_type ch)
+{
+  return (ch >= 'a' && ch <= 'z');
+}
+
+
+inline bool isOperator(Str::char_type ch)
+{
+  switch (ch)
+  {
+    case '-':
+    case '+':
+    case '*':
+    case '/':
+    case '%':
+    case ':':
+      return true;
+
+    default:
+      return false;
+  }
+}
+
