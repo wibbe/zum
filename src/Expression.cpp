@@ -19,6 +19,7 @@ struct FunctionDef
   std::function<double (std::vector<Expr> const& expr, uint32_t pos)> function_;
 };
 
+
 bool parseExpression(Str const& source, std::vector<Expr> & expr)
 {
   std::stack<Expr> valueStack;
