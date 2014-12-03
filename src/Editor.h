@@ -25,6 +25,8 @@ void navigateRight();
 void navigateUp();
 void navigateDown();
 
+void editCurrentCell();
+
 void handleKeyEvent(struct tb_event * event);
 void updateCursor();
 

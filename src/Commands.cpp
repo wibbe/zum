@@ -31,6 +31,32 @@ static std::vector<EditCommand> editCommands_ = {
       }
     }
   },
+  {
+    {'o', 0}, true,
+    "Add new row below the current and start editing that row",
+    [] (int) {
+      if (!doc::isReadOnly())
+      {
+        Index idx = getCursorPos();
+        doc::addRow(idx.y);
+        idx.y += 1;
+        setCursorPos(idx);
+        editCurrentCell();
+      }
+    }
+  },
+  {
+    {'O', 0}, true,
+    "Add new row above the current and start editing that row",
+    [] (int) {
+      if (!doc::isReadOnly() && getCursorPos().y > 0)
+      {
+        Index idx = getCursorPos();
+        doc::addRow(idx.y - 1);
+        editCurrentCell();
+      }
+    }
+  },
   { // Clear current cell
     {'d', 'w'}, false,
     "Clear the current cell",

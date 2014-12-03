@@ -134,6 +134,18 @@ void navigateDown()
     currentScroll_.y++;
 }
 
+void editCurrentCell()
+{
+  if (!doc::isReadOnly())
+  {
+
+    editMode_ = EditorMode::EDIT;
+    editLine_ = doc::getCellText(currentIndex_);
+    editLinePos_ = editLine_.size();
+    clearFlashMessage();
+  }
+}
+
 void handleTextInput(struct tb_event * event)
 {
   switch (event->key)
@@ -225,15 +237,7 @@ void handleNavigateEvent(struct tb_event * event)
             break;
 
           case 'i':
-            {
-              if (!doc::isReadOnly())
-              {
-                editMode_ = EditorMode::EDIT;
-                editLine_ = doc::getCellText(currentIndex_);
-                editLinePos_ = editLine_.size();
-                clearFlashMessage();
-              }
-            }
+            editCurrentCell();
             break;
 
           default:
