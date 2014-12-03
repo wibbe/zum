@@ -42,7 +42,7 @@ Token Tokenizer::next()
     step();
     return Token::RightParenthesis;
   }
-  else if (isOperator(current()) && (isWhitespace(peak()) || isAlpha(peak()) || isDigit(peak())))
+  else if (isOperator(current()) && (isWhitespace(peak()) || isAlpha(peak()) || isDigit(peak())))
   {
     value_.append(current());
     step();
@@ -69,24 +69,38 @@ void Tokenizer::eatWhitespace()
 
 Token Tokenizer::parseNumber()
 {
-  bool hasDecimal = false;
   value_.append(current());
   step();
 
-  while (!eof() && ((current() >= '0' && current() <= '9') || curent() == '.'))
+  while (!eof() && isDigit(current()))
   {
-    if (current() == '.')
-    {
-      if (hasDecimal)
-      {
-
-        return Token::Error;
-      }
-      else
-        hasDecimal = true;
-    }
+    value_.append(current());
+    step();
   }
 
+  if (current() == '.')
+  {
+    if (!isDigit(peak()))
+    {
+      const Str number = value_;
+      value_.set("Parse error - expected digit but got ");
+      value_.append(peak())
+            .append(Str(" in number "))
+            .append(number);
+      Token::Error;
+    }
+    else
+    {
+      value_.append(current());
+      step();
+
+      while (!eof() && isDigit(current()))
+      {
+        value_.append(current());
+        step();
+      }
+    }
+  }
 
   return Token::Number;
 }
@@ -103,7 +117,7 @@ Token Tokenizer::parseIdentifier()
   {
     if (type == Token::Cell)
     {
-      
+
     }
 
     if (isAlpha(current()))

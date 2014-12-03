@@ -61,12 +61,12 @@ inline bool isDigit(Str::char_type ch)
 
 inline bool isWhitespace(Str::char_type ch)
 {
-  return (ch == ' ' || ch == '\t');
+  return (ch == ' ' || ch == '\t');
 }
 
 inline bool isAlpha(Str::char_type ch)
 {
-  return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z');
+  return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z');
 }
 
 inline bool isUpperAlpha(Str::char_type ch)

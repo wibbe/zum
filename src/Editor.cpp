@@ -375,9 +375,13 @@ void drawHeaders()
   {
     const uint16_t color = (drawColumnInfo_[x].column_) == currentIndex_.x ? TB_REVERSE | TB_DEFAULT : TB_DEFAULT;
 
+    const int before = (drawColumnInfo_[x].width_ - 1) / 2;
+
     Str header;
-    header.append(' ')
-          .append(doc::columnTolabel(drawColumnInfo_[x].column_));
+    for (int i = 0; i < before; ++i)
+      header.append(' ');
+
+    header.append(doc::columnTolabel(drawColumnInfo_[x].column_));
 
     drawText(drawColumnInfo_[x].x_, 0, drawColumnInfo_[x].width_, color, color, header);
   }
