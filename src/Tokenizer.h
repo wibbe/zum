@@ -28,6 +28,7 @@ class Tokenizer
     void eatWhitespace();
     Token parseNumber();
     Token parseIdentifier();
+    bool parseCell();
 
     Str::char_type current() const { return stream_[pos_]; }
     Str::char_type peak() const { return pos_ < (stream_.size() - 1) ? stream_[pos_ + 1] : 0; }

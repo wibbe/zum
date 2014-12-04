@@ -19,18 +19,11 @@ Token Tokenizer::next()
   {
     return parseNumber();
   }
-  else if (current() == '-')
+  else if (current() == '-' && isDigit(peak()))
   {
-    if (isDigit(peak()))
-    {
-      // Eat - and then parse the number
-      value_.append('-');
-      return parseNumber();
-    }
-    else
-    {
-      return parseIdentifier();
-    }
+    // Eat the '-'' and then parse the number
+    value_.append('-');
+    return parseNumber();
   }
   else if (current() == '(')
   {
@@ -107,28 +100,37 @@ Token Tokenizer::parseNumber()
 
 Token Tokenizer::parseIdentifier()
 {
-  Token type = isUpperAlpha(current()) ? Token::Cell : Token::Identifier;
-  bool hasNumber = false;
+  if (isUpperAlpha(current()))
+    if (parseCell())
+      return Token::Cell;
 
-  value_.append(current());
-  step();
-
-  while (!eof())
+  while (!eof() && (isAlpha(current()) || isDigit(current()) || current() == '_'))
   {
-    if (type == Token::Cell)
-    {
-
-    }
-
-    if (isAlpha(current()))
-
-
     value_.append(current());
-
-
     step();
   }
 
+  return Token::Identifier;
+}
 
-  return type;
+bool Tokenizer::parseCell()
+{
+  while (!eof() && isUpperAlpha(current()))
+  {
+    value_.append(current());
+    step();
+  }
+
+  if (!eof() && isDigit(current()))
+  {
+    while (!eof() && isDigit(current()))
+    {
+      value_.append(current());
+      step();
+    }
+
+    return true;
+  }
+
+  return false;
 }

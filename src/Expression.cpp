@@ -1,5 +1,6 @@
 
 #include "Expression.h"
+#include "Tokenizer.h"
 
 #include <unordered_map>
 #include <stack>
@@ -22,6 +23,7 @@ struct FunctionDef
 
 bool parseExpression(Str const& source, std::vector<Expr> & expr)
 {
+  Tokenizer tok(source);
   std::stack<Expr> valueStack;
 
   return false;

@@ -4,6 +4,7 @@
 #include "Document.h"
 #include "Commands.h"
 #include "Help.h"
+#include "Tokenizer.h"
 
 static Str commandSequence_;
 
@@ -221,6 +222,70 @@ static std::vector<AppCommand> appCommands_ = {
     [] (Str const& arg) {
       setCursorPos(Index(0, 0));
       doc::loadRaw(getHelpDocument(), Str("[Help]"));
+    }
+  },
+  {
+    Str("tokenize"),
+    "string",
+    "Test the tokenizer",
+    [] (Str const& arg) {
+      Tokenizer tokenizer(arg);
+
+      Str final;
+
+      Token token = tokenizer.next();
+      while (token != Token::EndOfFile && token != Token::Error)
+      {
+        switch (token)
+        {
+          case Token::Number:
+            final.append(Str(" Number("))
+                 .append(tokenizer.value())
+                 .append(Str(")"));
+            break;
+
+          case Token::Cell:
+            final.append(Str(" Cell("))
+                 .append(tokenizer.value())
+                 .append(Str(")"));
+            break;
+
+          case Token::Operator:
+            final.append(Str(" Operator("))
+                 .append(tokenizer.value())
+                 .append(Str(")"));
+            break;
+
+          case Token::Identifier:
+            final.append(Str(" Identifier("))
+                 .append(tokenizer.value())
+                 .append(Str(")"));
+            break;
+
+          case Token::LeftParenthesis:
+            final.append(Str(" ("));
+            break;
+
+          case Token::RightParenthesis:
+            final.append(Str(" )"));
+            break;
+
+          case Token::Comma:
+            final.append(Str(" ,"));
+            break;
+
+        };
+
+        token = tokenizer.next();
+      }
+
+      if (token == Token::Error)
+      {
+        final.set("Error: ");
+        final.append(tokenizer.value());
+      }
+
+      flashMessage(final);
     }
   }
 };
