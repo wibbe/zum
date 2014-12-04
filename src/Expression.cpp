@@ -5,20 +5,36 @@
 #include <unordered_map>
 #include <stack>
 
-struct OperatorDef
-{
-  Str::char_type character_;
-  Operator id_;
-  int precedence_;
-  std::function<double (std::vector<Expr> const& expr, uint32_t pos)> function_;
-};
+Constant::Constant(Str const& value)
+  : value_(value)
+{ }
 
-struct FunctionDef
+Str Constant::toLua() const
 {
-  Str name_;
-  Function id_;
-  std::function<double (std::vector<Expr> const& expr, uint32_t pos)> function_;
-};
+  return value_;
+}
+
+Str Constant::toText() const
+{
+  return value_;
+}
+
+Operator::Operator(ExprPtr leftSide, ExprPtr rightSide, Str::char_type op)
+  : leftSide_(std::move(leftSide)),
+    rightSide_(std::move(rightSide_)),
+    op_(op)
+{ }
+
+Str Operator::toLua() const
+{
+  return Str();
+}
+
+Str Operator::toText() const
+{
+  return Str();
+}
+
 
 
 bool parseExpression(Str const& source, std::vector<Expr> & expr)

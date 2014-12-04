@@ -29,6 +29,7 @@ set(SOURCE
     src/Help.cpp
     src/Tokenizer.cpp
     src/Expression.cpp
+    src/Scripting.cpp
     src/3rdparty/termbox/termbox.c
     src/3rdparty/termbox/utf8.c
     src/3rdparty/lua/lapi.c
@@ -63,12 +64,12 @@ set(SOURCE
     src/3rdparty/lua/ltablib.c
     src/3rdparty/lua/loadlib.c
     src/3rdparty/lua/linit.c
-    ${CMAKE_CURRENT_BINARY_DIR}/LuaLib.lua.h
+    ${CMAKE_CURRENT_BINARY_DIR}/ScriptingLib.lua.h
 )
 
-add_custom_command(OUTPUT LuaLib.lua.h COMMAND xxd -i LuaLib.lua > "${CMAKE_CURRENT_BINARY_DIR}/LuaLib.lua.h"
+add_custom_command(OUTPUT ScriptingLib.lua.h COMMAND xxd -i ScriptingLib.lua > "${CMAKE_CURRENT_BINARY_DIR}/ScriptingLib.lua.h"
                    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src"
-                   DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/LuaLib.lua")
+                   DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/ScriptingLib.lua")
 
 add_executable(zum ${SOURCE})
 target_link_libraries(zum)

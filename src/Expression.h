@@ -4,44 +4,47 @@
 #include "Types.h"
 #include "Str.h"
 
-enum class ExprType
+#include <memory>
+
+
+class Expr
 {
-  Value,
-  CellRef,
-  Operator,
-  Function
+  public:
+
+    virtual ~Expr()
+    { }
+
+    virtual Str toLua() const = 0;
+    virtual Str toText() const = 0;
+
 };
 
-enum class Operator
+typedef std::unique_ptr<Expr> ExprPtr;
+
+class Constant : public Expr
 {
-  Multiply,
-  Divide,
-  Reminder,
-  Add,
-  Subtract,
+  public:
+    Constant(Str const& value);
+
+    Str toLua() const override;
+    Str toText() const override;
+
+  private:
+    Str value_;
 };
 
-enum class Function
+class Operator : public Expr
 {
-  Sum,
-  Min,
-  Max,
-  Sin,
-  Cos,
-  Tan
-};
+  public:
+    Operator(ExprPtr leftSide, ExprPtr rightSide, Str::char_type op);
 
-struct Expr
-{
-  ExprType type_;
+    Str toLua() const override;
+    Str toText() const override;
 
-  union
-  {
-    double value_;
-    Index cell_;
-    Operator operator_;
-    Function function_;
-  } value_;
+  private:
+    ExprPtr leftSide_;
+    ExprPtr rightSide_;
+    Str::char_type op_;
 };
 
 bool parseExpression(Str const& source, std::vector<Expr> & expr);
