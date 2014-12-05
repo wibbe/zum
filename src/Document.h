@@ -36,7 +36,7 @@ namespace doc {
   void removeRow(int row);
 
   Str rowToLabel(int row);
-  Str columnTolabel(int col);
+  Str columnToLabel(int col);
 
   Index parseCellRef(Str const& str);
 

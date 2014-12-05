@@ -463,7 +463,7 @@ namespace doc {
     return Str::format("%d", row + 1);
   }
 
-  Str columnTolabel(int col)
+  Str columnToLabel(int col)
   {
     int power = 0;
     for (int i = 0; i < 10; ++i)

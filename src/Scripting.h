@@ -1,5 +1,9 @@
 
 #pragma once
 
-void luaInitialize();
-void luaShutdown();
+namespace script {
+
+  bool initialize();
+  void shutdown();
+
+}

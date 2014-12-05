@@ -5,6 +5,7 @@
 #include "Document.h"
 #include "Editor.h"
 #include "Commands.h"
+#include "Scripting.h"
 
 static bool applicationRunning_ = true;
 static int timeout_ = 0;
@@ -25,6 +26,13 @@ int main(int argc, char * argv[])
   if (result)
   {
     fprintf(stderr, "Faild to initialize Termbox with error code %d\n", result);
+    return 1;
+  }
+
+  if (!script::initialize())
+  {
+    tb_shutdown();
+    fprintf(stderr, "Failed to initialize scripting environment\n");
     return 1;
   }
 
@@ -75,6 +83,7 @@ int main(int argc, char * argv[])
     }
   }
 
+  script::shutdown();
   tb_shutdown();
   return 0;
 }

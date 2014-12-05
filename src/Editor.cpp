@@ -385,7 +385,7 @@ void drawHeaders()
     for (int i = 0; i < before; ++i)
       header.append(' ');
 
-    header.append(doc::columnTolabel(drawColumnInfo_[x].column_));
+    header.append(doc::columnToLabel(drawColumnInfo_[x].column_));
 
     drawText(drawColumnInfo_[x].x_, 0, drawColumnInfo_[x].width_, color, color, header);
   }
@@ -467,7 +467,7 @@ void drawCommandLine()
       filename.set("[NoName]");
 
     Str pos;
-    pos.append(doc::columnTolabel(currentIndex_.x))
+    pos.append(doc::columnToLabel(currentIndex_.x))
        .append(doc::rowToLabel(currentIndex_.y));
 
     const int maxFileAreaSize = tb_width() - pos.size() - 5;
