@@ -196,7 +196,7 @@ FUNC(docIsReadOnly)
 
 // -- Application Functions --
 
-FUNC(editGetCurorPos)
+FUNC(appGetCurorPos)
 {
   ARG_COUNT(0);
   const Index idx = getCursorPos();
@@ -205,66 +205,83 @@ FUNC(editGetCurorPos)
   return 2;
 }
 
-FUNC(editSetCursorPos)
+FUNC(appSetCursorPos)
 {
   ARG_COUNT(2);
   setCursorPos(Index(luaL_checkinteger(L, 1), luaL_checkinteger(L, 2)));
   return 0;
 }
 
-FUNC(editGetYankBuffer)
+FUNC(appGetYankBuffer)
 {
   ARG_COUNT(0);
   lua_pushstring(L, getYankBuffer().utf8().c_str());
   return 1;
 }
 
-FUNC(editYankCurrentCell)
+FUNC(appYankCurrentCell)
 {
   ARG_COUNT(0);
   yankCurrentCell();
   return 0;
 }
 
-FUNC(editMoveLeft)
+FUNC(appMoveLeft)
 {
   ARG_COUNT(0);
   navigateLeft();
   return 0;
 }
 
-FUNC(editMoveRight)
+FUNC(appMoveRight)
 {
   ARG_COUNT(0);
   navigateRight();
   return 0;
 }
 
-FUNC(editMoveUp)
+FUNC(appMoveUp)
 {
   ARG_COUNT(0);
   navigateUp();
   return 0;
 }
 
-FUNC(editMoveDown)
+FUNC(appMoveDown)
 {
   ARG_COUNT(0);
   navigateDown();
   return 0;
 }
 
-FUNC(editClearFlashMessage)
+FUNC(appClearFlashMessage)
 {
   ARG_COUNT(0);
   clearFlashMessage();
   return 0;
 }
 
-FUNC(editFlashMessage)
+FUNC(appFlashMessage)
 {
   ARG_COUNT(1);
   flashMessage(Str(luaL_checkstring(L, 1)));
+  return 0;
+}
+
+FUNC(appEditCurrentCell)
+{
+  ARG_COUNT(0);
+  editCurrentCell();
+  return 0;
+}
+
+FUNC(appRegisterAppCommand)
+{
+  return 0;
+}
+
+FUNC(appRegisterEditCommand)
+{
   return 0;
 }
 
@@ -293,16 +310,19 @@ static const luaL_Reg docFunctions[] = {
 };
 
 static const luaL_Reg appFunctions[] = {
-  {"getCursorPos", editGetCurorPos},
-  {"setCursorPos", editSetCursorPos},
-  {"getYankBuffer", editGetYankBuffer},
-  {"yankCurrentCell", editYankCurrentCell},
-  {"moveLeft", editMoveLeft},
-  {"moveRight", editMoveRight},
-  {"moveUp", editMoveUp},
-  {"moveDown", editMoveDown},
-  {"clearFlashMessage", editClearFlashMessage},
-  {"flashMessage", editFlashMessage},
+  {"getCursorPos", appGetCurorPos},
+  {"setCursorPos", appSetCursorPos},
+  {"getYankBuffer", appGetYankBuffer},
+  {"yankCurrentCell", appYankCurrentCell},
+  {"moveLeft", appMoveLeft},
+  {"moveRight", appMoveRight},
+  {"moveUp", appMoveUp},
+  {"moveDown", appMoveDown},
+  {"clearFlashMessage", appClearFlashMessage},
+  {"flashMessage", appFlashMessage},
+  {"editCurrentCell", appEditCurrentCell},
+  {"registerAppCommand", appRegisterAppCommand},
+  {"registerEditCommand", appRegisterEditCommand},
   {nullptr, nullptr}
 };
 
