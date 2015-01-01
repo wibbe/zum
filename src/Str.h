@@ -29,6 +29,7 @@ class Str
     Str & append(char_type ch);
 
     char_type front() const { return data_.front(); }
+    char_type back() const { return data_.back(); }
 
     void insert(uint32_t pos, char_type ch);
     void erase(uint32_t pos);
@@ -45,6 +46,8 @@ class Str
 
     void pop_back();
     void pop_front(uint32_t count = 1);
+
+    Str stripWhitespace() const;
 
     std::string utf8() const;
 

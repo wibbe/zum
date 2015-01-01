@@ -172,6 +172,56 @@ static std::vector<EditCommand> editCommands_ = {
       setCursorPos(idx);
     }
   },
+  {
+    {'t', 'r'}, false,
+    "Right-justify the text in the current cell",
+    [] (int) {
+      const Index idx = getCursorPos();
+      const int columnWidth = doc::getColumnWidth(idx.x);
+      const Str text = doc::getCellText(idx).stripWhitespace();
+
+      if (text.size() < columnWidth)
+      {
+        const int spacing = columnWidth - text.size();
+        Str newText;
+        for (int i = 0; i < spacing; ++i)
+          newText.append(' ');
+        newText.append(text);
+
+        doc::setCellText(idx, newText);
+      }
+    }
+  },
+  {
+    {'t', 'c'}, false,
+    "Center-justify the text in the current cell",
+    [] (int) {
+      const Index idx = getCursorPos();
+      const int columnWidth = doc::getColumnWidth(idx.x);
+      const Str text = doc::getCellText(idx).stripWhitespace();
+
+      if (text.size() < columnWidth)
+      {
+        const int spacing = (columnWidth - text.size()) / 2;
+        Str newText;
+        for (int i = 0; i < spacing; ++i)
+          newText.append(' ');
+        newText.append(text);
+
+        doc::setCellText(idx, newText);
+      }
+    }
+  },
+  {
+    {'t', 'l'}, false,
+    "Left-justify the text in the current cell",
+    [] (int) {
+      const Index idx = getCursorPos();
+      const Str text = doc::getCellText(idx).stripWhitespace();
+
+      doc::setCellText(idx, text);
+    }
+  }, 
 };
 
 extern void quitApplication();

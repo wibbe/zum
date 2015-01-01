@@ -103,6 +103,19 @@ void Str::pop_front(uint32_t count)
     data_.pop_back();
 }
 
+Str Str::stripWhitespace() const
+{
+  Str str(*this);
+
+  while (!str.empty() && isWhitespace(str.front()))
+    str.pop_front();
+
+  while (!str.empty() && isWhitespace(str.back()))
+    str.pop_back();
+
+  return str;
+}
+
 std::string Str::utf8() const
 {
   std::string result;
