@@ -1,0 +1,9 @@
+[package]
+
+name = "zum"
+version = "0.0.1"
+authors = [ "Daniel Wiberg <wibbe@blueeye.se>" ]
+
+[[bin]]
+
+name = "zum"
