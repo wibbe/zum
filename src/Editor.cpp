@@ -62,6 +62,32 @@ void updateCursor()
   }
 }
 
+static void ensureCursorVisibility()
+{
+  if (currentIndex_.x < currentScroll_.x)
+    currentScroll_.x = currentIndex_.x;
+
+  if (currentIndex_.y < currentScroll_.y)
+    currentScroll_.y = currentIndex_.y;
+
+  int width = ROW_HEADER_WIDTH;
+  bool scroll = false;
+  for (int i = currentScroll_.x; i <= currentIndex_.x && !scroll; ++i)
+  {
+    width += doc::getColumnWidth(i);
+
+    while (width >= tb_width())
+    {
+      scroll = true;
+      width -= doc::getColumnWidth(currentScroll_.x);
+      currentScroll_.x++;
+    }
+  }
+
+  while ((currentIndex_.y - currentScroll_.y) >= (tb_height() - 3))
+    currentScroll_.y++;
+}
+
 Index getCursorPos()
 {
   return currentIndex_;
@@ -69,7 +95,9 @@ Index getCursorPos()
 
 void setCursorPos(Index const& idx)
 {
-  currentIndex_ = idx;
+  currentIndex_.x = std::min(std::max(idx.x, 0), doc::getColumnCount());
+  currentIndex_.y = std::min(std::max(idx.y, 0), doc::getRowCount());
+  ensureCursorVisibility();
 }
 
 EditorMode getEditorMode()
@@ -92,8 +120,7 @@ void navigateLeft()
   if (currentIndex_.x > 0)
    currentIndex_.x--;
 
-  if (currentIndex_.x < currentScroll_.x)
-    currentScroll_.x = currentIndex_.x;
+  ensureCursorVisibility();
 }
 
 void navigateRight()
@@ -101,19 +128,7 @@ void navigateRight()
   if (currentIndex_.x < (doc::getColumnCount() - 1))
    currentIndex_.x++;
 
-  int width = ROW_HEADER_WIDTH;
-  bool scroll = false;
-  for (int i = currentScroll_.x; i <= currentIndex_.x && !scroll; ++i)
-  {
-    width += doc::getColumnWidth(i);
-
-    while (width >= tb_width())
-    {
-      scroll = true;
-      width -= doc::getColumnWidth(currentScroll_.x);
-      currentScroll_.x++;
-    }
-  }
+  ensureCursorVisibility();
 }
 
 void navigateUp()
@@ -121,8 +136,7 @@ void navigateUp()
   if (currentIndex_.y > 0)
     currentIndex_.y--;
 
-  if (currentIndex_.y < currentScroll_.y)
-    currentScroll_.y = currentIndex_.y;
+  ensureCursorVisibility();
 }
 
 void navigateDown()
@@ -130,8 +144,7 @@ void navigateDown()
   if (currentIndex_.y < (doc::getRowCount() - 1))
     currentIndex_.y++;
 
-  while ((currentIndex_.y - currentScroll_.y) >= (tb_height() - 3))
-    currentScroll_.y++;
+  ensureCursorVisibility();
 }
 
 void editCurrentCell()

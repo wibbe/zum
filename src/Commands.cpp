@@ -173,6 +173,19 @@ static std::vector<EditCommand> editCommands_ = {
     }
   },
   {
+    {'a', 'p'}, false,
+    "Append the yank-buffer to the current cell",
+    [] (int) {
+      if (!doc::isReadOnly())
+      {
+        Str text = doc::getCellText(getCursorPos());
+        text.append(getYankBuffer());
+
+        doc::setCellText(getCursorPos(), text);
+      }
+    }
+  },
+  {
     {'t', 'r'}, false,
     "Right-justify the text in the current cell",
     [] (int) {
@@ -221,7 +234,7 @@ static std::vector<EditCommand> editCommands_ = {
 
       doc::setCellText(idx, text);
     }
-  }, 
+  },
 };
 
 extern void quitApplication();
