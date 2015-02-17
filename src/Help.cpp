@@ -52,7 +52,6 @@ NAME                  DESCRIPTION
 std::string getHelpDocument()
 {
   std::string help(helpStrHeader_);
-
   help += helpStrNavCmd_;
   for (EditCommand const& cmd : getEditCommands())
   {
@@ -70,6 +69,7 @@ std::string getHelpDocument()
     help += "\n";
   }
 
+/*
   help += helpStrAppCmd_;
   for (AppCommand const& cmd : getAppCommands())
   {
@@ -83,6 +83,6 @@ std::string getHelpDocument()
     help += cmd.description;
     help += "\n";
   }
-
+*/
   return help;
 }

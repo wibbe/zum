@@ -47,6 +47,14 @@ void Str::set(const char * str)
   }
 }
 
+void Str::set(Str const& str)
+{
+  data_.clear();
+  data_.reserve(str.size());
+  for (auto ch : str)
+    data_.push_back(ch);
+}
+
 Str & Str::clear()
 {
   data_.clear();
@@ -83,6 +91,18 @@ bool Str::starts_with(Str const& str) const
     return false;
 
   for (int i = 0; i < str.size(); ++i)
+    if (data_[i] != str[i])
+      return false;
+
+  return true;
+}
+
+bool Str::equals(Str const& str) const
+{
+  if (size() != str.size())
+    return false;
+
+  for (int i = 0; i < size(); ++i)
     if (data_[i] != str[i])
       return false;
 
@@ -145,6 +165,27 @@ void Str::eatWhitespaceFront()
     pop_front();
 }
 
+int Str::toInt() const
+{
+  int result = 0;
+  int sign = 1;
+
+  for (uint32_t i = 0, len = size(); i < len; ++i)
+  {
+    Str::char_type ch = data_[i];
+
+    if (ch == '-' && i == 0)
+      sign = -1;
+
+    if (isDigit(ch))
+      result = (result * 10) + (ch - '0');
+    else
+      break;
+  }
+
+  return result * sign;
+}
+
 std::string Str::utf8() const
 {
   std::string result;
@@ -171,4 +212,24 @@ Str Str::format(const char * fmt, ...)
   va_end(argp);
 
   return Str(buffer);
+}
+
+Str Str::fromInt(int value)
+{
+  Str str;
+
+  if (value < 0)
+  {
+    str.data_.push_back('-');
+    value *= -1;
+  }
+
+  while (value > 0)
+  {
+    str.data_.push_back('0' + (value % 10));
+    value /= 10;
+  }
+
+  str.data_.push_back('0' + (value % 10));
+  return str;
 }

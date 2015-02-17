@@ -164,6 +164,8 @@ namespace doc {
 
   bool save(Str const& filename)
   {
+    logInfo(Str("Saving document: ").append(filename));
+
     std::ofstream file(filename.utf8().c_str());
     if (!file.is_open())
     {
@@ -246,6 +248,8 @@ namespace doc {
 
   bool load(Str const& filename)
   {
+    logInfo(Str("Loading document: ").append(filename));
+
     std::ifstream file(filename.utf8().c_str());
     if (!file.is_open())
     {

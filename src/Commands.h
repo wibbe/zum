@@ -22,18 +22,10 @@ struct EditCommand
   std::function<void (int)> command;
 };
 
-struct AppCommand
-{
-  Str id;
-  const char * arg;
-  const char * description;
-  std::function<void (Str const&)> command;
-};
-
 void pushEditCommandKey(uint32_t ch);
 void clearEditCommandSequence();
 void executeEditCommands();
-void executeAppCommands(Str commandLine);
+void executeAppCommands(Str const& commandLine);
+Str completeCommand(Str const& command);
 
 std::vector<EditCommand> const& getEditCommands();
-std::vector<AppCommand> const& getAppCommands();

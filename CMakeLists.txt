@@ -16,8 +16,7 @@ endif()
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src
                     ${CMAKE_CURRENT_BINARY_DIR}
-                    ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/termbox
-                    ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/lua)
+                    ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/termbox)
 
 set(SOURCE
     src/Zum.cpp
@@ -29,48 +28,16 @@ set(SOURCE
     src/Help.cpp
     src/Tokenizer.cpp
     src/Expression.cpp
-    src/Scripting.cpp
     src/Variable.cpp
+    src/Tcl.cpp
     src/3rdparty/termbox/termbox.c
     src/3rdparty/termbox/utf8.c
-    src/3rdparty/lua/lapi.c
-    src/3rdparty/lua/lcode.c
-    src/3rdparty/lua/lctype.c
-    src/3rdparty/lua/ldebug.c
-    src/3rdparty/lua/ldo.c
-    src/3rdparty/lua/ldump.c
-    src/3rdparty/lua/lfunc.c
-    src/3rdparty/lua/lgc.c
-    src/3rdparty/lua/llex.c
-    src/3rdparty/lua/lmem.c
-    src/3rdparty/lua/lobject.c
-    src/3rdparty/lua/lopcodes.c
-    src/3rdparty/lua/lparser.c
-    src/3rdparty/lua/lstate.c
-    src/3rdparty/lua/lstring.c
-    src/3rdparty/lua/ltable.c
-    src/3rdparty/lua/ltm.c
-    src/3rdparty/lua/lundump.c
-    src/3rdparty/lua/lvm.c
-    src/3rdparty/lua/lzio.c
-    src/3rdparty/lua/lauxlib.c
-    src/3rdparty/lua/lbaselib.c
-    src/3rdparty/lua/lbitlib.c
-    src/3rdparty/lua/lcorolib.c
-    src/3rdparty/lua/ldblib.c
-    src/3rdparty/lua/liolib.c
-    src/3rdparty/lua/lmathlib.c
-    src/3rdparty/lua/loslib.c
-    src/3rdparty/lua/lstrlib.c
-    src/3rdparty/lua/ltablib.c
-    src/3rdparty/lua/loadlib.c
-    src/3rdparty/lua/linit.c
-    ${CMAKE_CURRENT_BINARY_DIR}/ScriptingLib.lua.h
+    ${CMAKE_CURRENT_BINARY_DIR}/ScriptingLib.tcl.h
 )
 
-add_custom_command(OUTPUT ScriptingLib.lua.h COMMAND xxd -i ScriptingLib.lua > "${CMAKE_CURRENT_BINARY_DIR}/ScriptingLib.lua.h"
+add_custom_command(OUTPUT ScriptingLib.tcl.h COMMAND xxd -i ScriptingLib.tcl > "${CMAKE_CURRENT_BINARY_DIR}/ScriptingLib.tcl.h"
                    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src"
-                   DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/ScriptingLib.lua")
+                   DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/ScriptingLib.tcl")
 
 add_executable(zum ${SOURCE})
 target_link_libraries(zum)

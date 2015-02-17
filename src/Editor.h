@@ -33,6 +33,10 @@ void updateCursor();
 void clearFlashMessage();
 void flashMessage(Str const& message);
 
+void clearLog();
+void logInfo(Str const& message);
+void logError(Str const& message);
+
 void drawInterface();
 void drawHeaders();
 void drawWorkspace();

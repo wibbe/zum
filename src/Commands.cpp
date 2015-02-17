@@ -6,9 +6,8 @@
 #include "Help.h"
 #include "Tokenizer.h"
 #include "Variable.h"
+#include "Tcl.h"
 
-
-static bool getAliasCommand(Str const& line, AppCommand ** command);
 
 static Str commandSequence_;
 
@@ -243,119 +242,6 @@ static std::vector<EditCommand> editCommands_ = {
 
 extern void quitApplication();
 
-static std::vector<AppCommand> aliasCommands_;
-static std::vector<AppCommand> appCommands_ = {
-  {
-    Str("q"),
-    "",
-    "Quit application",
-    [] (Str const& arg) { quitApplication(); }
-  },
-  {
-    Str("n"),
-    "",
-    "Create a new document",
-    [] (Str const& arg) {
-      doc::createEmpty(arg);
-    }
-  },
-  {
-    Str("w"),
-    "[filename]",
-    "Save the current document",
-    [] (Str const& arg) {
-      bool saved = false;
-      if (arg.empty() && !doc::getFilename().empty())
-        doc::save(doc::getFilename());
-      else if (!arg.empty())
-        doc::save(arg);
-    }
-  },
-  {
-    Str("e"),
-    "filename",
-    "Open a document",
-    [] (Str const& arg) {
-      if (!arg.empty())
-      {
-        setCursorPos(Index(0, 0));
-        doc::load(arg);
-      }
-    }
-  },
-  {
-    Str("help"),
-    "",
-    "Show help documentation",
-    [] (Str const& arg) {
-      setCursorPos(Index(0, 0));
-      doc::loadRaw(getHelpDocument(), Str("[Help]"));
-    }
-  },
-  {
-    Str("edit"),
-    "edit-commands",
-    "Execute a number of edit commands",
-    [] (Str const& arg) {
-      if (!arg.empty())
-      {
-        clearEditCommandSequence();
-        for (auto ch : arg)
-        {
-          pushEditCommandKey(ch);
-          executeEditCommands();
-        }
-      }
-    }
-  },
-  {
-    Str("alias"),
-    "name=command",
-    "Register a command alias",
-    [] (Str const& arg) {
-      if (arg.empty())
-        return;
-
-      const std::vector<Str> alias = arg.split('=');
-      if (alias.size() == 2)
-      {
-        const Str name = alias[0];
-        const Str command = alias[1];
-
-        AppCommand * cmd;
-        if (!getAliasCommand(name, &cmd))
-        {
-          aliasCommands_.push_back(AppCommand{name, "", ""});
-          cmd = &aliasCommands_.back();
-        }
-
-        cmd->command = [command] (Str const& arg) {
-
-        };
-      }
-    }
-  },
-  {
-    Str("set"),
-    "variable[=value]",
-    "Set or get the value of a variable",
-    [] (Str const& arg) {
-      if (arg.empty())
-        return;
-
-      const std::vector<Str> pieces = arg.split('=');
-      if (pieces.size() == 2)
-      {
-        Variable::set(pieces[0], pieces[1]);
-      }
-      else if (pieces.size() == 1)
-      {
-        flashMessage(Variable::get(pieces[0]));
-      }
-    }
-  }
-};
-
 static bool getEditCommand(uint32_t key1, uint32_t key2, EditCommand ** command)
 {
   for (auto & cmd : editCommands_)
@@ -369,64 +255,9 @@ static bool getEditCommand(uint32_t key1, uint32_t key2, EditCommand ** command)
   return false;
 }
 
-static bool getAliasCommand(Str const& line, AppCommand ** command)
-{
-  if (command)
-    *command = nullptr;
-
-  for (auto & cmd : aliasCommands_)
-    if (line.starts_with(cmd.id))
-    {
-      if (command)
-      {
-        if (!(*command) || (*command)->id.size() < cmd.id.size())
-          *command = &cmd;
-      }
-      else
-        return true;
-    }
-
-  if (command)
-    return *command;
-  else
-    return false;
-}
-
-static bool getAppCommand(Str const& line, AppCommand ** command)
-{
-  if (command)
-    *command = nullptr;
-
-  const bool foundAlias = getAliasCommand(line, command);
-  if (foundAlias && !command)
-    return foundAlias;
-
-  for (auto & cmd : appCommands_)
-    if (line.starts_with(cmd.id))
-    {
-      if (command)
-      {
-        if (!(*command) || (*command)->id.size() < cmd.id.size())
-          *command = &cmd;
-      }
-      else
-        return true;
-    }
-
-  if (command)
-    return *command;
-  else
-    return false;
-}
-
 std::vector<EditCommand> const& getEditCommands()
 {
   return editCommands_;
-}
-
-std::vector<AppCommand> const& getAppCommands()
-{
-  return appCommands_;
 }
 
 void pushEditCommandKey(uint32_t ch)
@@ -478,74 +309,77 @@ void executeEditCommands()
   }
 }
 
-
-void executeAppCommands(Str commandLine)
+void executeAppCommands(Str const& commandLine)
 {
-  while (!commandLine.empty())
-  {
-    commandLine.eatWhitespaceFront();
-
-    AppCommand * command = nullptr;
-    if (getAppCommand(commandLine, &command))
-    {
-      commandLine.pop_front(command->id.size());
-
-      Str arg;
-      if (commandLine.front() == ' ')
-      {
-        commandLine.eatWhitespaceFront();
-
-        // Parse argument
-        int stringMarker = 0;
-
-        while (!commandLine.empty())
-        {
-          switch (commandLine.front())
-          {
-            case '[':
-              stringMarker++;
-              arg.append(commandLine.front());
-              break;
-
-            case ']':
-              stringMarker--;
-              arg.append(commandLine.front());
-              break;
-
-            case ' ':
-            case '\t':
-              if (stringMarker == 0)
-                break;
-              break;
-
-            default:
-              arg.append(commandLine.front());
-              break;
-          }
-
-          commandLine.pop_front();
-        }
-      }
-      else if (commandLine.front() == ';')
-      {
-        // Pop command delimiter
-        commandLine.pop_front();
-      }
-
-      command->command(arg);
-    }
-    else if (isDigit(commandLine.front()) || isUpperAlpha(commandLine.front()))
-    {
-      const Index idx = doc::parseCellRef(commandLine);
-      setCursorPos(idx);
-      break;
-    }
-    else
-      break;
-  }
+  tcl::evaluate(commandLine);
 }
 
 Str completeCommand(Str const& command)
 {
-  return Str::EMPTY;
+  return tcl::completeName(command);
+}
+
+// -- Application wide commands --
+
+TCL_PROC(q)
+{
+  quitApplication();
+
+  TCL_OK();
+}
+
+TCL_PROC(n)
+{
+  if (args.size() == 2)
+    doc::createEmpty(args[1]);
+  else
+    doc::createEmpty(Str::EMPTY);
+
+  TCL_OK();
+}
+
+TCL_PROC(e)
+{
+  TCL_ARITY(1);
+
+  setCursorPos(Index(0, 0));
+  doc::load(args[1]);
+
+  TCL_OK();
+}
+
+TCL_PROC(w)
+{
+  if (args.size() == 2 && !args[1].empty())
+    doc::save(args[1]);
+  else if (!doc::getFilename().empty())
+    doc::save(doc::getFilename());
+
+  TCL_OK();
+}
+
+TCL_PROC(edit)
+{
+  TCL_ARITY(1);
+
+  for (auto i = 1; i < args.size(); ++i)
+  {
+    const Str arg = args[i];
+    if (!arg.empty())
+    {
+      clearEditCommandSequence();
+      for (auto ch : args[1])
+        pushEditCommandKey(ch);
+
+      executeEditCommands();
+    }
+  }
+
+  TCL_OK();
+}
+
+TCL_PROC(help)
+{
+  doc::loadRaw(getHelpDocument(), Str("[Help]"));
+  TCL_OK();
 }

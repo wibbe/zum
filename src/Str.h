@@ -23,6 +23,7 @@ class Str
     char_type operator [] (uint32_t idx) const { return data_[idx]; }
 
     void set(const char * str);
+    void set(Str const& str);
     Str & clear();
 
     Str & append(Str const& str);
@@ -35,6 +36,7 @@ class Str
     void erase(uint32_t pos);
 
     bool starts_with(Str const& str) const;
+    bool equals(Str const& str) const;
 
     int size() const { return data_.size(); }
     bool empty() const { return data_.size() == 0; }
@@ -50,12 +52,14 @@ class Str
     void pop_front(uint32_t count = 1);
 
     Str stripWhitespace() const;
-
     void eatWhitespaceFront();
+
+    int toInt() const;
 
     std::string utf8() const;
 
     static Str format(const char * fmt, ...);
+    static Str fromInt(int value);
 
   private:
     std::vector<char_type> data_;
@@ -68,7 +72,7 @@ inline bool isDigit(Str::char_type ch)
 
 inline bool isWhitespace(Str::char_type ch)
 {
-  return (ch == ' ' || ch == '\t');
+  return (ch == ' ' || ch == '\t' || ch == '\n');
 }
 
 inline bool isAlpha(Str::char_type ch)

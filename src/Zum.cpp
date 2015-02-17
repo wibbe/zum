@@ -5,7 +5,7 @@
 #include "Document.h"
 #include "Editor.h"
 #include "Commands.h"
-#include "Scripting.h"
+#include "Tcl.h"
 
 static bool applicationRunning_ = true;
 static int timeout_ = 0;
@@ -22,19 +22,16 @@ void clearTimeout()
 
 int main(int argc, char * argv[])
 {
+  clearLog();
+
   int result = tb_init();
   if (result)
   {
-    fprintf(stderr, "Faild to initialize Termbox with error code %d\n", result);
+    logError(Str::format("Faild to initialize Termbox with error code %d", result));
     return 1;
   }
 
-  if (!script::initialize())
-  {
-    tb_shutdown();
-    fprintf(stderr, "Failed to initialize scripting environment\n");
-    return 1;
-  }
+  tcl::initialize();
 
   if (argc > 1)
   {
@@ -83,7 +80,7 @@ int main(int argc, char * argv[])
     }
   }
 
-  script::shutdown();
+  tcl::shutdown();
   tb_shutdown();
   return 0;
 }

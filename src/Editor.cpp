@@ -371,6 +371,37 @@ void flashMessage(Str const& message)
 }
 
 
+static std::string logFile()
+{
+  static const std::string LOG_FILE = "/.zumlog";
+  const char * home = getenv("HOME");
+
+  if (home)
+    return std::string(home) + LOG_FILE;
+  else
+    return "~" + LOG_FILE;
+}
+
+void clearLog()
+{
+  FILE * file = fopen(logFile().c_str(), "w");
+  fclose(file);
+}
+
+void logInfo(Str const& message)
+{
+  FILE * file = fopen(logFile().c_str(), "a");
+  fprintf(file, "INFO: %s\n", message.utf8().c_str());
+  fclose(file);
+}
+
+void logError(Str const& message)
+{
+  FILE * file = fopen(logFile().c_str(), "a");
+  fprintf(file, "ERROR: %s\n", message.utf8().c_str());
+  fclose(file);
+}
+
 void drawInterface()
 {
   calculateColumDrawWidths();
