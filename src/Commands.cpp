@@ -288,6 +288,14 @@ static std::vector<AppCommand> appCommands_ = {
     }
   },
   {
+    Str("alias"),
+    "<name>=<command>",
+    "Register an command alias",
+    [] (Str const& arg) {
+
+    }
+  },
+  {
     Str("tokenize"),
     "string",
     "Test the tokenizer",
@@ -443,6 +451,8 @@ void executeAppCommands(Str commandLine)
 {
   while (!commandLine.empty())
   {
+    commandLine.eatWhitespaceFront();
+
     AppCommand * command = nullptr;
     if (getAppCommand(commandLine, &command))
     {
@@ -451,18 +461,48 @@ void executeAppCommands(Str commandLine)
       Str arg;
       if (commandLine.front() == ' ')
       {
-        commandLine.pop_front();
-        while (!commandLine.empty() && commandLine.front() != ' ')
+        commandLine.eatWhitespaceFront();
+
+        // Parse argument
+        int stringMarker = 0;
+
+        while (!commandLine.empty())
         {
-          arg.append(commandLine.front());
+          switch (commandLine.front())
+          {
+            case '[':
+              stringMarker++;
+              arg.append(commandLine.front());
+              break;
+
+            case ']':
+              stringMarker--;
+              arg.append(commandLine.front());
+              break;
+
+            case ' ':
+            case '\t':
+              if (stringMarker == 0)
+                break;
+              break;
+
+            default:
+              arg.append(commandLine.front());
+              break;
+          }
+
           commandLine.pop_front();
         }
+      }
+      else if (commandLine.front() == ';')
+      {
+        // Pop command delimiter
+        commandLine.pop_front();
       }
 
       command->command(arg);
     }
-    else if ((commandLine.front() >= '0' && commandLine.front() <= '9') ||
-             (commandLine.front() >= 'A' && commandLine.front() <= 'Z'))
+    else if (isDigit(commandLine.front()) || isUpperAlpha(commandLine.front()))
     {
       const Index idx = doc::parseCellRef(commandLine);
       setCursorPos(idx);

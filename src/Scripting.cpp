@@ -196,7 +196,7 @@ FUNC(docIsReadOnly)
 
 // -- Application Functions --
 
-FUNC(appGetCurorPos)
+FUNC(appGetCursorPos)
 {
   ARG_COUNT(0);
   const Index idx = getCursorPos();
@@ -310,7 +310,7 @@ static const luaL_Reg docFunctions[] = {
 };
 
 static const luaL_Reg appFunctions[] = {
-  {"getCursorPos", appGetCurorPos},
+  {"getCursorPos", appGetCursorPos},
   {"setCursorPos", appSetCursorPos},
   {"getYankBuffer", appGetYankBuffer},
   {"yankCurrentCell", appYankCurrentCell},

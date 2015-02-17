@@ -27,12 +27,30 @@ Operator::Operator(ExprPtr leftSide, ExprPtr rightSide, Str::char_type op)
 
 Str Operator::toLua() const
 {
-  return Str();
+  Str result;
+
+  if (op_ == ':')
+  {
+
+  }
+  else
+  {
+    result.append(leftSide_->toLua())
+          .append(op_)
+          .append(rightSide_->toLua());
+  }
+
+  return result;
 }
 
 Str Operator::toText() const
 {
-  return Str();
+  Str result;
+  result.append(leftSide_->toText())
+        .append(op_)
+        .append(rightSide_->toText());
+
+  return result;
 }
 
 

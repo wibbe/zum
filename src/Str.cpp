@@ -116,6 +116,12 @@ Str Str::stripWhitespace() const
   return str;
 }
 
+void Str::eatWhitespaceFront()
+{
+  while (!empty() && isWhitespace(front()))
+    pop_front();
+}
+
 std::string Str::utf8() const
 {
   std::string result;

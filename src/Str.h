@@ -49,6 +49,8 @@ class Str
 
     Str stripWhitespace() const;
 
+    void eatWhitespaceFront();
+
     std::string utf8() const;
 
     static Str format(const char * fmt, ...);

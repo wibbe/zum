@@ -33,6 +33,11 @@ class Constant : public Expr
     Str value_;
 };
 
+class IndexRef : public Expr
+{
+
+};
+
 class Operator : public Expr
 {
   public:
