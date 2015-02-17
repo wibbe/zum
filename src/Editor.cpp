@@ -7,6 +7,7 @@
 #include <memory.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 static const int ROW_HEADER_WIDTH = 8;
 

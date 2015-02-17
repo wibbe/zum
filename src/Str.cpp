@@ -5,6 +5,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <algorithm>
+#include <cmath>
 
 Str Str::EMPTY;
 
@@ -165,27 +166,6 @@ void Str::eatWhitespaceFront()
     pop_front();
 }
 
-int Str::toInt() const
-{
-  int result = 0;
-  int sign = 1;
-
-  for (uint32_t i = 0, len = size(); i < len; ++i)
-  {
-    Str::char_type ch = data_[i];
-
-    if (ch == '-' && i == 0)
-      sign = -1;
-
-    if (isDigit(ch))
-      result = (result * 10) + (ch - '0');
-    else
-      break;
-  }
-
-  return result * sign;
-}
-
 std::string Str::utf8() const
 {
   std::string result;
@@ -214,22 +194,41 @@ Str Str::format(const char * fmt, ...)
   return Str(buffer);
 }
 
+static const uint32_t CONVERT_BUFFER_SIZE = 128;
+static char convertBuffer_[CONVERT_BUFFER_SIZE];
+
+int Str::toInt() const
+{
+  uint32_t i = 0;
+  const uint32_t len = std::min((uint32_t)data_.size(), CONVERT_BUFFER_SIZE - 1);
+
+  while (i < len && isDigit(data_[i]))
+    convertBuffer_[i] = data_[i];
+
+  convertBuffer_[i + 1] = '\0';
+  return std::stoi(convertBuffer_);
+}
+
+double Str::toDouble() const
+{
+  uint32_t i = 0;
+  const uint32_t len = std::min((uint32_t)data_.size(), CONVERT_BUFFER_SIZE - 1);
+
+  while (i < len && isDigit(data_[i]))
+    convertBuffer_[i] = data_[i];
+
+  convertBuffer_[i + 1] = '\0';
+  return std::stof(convertBuffer_);
+}
+
 Str Str::fromInt(int value)
 {
-  Str str;
+  snprintf(convertBuffer_, CONVERT_BUFFER_SIZE, "%d", value);
+  return Str(convertBuffer_);
+}
 
-  if (value < 0)
-  {
-    str.data_.push_back('-');
-    value *= -1;
-  }
-
-  while (value > 0)
-  {
-    str.data_.push_back('0' + (value % 10));
-    value /= 10;
-  }
-
-  str.data_.push_back('0' + (value % 10));
-  return str;
+Str Str::fromDouble(double value)
+{
+  snprintf(convertBuffer_, CONVERT_BUFFER_SIZE, "%f", value);
+  return Str(convertBuffer_);
 }

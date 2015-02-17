@@ -10,7 +10,7 @@ namespace tcl {
 
   // -- Externs
 
-  //double calculateExpr(std::string const& str);
+  double calculateExpr(std::string const& str);
 
   // -- Parser --
 
@@ -178,7 +178,7 @@ namespace tcl {
     p->token_ = Variable;
     p->inc(); // eat $
 
-    while (isAlpha(p->current_) || isDigit(p->current_))
+    while (!p->eof() && (isAlpha(p->current_) || isDigit(p->current_)))
     {
       p->value_.append(p->current_);
       p->inc();
@@ -341,7 +341,7 @@ namespace tcl {
   // -- Globals --
 
 
-  static bool debug_ = true;
+  static bool debug_ = false;
   static Str error_;
 
   using CallFrames = std::vector<CallFrame>;
@@ -552,6 +552,8 @@ namespace tcl {
 
   ReturnCode _reportError(Str const& error)
   {
+    error_.set(error);
+
     logError(Str("TCL: ").append(error));
     flashMessage(error);
 
@@ -641,23 +643,18 @@ namespace tcl {
 
   TCL_PROC(expr)
   {
-    /*
     if (args.size() == 1)
       return _arityError(args[0]);
 
-    std::string str;
-    for (size_t i = 1; i < args.size(); ++i)
-      str += args[i];
+    Str str;
+    for (uint32_t i = 1; i < args.size(); ++i)
+      str.append(args[i]).append(' ');
 
-    error_ = "";
-    double result = calculateExpr(str);
-    char buf[128];
-    snprintf(buf, 128, "%f", result);
-    currentFrame().result = std::string(buf);
+    error_.clear();
+    double result = calculateExpr(str.utf8());
+    currentFrame().result_.set(Str::fromDouble(result));
+
     return error_.empty() ? RET_OK : RET_ERROR;
-    */
-
-    return RET_OK;
   }
 /*
   TCL_PROC(if)
@@ -749,6 +746,27 @@ namespace tcl {
       inc = args[2].toInt();
 
     currentFrame().result_ = Str::fromInt(value + inc);
+    currentFrame().set(args[1], currentFrame().result_);
+    return RET_OK;
+  }
+
+  TCL_PROC(decr)
+  {
+    if (args.size() != 2 && args.size() != 3)
+      return _arityError(args[0]);
+
+    Str var;
+    if (!currentFrame().get(args[1], var))
+      return _reportError(Str::format("Could not find variable '%s'", args[1].utf8().c_str()));
+
+    int dec = 1;
+    int value = var.toInt();
+
+    if (args.size() == 3)
+      dec = args[2].toInt();
+
+    currentFrame().result_ = Str::fromInt(value - dec);
+    currentFrame().set(args[1], currentFrame().result_);
     return RET_OK;
   }
 

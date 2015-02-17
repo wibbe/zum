@@ -30,6 +30,7 @@ set(SOURCE
     src/Expression.cpp
     src/Variable.cpp
     src/Tcl.cpp
+    src/TclExpr.cpp
     src/3rdparty/termbox/termbox.c
     src/3rdparty/termbox/utf8.c
     ${CMAKE_CURRENT_BINARY_DIR}/ScriptingLib.tcl.h

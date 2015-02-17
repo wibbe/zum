@@ -55,11 +55,14 @@ class Str
     void eatWhitespaceFront();
 
     int toInt() const;
+    double toDouble() const;
 
     std::string utf8() const;
 
     static Str format(const char * fmt, ...);
+
     static Str fromInt(int value);
+    static Str fromDouble(double value);
 
   private:
     std::vector<char_type> data_;
