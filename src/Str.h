@@ -39,6 +39,8 @@ class Str
     int size() const { return data_.size(); }
     bool empty() const { return data_.size() == 0; }
 
+    std::vector<Str> split(char_type delimiter) const;
+
     iterator begin() { return data_.begin(); }
     iterator end() { return data_.end(); }
     const_iterator begin() const { return data_.begin(); }
