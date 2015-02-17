@@ -3,6 +3,7 @@
 #include "Str.h"
 #include "Types.h"
 #include "Editor.h"
+#include "Variable.h"
 
 #include <assert.h>
 #include <stdlib.h>
@@ -24,6 +25,8 @@ namespace doc {
   static const int kDefaultRowCount = 10;
   static const int kDefaultColumnCount = 10;
   static const int kDefaultColumnWidth = 12;
+
+  static const Variable DELIMITER("delimiter", ",");
 
   struct Document
   {
@@ -170,7 +173,7 @@ namespace doc {
 
     // Write header info
     for (int i = 0; i < currentDoc_.width_; ++i)
-      file << currentDoc_.columnWidth_[i] << (i < (currentDoc_.width_ - 1) ? "," : "");
+      file << currentDoc_.columnWidth_[i] << (i < (currentDoc_.width_ - 1) ? DELIMITER.get().utf8() : "");
 
     file << std::endl;
 
@@ -180,7 +183,7 @@ namespace doc {
       for (int x = 0; x < currentDoc_.width_; ++x)
       {
         Str const& cell = getCellText(Index(x, y));
-        file << cell.utf8() << (x < (currentDoc_.width_ - 1) ? "," : "");
+        file << cell.utf8() << (x < (currentDoc_.width_ - 1) ? DELIMITER.get().utf8() : "");
       }
 
       file << std::endl;
@@ -198,7 +201,7 @@ namespace doc {
       std::getline(stream, line);
       std::stringstream lineStream(line);
 
-      while (std::getline(lineStream, cell, ','))
+      while (std::getline(lineStream, cell, (char)DELIMITER.get().front()))
       {
         const int width = std::atoi(cell.c_str());
         currentDoc_.columnWidth_.push_back(width > 0 ? width : kDefaultColumnWidth);
@@ -217,7 +220,7 @@ namespace doc {
         std::string cellText;
         int column = 0;
 
-        while (std::getline(lineStream, cellText, ','))
+        while (std::getline(lineStream, cellText, (char)DELIMITER.get().front()))
         {
           if (!cellText.empty())
           {

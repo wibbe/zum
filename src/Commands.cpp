@@ -5,6 +5,10 @@
 #include "Commands.h"
 #include "Help.h"
 #include "Tokenizer.h"
+#include "Variable.h"
+
+
+static bool getAliasCommand(Str const& line, AppCommand ** command);
 
 static Str commandSequence_;
 
@@ -239,6 +243,7 @@ static std::vector<EditCommand> editCommands_ = {
 
 extern void quitApplication();
 
+static std::vector<AppCommand> aliasCommands_;
 static std::vector<AppCommand> appCommands_ = {
   {
     Str("q"),
@@ -288,67 +293,73 @@ static std::vector<AppCommand> appCommands_ = {
     }
   },
   {
-    Str("tokenize"),
-    "string",
-    "Test the tokenizer",
+    Str("edit"),
+    "edit-commands",
+    "Execute a number of edit commands",
     [] (Str const& arg) {
-      Tokenizer tokenizer(arg);
-
-      Str final;
-
-      Token token = tokenizer.next();
-      while (token != Token::EndOfFile && token != Token::Error)
+      if (!arg.empty())
       {
-        switch (token)
+        clearEditCommandSequence();
+        for (auto ch : arg)
         {
-          case Token::Number:
-            final.append(Str(" Number("))
-                 .append(tokenizer.value())
-                 .append(Str(")"));
-            break;
+          pushEditCommandKey(ch);
+          executeEditCommands();
+        }
+      }
+    }
+  },
+  {
+    Str(""),
+    "",
+    "",
+    [] (Str const& arg) {
+      
+    }
+  },
+  {
+    Str("alias"),
+    "name=command",
+    "Register a command alias",
+    [] (Str const& arg) {
+      if (arg.empty())
+        return;
 
-          case Token::Cell:
-            final.append(Str(" Cell("))
-                 .append(tokenizer.value())
-                 .append(Str(")"));
-            break;
+      const std::vector<Str> alias = arg.split('=');
+      if (alias.size() == 2)
+      {
+        const Str name = alias[0];
+        const Str command = alias[1];
 
-          case Token::Operator:
-            final.append(Str(" Operator("))
-                 .append(tokenizer.value())
-                 .append(Str(")"));
-            break;
+        AppCommand * cmd;
+        if (!getAliasCommand(name, &cmd))
+        {
+          aliasCommands_.push_back(AppCommand{name, "", ""});
+          cmd = &aliasCommands_.back();
+        }
 
-          case Token::Identifier:
-            final.append(Str(" Identifier("))
-                 .append(tokenizer.value())
-                 .append(Str(")"));
-            break;
-
-          case Token::LeftParenthesis:
-            final.append(Str(" ("));
-            break;
-
-          case Token::RightParenthesis:
-            final.append(Str(" )"));
-            break;
-
-          case Token::Comma:
-            final.append(Str(" ,"));
-            break;
+        cmd->command = [command] (Str const& arg) {
 
         };
-
-        token = tokenizer.next();
       }
+    }
+  },
+  {
+    Str("set"),
+    "variable[=value]",
+    "Set or get the value of a variable",
+    [] (Str const& arg) {
+      if (arg.empty())
+        return;
 
-      if (token == Token::Error)
+      const std::vector<Str> pieces = arg.split('=');
+      if (pieces.size() == 2)
       {
-        final.set("Error: ");
-        final.append(tokenizer.value());
+        Variable::set(pieces[0], pieces[1]);
       }
-
-      flashMessage(final);
+      else if (pieces.size() == 1)
+      {
+        flashMessage(Variable::get(pieces[0]));
+      }
     }
   }
 };
@@ -366,17 +377,54 @@ static bool getEditCommand(uint32_t key1, uint32_t key2, EditCommand ** command)
   return false;
 }
 
+static bool getAliasCommand(Str const& line, AppCommand ** command)
+{
+  if (command)
+    *command = nullptr;
+
+  for (auto & cmd : aliasCommands_)
+    if (line.starts_with(cmd.id))
+    {
+      if (command)
+      {
+        if (!(*command) || (*command)->id.size() < cmd.id.size())
+          *command = &cmd;
+      }
+      else
+        return true;
+    }
+
+  if (command)
+    return *command;
+  else
+    return false;
+}
+
 static bool getAppCommand(Str const& line, AppCommand ** command)
 {
+  if (command)
+    *command = nullptr;
+
+  const bool foundAlias = getAliasCommand(line, command);
+  if (foundAlias && !command)
+    return foundAlias;
+
   for (auto & cmd : appCommands_)
     if (line.starts_with(cmd.id))
     {
       if (command)
-        *command = &cmd;
-      return true;
+      {
+        if (!(*command) || (*command)->id.size() < cmd.id.size())
+          *command = &cmd;
+      }
+      else
+        return true;
     }
 
-  return false;
+  if (command)
+    return *command;
+  else
+    return false;
 }
 
 std::vector<EditCommand> const& getEditCommands()

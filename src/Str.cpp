@@ -103,6 +103,29 @@ void Str::pop_front(uint32_t count)
     data_.pop_back();
 }
 
+std::vector<Str> Str::split(char_type delimiter) const
+{
+  std::vector<Str> result;
+  Str part;
+
+  for (auto ch : data_)
+  {
+    if (ch == delimiter)
+    {
+      if (!part.empty())
+        result.push_back(part);
+      part.clear();
+    }
+    else
+      part.append(ch);
+  }
+
+  if (!part.empty())
+    result.push_back(part);
+
+  return result;
+}
+
 Str Str::stripWhitespace() const
 {
   Str str(*this);

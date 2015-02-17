@@ -30,6 +30,7 @@ set(SOURCE
     src/Tokenizer.cpp
     src/Expression.cpp
     src/Scripting.cpp
+    src/Variable.cpp
     src/3rdparty/termbox/termbox.c
     src/3rdparty/termbox/utf8.c
     src/3rdparty/lua/lapi.c
