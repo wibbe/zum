@@ -6,6 +6,33 @@
 
 namespace tcl {
 
+  // Hashed strings that are used in the evaluation
+  enum HashCodes
+  {
+    kNum0 = 1114619285u,      // 0
+    kNum1 = 3410215576u,      // 1
+    kYes = 3390905302u,       // yes
+    kNo = 2138104260u,        // no
+    kTrue = 3899511338u,      // true
+    kFalse = 3213626187u,     // false
+    kOn = 31923308u,          // on
+    kOff = 3527196773u,       // off
+    kLength = 3673030522u,    // length
+    kIndex = 3470952552u,     // index
+    kHash = 1615745465u,      // hash
+    kToLower = 1911912945u,   // tolower
+    kToUpper = 98427793u,     // toupper
+    kEqual = 1526800470u,     // equal
+    kIs = 983832745u,         // is
+    kAlpha = 553757373u,      // alpha
+    kAlnum = 3831713840u,     // alnum
+    kBoolean = 1395558365u,   // boolean
+    kInteger = 318025161u,    // integer
+    kRepeat = 1415255128u,    // repeat
+    kLength_ = 1325425629u,   // -length
+    kNoCase_ = 188802517u,    // -nocase
+  };
+
   enum ReturnCode
   {
     RET_ERROR,
@@ -31,6 +58,9 @@ namespace tcl {
     public:
       Variable(const char * name, const char * defaultValue);
 
+      bool toBool() const;
+      int toInt() const;
+
       Str const& get() const;
       void set(Str const& value) const;
 
@@ -44,6 +74,9 @@ namespace tcl {
 
   ReturnCode evaluate(Str const& code);
 
+  // Returns the result from the last code evaluation.
+  Str const& result();
+
   ReturnCode exec(const char * command);
   ReturnCode exec(const char * command, Str const& arg1);
   ReturnCode exec(const char * command, Str const& arg1, Str const& arg2);
@@ -52,10 +85,19 @@ namespace tcl {
 
   std::vector<Str> findMatches(Str const& name);
 
+  // -- Type checking --
+
+  bool isTrue(Str const& str);
+  bool isFalse(Str const& str);
+  bool isBoolean(Str const str);
+
   // -- Internal functions --
   ReturnCode _arityError(Str const& command);
   ReturnCode _reportError(Str const& _error);
-  void _return(Str const& value);
+
+  ReturnCode resultStr(Str const& value);
+  ReturnCode resultBool(bool value);
+  ReturnCode resultInt(long long int value);
 }
 
 #define TCL_OK() \
@@ -63,7 +105,7 @@ namespace tcl {
 
 #define TCL_RETURN(arg) \
   do { \
-    tcl::_return(arg); \
+    tcl::resultStr(arg); \
     return tcl::RET_OK; \
   } while (false)
 

@@ -37,7 +37,7 @@ class Str
     void erase(uint32_t pos);
 
     bool starts_with(Str const& str) const;
-    bool equals(Str const& str) const;
+    bool equals(Str const& str, bool ignoreCase = false, int length = -1) const;
 
     int size() const { return data_.size(); }
     bool empty() const { return data_.size() == 0; }

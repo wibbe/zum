@@ -53,10 +53,10 @@ namespace tcl {
 
     bool next();
     void inc() { if (pos_ < code_.size()) current_ = code_[++pos_]; }
-    bool eof() const { return len() <= 0; }
+    bool eof() const { return pos_ >= code_.size(); }
     uint32_t len() const { return code_.size() - pos_; }
 
-    Str code_;
+    const Str code_;
     Str value_;
     Token token_;
     Str::char_type current_;
@@ -266,7 +266,7 @@ namespace tcl {
       return true;
     }
 
-    while (true)
+    while (pos_ < code_.size())
     {
       switch (current_)
       {
@@ -296,9 +296,14 @@ namespace tcl {
           return parseString(this);
       }
     }
+
+    token_ = EndOfFile;
+    return true;
   }
 
+
   // -- CallFrame --
+
 
   class CallFrame
   {
@@ -374,7 +379,9 @@ namespace tcl {
     return stack;
   }
 
+
   // -- Variable --
+
 
   Variable::Variable(const char * name, const char * defaultValue)
     : name_(name)
@@ -392,7 +399,19 @@ namespace tcl {
     frames().global().set(name_, value);
   }
 
+  bool Variable::toBool() const
+  {
+    return isTrue(get());
+  }
+
+  int Variable::toInt() const
+  {
+    return get().toInt();
+  }
+
+
   // -- Globals --
+
 
   static bool debug_ = false;
   static Str error_;
@@ -421,7 +440,9 @@ namespace tcl {
     procedures().push_back({name, this});
   }
 
+
   // -- Interface --
+
 
   static const std::string CONFIG_FILE = "/.zumrc";
 
@@ -463,15 +484,36 @@ namespace tcl {
     return result;
   }
 
-  void _return(Str const& value)
+  ReturnCode resultStr(Str const& value)
   {
-    frames().current().result_.set(value);
+    frames().current().result_ = value;
+    return RET_OK;
+  }
+
+  ReturnCode resultBool(bool value)
+  {
+    static const Str trueStr('1');
+    static const Str falseStr('0');
+
+    frames().current().result_ = value ? trueStr : falseStr;
+    return RET_OK;
+  }
+
+  ReturnCode resultInt(long long int value)
+  {
+    frames().current().result_ = Str::fromInt(value);
+    return RET_OK;
+  }
+
+  Str const& result()
+  {
+    return frames().current().result_;
   }
 
   ReturnCode evaluate(Str const& code)
   {
     if (debug_)
-      logInfo(Str("Evaluate: ").append(code));
+      logInfo(Str("evaluate(\n").append(code).append(Str("\n)")));
 
     Parser parser(code);
 
@@ -481,6 +523,10 @@ namespace tcl {
     while (true)
     {
       Token previousToken = parser.token_;
+
+      if (debug_)
+        logInfo(Str("Parse next token"));
+
       if (!parser.next())
         return RET_ERROR;
 
@@ -505,10 +551,16 @@ namespace tcl {
       }
       else if (parser.token_ == Command)
       {
-        if (!evaluate(parser.value_))
+        if (debug_)
+          logInfo(Str::format("Evaluating sub-command: '%s'", parser.value_.utf8().c_str()));
+
+        if (evaluate(parser.value_) != RET_OK)
           return RET_ERROR;
 
         value = frames().current().result_;
+
+        if (debug_)
+          logInfo(Str::format("Result from sub-command: '%s'", value.utf8().c_str()));
       }
       else if (parser.token_ == Separator)
       {
@@ -520,10 +572,10 @@ namespace tcl {
       {
         if (debug_)
         {
-          Str exec("Evaluating: ");
+          Str exec("Executing: '");
 
           for (size_t i = 0; i < args.size(); ++i)
-            exec.append(args[i]).append(' ');
+            exec.append(args[i]).append(i < (args.size() - 1) ? ' ' : '\'');
 
           logInfo(exec);
         }
@@ -532,9 +584,6 @@ namespace tcl {
         {
           if (Procedure * proc = findProcedure(args[0]))
           {
-            if (debug_)
-              logInfo(Str("  Found procedure"));
-
             ReturnCode retCode = proc->call(args);
             if (retCode != RET_OK)
               return retCode;
@@ -548,7 +597,7 @@ namespace tcl {
 
       if (!value.empty() || parser.token_ == String)
       {
-        if (previousToken == Separator || previousToken == EndOfLine)
+        if (previousToken == Separator || previousToken == EndOfLine || parser.token_ == Command)
         {
           args.push_back(value);
         }
@@ -575,12 +624,12 @@ namespace tcl {
 
   ReturnCode exec(const char * command, Str const& arg1)
   {
-    return evaluate(Str(command).append(arg1));
+    return evaluate(Str(command).append(' ').append(arg1));
   }
 
   ReturnCode exec(const char * command, Str const& arg1, Str const& arg2)
   {
-    return evaluate(Str(command).append(arg1).append(arg2));
+    return evaluate(Str(command).append(' ').append(arg1).append(' ').append(arg2));
   }
 
   ReturnCode execFile(std::string const& filename)
@@ -615,6 +664,57 @@ namespace tcl {
     flashMessage(error);
 
     return RET_ERROR;
+  }
+
+  // -- Type checking --
+
+  bool isTrue(Str const& str)
+  {
+    switch (str.hash())
+    {
+      case kNum1:
+      case kTrue:
+      case kOn:
+      case kYes:
+        return true;
+
+      default:
+        return false;
+    }
+  }
+
+  bool isFalse(Str const& str)
+  {
+    switch (str.hash())
+    {
+      case kNum0:
+      case kFalse:
+      case kOff:
+      case kNo:
+        return true;
+
+      default:
+        return false;
+    }
+  }
+
+  bool isBoolean(Str const str)
+  {
+    switch (str.hash())
+    {
+      case kNum0:
+      case kNum1:
+      case kTrue:
+      case kFalse:
+      case kOn:
+      case kOff:
+      case kYes:
+      case kNo:
+        return true;
+
+      default:
+        return false;
+    }
   }
 
   // -- Build in functions --
@@ -730,17 +830,15 @@ namespace tcl {
     if (args.size() != 3 && args.size() != 5)
       return _arityError(args[0]);
 
-    Str check("expr ");
-    check.append(args[1]);
+    if (exec("expr", args[1]) == RET_OK)
+    {
+      if (!isFalse(frames().current().result_))
+        return evaluate(args[2]);
+      else
+        return evaluate(args[4]);
+    }
 
-    const double result = calculateExpr(check.utf8());
-
-    if (result > 0.0)
-      return evaluate(args[2]);
-    else if (args.size() == 5)
-      return evaluate(args[4]);
-
-    return RET_OK;
+    return RET_ERROR;
   }
 
   TCL_PROC(return)
@@ -839,61 +937,6 @@ namespace tcl {
 
     const double result = calculateExpr(args[1].utf8());
     debug_ = result > 0.0;
-
-    TCL_OK();
-  }
-
-  TCL_PROC(string)
-  {
-    TCL_ARITY(1);
-
-    const uint32_t command = args[1].hash();
-    switch (command)
-    {
-      case 3673030522u: // length
-        {
-          TCL_ARITY(2);
-          TCL_RETURN(Str::fromInt(args[2].size()));
-        }
-        break;
-
-      case 3470952552:  // index
-        {
-          TCL_ARITY(3);
-          const int idx = args[3].toInt();
-          if (idx < 0 || idx >= args[2].size())
-            TCL_RETURN(Str::EMPTY);
-
-          Str result;
-          result.append(args[2][idx]);
-          TCL_RETURN(result);
-        }
-        break;
-
-      case 1615745465u: // hash
-        {
-          TCL_ARITY(2);
-          TCL_RETURN(Str::fromInt(args[2].hash()));
-        }
-        break;
-
-      case 1911912945u: // tolower
-        {
-          TCL_ARITY(2);
-          TCL_RETURN(args[2].toLower());
-        }
-        break;
-
-      case 98427793u: // toupper
-        {
-          TCL_ARITY(2);
-          TCL_RETURN(args[2].toUpper());
-        }
-        break;
-
-      default:
-        break;
-    }
 
     TCL_OK();
   }

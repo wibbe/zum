@@ -314,6 +314,9 @@ static std::vector<Str> commandHistory_;
 void executeAppCommands(Str const& commandLine)
 {
   tcl::evaluate(commandLine);
+  const Str result = tcl::result();
+  if (!result.empty())
+    flashMessage(result);
 }
 
 // -- Application wide commands --

@@ -113,14 +113,36 @@ int Str::findChar(char_type ch) const
   return -1;
 }
 
-bool Str::equals(Str const& str) const
+bool Str::equals(Str const& str, bool ignoreCase, int length) const
 {
-  if (size() != str.size())
+  if (length < 0 && size() != str.size())
     return false;
 
-  for (int i = 0; i < size(); ++i)
-    if (data_[i] != str[i])
-      return false;
+  if (length >= 0 && (size() < length || str.size() < length))
+    return false;
+
+  if (ignoreCase)
+  {
+    const int offset = 'A' - 'a';
+    for (int i = 0, len = (length == -1 ? size() : length); i < len; ++i)
+    {
+      char_type ch1 = data_[i];
+      char_type ch2 = str[i];
+
+      ch1 = isLowerAlpha(ch1) ? ch1 + offset : ch1;
+      ch2 = isLowerAlpha(ch2) ? ch2 + offset : ch2;
+
+      if (ch1 != ch2)
+        return false;
+    }
+
+  }
+  else
+  {
+    for (int i = 0, len = (length == -1 ? size() : length); i < len; ++i)
+      if (data_[i] != str[i])
+        return false;
+  }
 
   return true;
 }

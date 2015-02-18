@@ -28,7 +28,7 @@ namespace doc {
   static const int kDefaultColumnWidth = 12;
 
   static const tcl::Variable DELIMITERS("app:delimiters", ",;");
-  static const tcl::Variable FIRST_ROW_IS_COLUMN_WIDTH("app:first_row_is_column_width", "1");
+  static const tcl::Variable IGNORE_FIRST_ROW("app:ignore_first_row", "true");
 
   struct Document
   {
@@ -181,7 +181,7 @@ namespace doc {
     }
 
     // Write header info
-    if (FIRST_ROW_IS_COLUMN_WIDTH.get().toInt() > 0)
+    if (IGNORE_FIRST_ROW.toBool())
       for (int i = 0; i < currentDoc_.width_; ++i)
         file << currentDoc_.columnWidth_[i] << (i < (currentDoc_.width_ - 1) ? (char)currentDoc_.delimiter_ : '\n');
 
@@ -231,9 +231,10 @@ namespace doc {
     int pos_ = 0;
   };
 
-  static bool loadDocument(Str const& data)
+  static bool loadDocument(Str const& data, Str::char_type defaultDelimiter)
   {
     // Examin document to determin delimiter type
+    if (defaultDelimiter == 0)
     {
       const Str delimiters = DELIMITERS.get();
 
@@ -256,11 +257,13 @@ namespace doc {
         }
       }
     }
+    else
+     currentDoc_.delimiter_ = defaultDelimiter;
 
     Parser p(data, currentDoc_.delimiter_);
 
     // Read column width
-    if (FIRST_ROW_IS_COLUMN_WIDTH.get().toInt() > 0)
+    if (IGNORE_FIRST_ROW.toBool())
     {
       bool onlyNumbers = true;
       bool firstLine = true;
@@ -363,7 +366,7 @@ namespace doc {
     close();
 
     const Str data(&buffer[0]);
-    if (!loadDocument(data))
+    if (!loadDocument(data, 0))
       return false;
 
     currentDoc_.filename_ = arg1;
@@ -372,11 +375,11 @@ namespace doc {
     return true;
   }
 
-  bool loadRaw(std::string const& data, Str const& filename)
+  bool loadRaw(std::string const& data, Str const& filename, Str::char_type delimiter)
   {
     close();
 
-    if (!loadDocument(Str(data.c_str())))
+    if (!loadDocument(Str(data.c_str()), delimiter))
       return false;
 
     currentDoc_.filename_ = filename;
@@ -645,7 +648,7 @@ namespace doc {
 
   // -- Tcl procs --
 
-  TCL_PROC2(doc_delimiter, "doc:delimiter")
+  TCL_PROC2(docDelimiter, "doc:delimiter")
   {
     if (args.size() == 1)
     {
@@ -659,5 +662,10 @@ namespace doc {
     }
 
     TCL_OK();
+  }
+
+  TCL_PROC2(docFilename, "doc:filename")
+  {
+    return tcl::resultStr(currentDoc_.filename_);
   }
 }

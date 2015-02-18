@@ -30,6 +30,7 @@ set(SOURCE
     src/Expression.cpp
     src/Tcl.cpp
     src/TclExpr.cpp
+    src/TclString.cpp
     src/MurmurHash.cpp
     src/Completion.cpp
     src/3rdparty/termbox/termbox.c
