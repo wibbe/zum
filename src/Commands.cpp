@@ -5,7 +5,6 @@
 #include "Commands.h"
 #include "Help.h"
 #include "Tokenizer.h"
-#include "Variable.h"
 #include "Tcl.h"
 
 

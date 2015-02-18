@@ -43,6 +43,8 @@ class Str
 
     std::vector<Str> split(char_type delimiter) const;
 
+    int find_char(char_type ch) const;
+
     iterator begin() { return data_.begin(); }
     iterator end() { return data_.end(); }
     const_iterator begin() const { return data_.begin(); }

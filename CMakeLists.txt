@@ -28,7 +28,6 @@ set(SOURCE
     src/Help.cpp
     src/Tokenizer.cpp
     src/Expression.cpp
-    src/Variable.cpp
     src/Tcl.cpp
     src/TclExpr.cpp
     src/3rdparty/termbox/termbox.c

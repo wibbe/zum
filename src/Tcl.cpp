@@ -4,6 +4,7 @@
 #include "Editor.h"
 
 #include <iostream>
+#include <fstream>
 #include <map>
 
 namespace tcl {
@@ -178,7 +179,7 @@ namespace tcl {
     p->token_ = Variable;
     p->inc(); // eat $
 
-    while (!p->eof() && (isAlpha(p->current_) || isDigit(p->current_)))
+    while (!p->eof() && (isAlpha(p->current_) || isDigit(p->current_) || p->current_ == ':' || p->current_ == '_'))
     {
       p->value_.append(p->current_);
       p->inc();
@@ -304,11 +305,13 @@ namespace tcl {
     void set(Str const& name, Str const& value)
     {
       for (auto & pair : variables_)
+      {
         if (pair.first.equals(name))
         {
-          pair.second.set(value);
+          pair.second = value;
           return;
         }
+      }
 
       variables_.push_back({name, value});
     }
@@ -316,8 +319,10 @@ namespace tcl {
     Str const& get(Str const& name)
     {
       for (auto const& pair : variables_)
+      {
         if (pair.first.equals(name))
           return pair.second;
+      }
 
       return Str::EMPTY;
     }
@@ -325,11 +330,13 @@ namespace tcl {
     bool get(Str const& name, Str & value) const
     {
       for (auto const& pair : variables_)
+      {
         if (pair.first.equals(name))
         {
-          value.set(pair.second);
+          value = pair.second;
           return true;
         }
+      }
 
       return false;
     }
@@ -338,25 +345,55 @@ namespace tcl {
     Str result_;
   };
 
-  // -- Globals --
+  class FrameStack
+  {
+    public:
+      FrameStack()
+      {
+        // The global frame
+        frames_.push_back(CallFrame());
+      }
 
+      CallFrame & global() { return frames_.front(); }
+      CallFrame & current() { return frames_.back(); }
+
+      void push() { frames_.push_back(CallFrame()); }
+      void pop() { frames_.pop_back(); }
+
+    private:
+      std::vector<CallFrame> frames_;
+  };
+
+  static FrameStack & frames()
+  {
+    static FrameStack stack;
+    return stack;
+  }
+
+  // -- Variable --
+
+  Variable::Variable(const char * name, const char * defaultValue)
+    : name_(name)
+  {
+    frames().global().set(name_, Str(defaultValue));
+  }
+
+  Str const& Variable::get() const
+  {
+    return frames().global().get(name_);
+  }
+
+  void Variable::set(Str const& value) const
+  {
+    frames().global().set(name_, value);
+  }
+
+  // -- Globals --
 
   static bool debug_ = false;
   static Str error_;
 
-  using CallFrames = std::vector<CallFrame>;
   using Procedures = std::vector<std::pair<Str, Procedure *>>;
-
-  static CallFrames & callFrames()
-  {
-    static CallFrames frames;
-    return frames;
-  }
-
-  static CallFrame & currentFrame()
-  {
-    return callFrames().back();
-  }
 
   static Procedures & procedures()
   {
@@ -386,8 +423,6 @@ namespace tcl {
 
   void initialize()
   {
-    reset();
-
     evaluate(Str(std::string((char *)&ScriptingLib_tcl[0], ScriptingLib_tcl_len).c_str()));
 
     // Try to load the config file
@@ -405,12 +440,6 @@ namespace tcl {
         delete proc.second;
   }
 
-  void reset()
-  {
-    callFrames().clear();
-    callFrames().push_back(CallFrame());
-  }
-
   Str completeName(Str const& name)
   {
     for (auto const& proc : procedures())
@@ -424,17 +453,17 @@ namespace tcl {
 
   void _return(Str const& value)
   {
-    currentFrame().result_.set(value);
+    frames().current().result_.set(value);
   }
 
   ReturnCode evaluate(Str const& code)
   {
     if (debug_)
-      logInfo(Str("Debugging code: ").append(code).append('\n'));
+      logInfo(Str("Evaluate: ").append(code));
 
     Parser parser(code);
 
-    currentFrame().result_.clear();
+    frames().current().result_.clear();
     std::vector<Str> args;
 
     while (true)
@@ -446,7 +475,7 @@ namespace tcl {
       if (debug_)
         logInfo(Str::format("Token: %s = '%s'", tokenAsReadable[parser.token_], parser.value_.utf8().c_str()));
 
-      Str value = parser.value_;
+      Str value(parser.value_);
 
       if (parser.token_ == Variable)
       {
@@ -454,10 +483,10 @@ namespace tcl {
           logInfo(Str::format("Accessing variable '%s'", parser.value_.utf8().c_str()));
 
         Str var;
-        if (currentFrame().get(value, var))
+        if (frames().current().get(value, var))
         {
-          value.set(var);
-          currentFrame().result_.set(var);
+          value = var;
+          frames().current().result_.set(var);
         }
         else
           return _reportError(Str("Could not locate variable: ").append(value));
@@ -467,7 +496,7 @@ namespace tcl {
         if (!evaluate(parser.value_))
           return RET_ERROR;
 
-        value = currentFrame().result_;
+        value = frames().current().result_;
       }
       else if (parser.token_ == Separator)
       {
@@ -491,6 +520,9 @@ namespace tcl {
         {
           if (Procedure * proc = findProcedure(args[0]))
           {
+            if (debug_)
+              logInfo(Str("  Found procedure"));
+
             ReturnCode retCode = proc->call(args);
             if (retCode != RET_OK)
               return retCode;
@@ -540,9 +572,21 @@ namespace tcl {
 
   ReturnCode exec(std::string const& filename)
   {
-    //std::string code = util::loadFileStr(filename);
-    //return evaluate(code);
-    return RET_OK;
+    std::ifstream file(filename.c_str());
+    if (!file.is_open())
+      return _reportError(Str::format("Could not open document %s", filename.c_str()));
+
+    // get length of file:
+    file.seekg (0, file.end);
+    const int length = file.tellg();
+    file.seekg (0, file.beg);
+
+    std::vector<char> buffer;
+    buffer.reserve(length + 1);
+    file.read(&buffer[0], length);
+    buffer[length] = '\0';
+
+    return evaluate(Str(&buffer[0]));
   }
 
   ReturnCode _arityError(Str const& command)
@@ -575,16 +619,16 @@ namespace tcl {
       if ((args.size() - 1) != arguments_.size())
         return _reportError(Str::format("Procedure '%s' called with wrong number of arguments, expected %d but got %d", args[0].utf8().c_str(), arguments_.size(), args.size() - 1));
 
-      callFrames().push_back(CallFrame());
+      frames().push();
 
       // Setup arguments
       for (size_t i = 0, len = arguments_.size(); i < len; ++i)
-        currentFrame().set(arguments_[i], args[i + 1]);
+        frames().current().set(arguments_[i], args[i + 1]);
 
       const ReturnCode retCode = evaluate(body_);
-      const Str result(currentFrame().result_);
-      callFrames().pop_back();
-      currentFrame().result_ = result;
+      const Str result(frames().current().result_);
+      frames().pop();
+      frames().current().result_ = result;
 
       return retCode;
     };
@@ -629,12 +673,12 @@ namespace tcl {
 
     if (len == 2)
     {
-      return currentFrame().get(args[1], currentFrame().result_) ? RET_OK : RET_ERROR;
+      return frames().current().get(args[1], frames().current().result_) ? RET_OK : RET_ERROR;
     }
     else if (len == 3)
     {
-      currentFrame().result_.set(args[2]);
-      currentFrame().set(args[1], args[2]);
+      frames().current().result_.set(args[2]);
+      frames().current().set(args[1], args[2]);
       return RET_OK;
     }
     else
@@ -652,17 +696,17 @@ namespace tcl {
 
     error_.clear();
     double result = calculateExpr(str.utf8());
-    currentFrame().result_.set(Str::fromDouble(result));
+    frames().current().result_.set(Str::fromDouble(result));
 
     return error_.empty() ? RET_OK : RET_ERROR;
   }
-/*
+
   TCL_PROC(if)
   {
     if (args.size() != 3 && args.size() != 5)
       return _arityError(args[0]);
 
-    double result = calculateExpr(args[1]);
+    const double result = calculateExpr(args[1].utf8());
 
     if (result > 0.0)
       return evaluate(args[2]);
@@ -671,13 +715,13 @@ namespace tcl {
 
     return RET_OK;
   }
-*/
+
   TCL_PROC(return)
   {
     if (args.size() != 2)
       return _arityError(args[0]);
 
-    currentFrame().result_ = args[1];
+    frames().current().result_ = args[1];
     return RET_RETURN;
   }
 
@@ -699,13 +743,14 @@ namespace tcl {
 
     return evaluate(str);
   }
-/*
+
   TCL_PROC(while)
   {
     if (args.size() != 3)
       return _arityError(args[0]);
 
-    const std::string check = "expr " + args[1];
+    Str check("expr ");
+    check.append(args[1]);
 
     while (true)
     {
@@ -713,7 +758,7 @@ namespace tcl {
       if (retCode != RET_OK)
         return retCode;
 
-      if (std::atof(currentFrame().result.c_str()) > 0.0)
+      if (frames().current().result_.toDouble() > 0.0)
       {
         retCode = evaluate(args[2]);
         if (retCode == RET_OK || retCode == RET_CONTINUE)
@@ -729,14 +774,14 @@ namespace tcl {
       }
     }
   }
-*/
+
   TCL_PROC(incr)
   {
     if (args.size() != 2 && args.size() != 3)
       return _arityError(args[0]);
 
     Str var;
-    if (!currentFrame().get(args[1], var))
+    if (!frames().current().get(args[1], var))
       return _reportError(Str::format("Could not find variable '%s'", args[1].utf8().c_str()));
 
     int inc = 1;
@@ -745,28 +790,9 @@ namespace tcl {
     if (args.size() == 3)
       inc = args[2].toInt();
 
-    currentFrame().result_ = Str::fromInt(value + inc);
-    currentFrame().set(args[1], currentFrame().result_);
-    return RET_OK;
-  }
+    frames().current().result_ = Str::fromInt(value + inc);
+    frames().current().set(args[1], frames().current().result_);
 
-  TCL_PROC(decr)
-  {
-    if (args.size() != 2 && args.size() != 3)
-      return _arityError(args[0]);
-
-    Str var;
-    if (!currentFrame().get(args[1], var))
-      return _reportError(Str::format("Could not find variable '%s'", args[1].utf8().c_str()));
-
-    int dec = 1;
-    int value = var.toInt();
-
-    if (args.size() == 3)
-      dec = args[2].toInt();
-
-    currentFrame().result_ = Str::fromInt(value - dec);
-    currentFrame().set(args[1], currentFrame().result_);
     return RET_OK;
   }
 
@@ -778,6 +804,43 @@ namespace tcl {
   TCL_PROC(continue)
   {
     return RET_CONTINUE;
+  }
+
+  TCL_PROC(debug)
+  {
+    TCL_ARITY(1);
+
+    const double result = calculateExpr(args[1].utf8());
+    debug_ = result > 0.0;
+
+    TCL_OK();
+  }
+
+  TCL_PROC(string)
+  {
+    TCL_ARITY(1);
+
+    static const Str LENGTH("length");
+    static const Str INDEX("index");
+
+    const Str command = args[1];
+
+    if (command.equals(LENGTH) && args.size() == 3)
+    {
+      TCL_RETURN(Str::fromInt(args[2].size()));
+    }
+    else if (command.equals(INDEX) && args.size() == 4)
+    {
+      const int idx = args[3].toInt();
+      if (idx < 0 || idx >= args[2].size())
+        TCL_RETURN(Str::EMPTY);
+
+      Str result;
+      result.append(args[2][idx]);
+      TCL_RETURN(result);
+    }
+
+    TCL_OK();
   }
 
 }

@@ -26,6 +26,18 @@ namespace tcl {
     virtual ReturnCode call(ArgumentVector const& args) = 0;
   };
 
+  class Variable
+  {
+    public:
+      Variable(const char * name, const char * defaultValue);
+
+      Str const& get() const;
+      void set(Str const& value) const;
+
+    private:
+      const Str name_;
+  };
+
   void initialize();
   void shutdown();
   void reset();
@@ -45,8 +57,10 @@ namespace tcl {
   return tcl::RET_OK
 
 #define TCL_RETURN(arg) \
-  tcl::_return(arg); \
-  return tcl::RET_OK
+  do { \
+    tcl::_return(arg); \
+    return tcl::RET_OK; \
+  } while (false)
 
 #define TCL_ARITY(num) \
   do { if (args.size() < num) return tcl::_arityError(args[0]); } while (false)
@@ -55,3 +69,8 @@ namespace tcl {
   struct TclProc_##name : public tcl::Procedure { TclProc_##name() : Procedure(Str(#name)) { } bool native() const { return true; } tcl::ReturnCode call(tcl::ArgumentVector const& args); }; \
   namespace { TclProc_##name __dummy##name; } \
   tcl::ReturnCode TclProc_##name::call(tcl::ArgumentVector const& args)
+
+#define TCL_PROC2(funcName, tclName) \
+  struct TclProc_##funcName : public tcl::Procedure { TclProc_##funcName() : Procedure(Str(tclName)) { } bool native() const { return true; } tcl::ReturnCode call(tcl::ArgumentVector const& args); }; \
+  namespace { TclProc_##funcName __dummy##funcName; } \
+  tcl::ReturnCode TclProc_##funcName::call(tcl::ArgumentVector const& args)

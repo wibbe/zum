@@ -3,7 +3,6 @@
 #include "Str.h"
 #include "Types.h"
 #include "Editor.h"
-#include "Variable.h"
 
 #include <assert.h>
 #include <stdlib.h>
@@ -20,13 +19,16 @@
 #include <unordered_map>
 #include <cmath>
 
+#include "Tcl.h"
+
 namespace doc {
 
   static const int kDefaultRowCount = 10;
   static const int kDefaultColumnCount = 10;
   static const int kDefaultColumnWidth = 12;
 
-  static const Variable DELIMITER("delimiter", ",");
+  static const tcl::Variable DELIMITERS("app:delimiters", ",;");
+  static const tcl::Variable FIRST_ROW_IS_COLUMN_WIDTH("app:first_row_is_column_width", "1");
 
   struct Document
   {
@@ -36,6 +38,7 @@ namespace doc {
     std::unordered_map<Index, Cell> cells_;
     Str filename_;
     bool readOnly_;
+    Str::char_type delimiter_;
   };
 
   enum class EditAction
@@ -73,6 +76,7 @@ namespace doc {
     currentDoc_.height_ = kDefaultColumnCount;
     currentDoc_.columnWidth_.resize(kDefaultColumnCount, kDefaultColumnWidth);
     currentDoc_.filename_ = filename;
+    currentDoc_.delimiter_ = ',';
     currentDoc_.readOnly_ = false;
   }
 
@@ -81,6 +85,7 @@ namespace doc {
     currentDoc_.width_ = 0;
     currentDoc_.height_ = 0;
     currentDoc_.filename_ = Str::EMPTY;
+    currentDoc_.delimiter_ = ',';
     currentDoc_.cells_.clear();
     currentDoc_.columnWidth_.clear();
     currentDoc_.readOnly_ = true;
@@ -174,10 +179,9 @@ namespace doc {
     }
 
     // Write header info
-    for (int i = 0; i < currentDoc_.width_; ++i)
-      file << currentDoc_.columnWidth_[i] << (i < (currentDoc_.width_ - 1) ? DELIMITER.get().utf8() : "");
-
-    file << std::endl;
+    if (FIRST_ROW_IS_COLUMN_WIDTH.get().toInt() > 0)
+      for (int i = 0; i < currentDoc_.width_; ++i)
+        file << currentDoc_.columnWidth_[i] << (i < (currentDoc_.width_ - 1) ? (char)currentDoc_.delimiter_ : '\n');
 
     // Write all the cells
     for (int y = 0; y < currentDoc_.height_; ++y)
@@ -185,10 +189,8 @@ namespace doc {
       for (int x = 0; x < currentDoc_.width_; ++x)
       {
         Str const& cell = getCellText(Index(x, y));
-        file << cell.utf8() << (x < (currentDoc_.width_ - 1) ? DELIMITER.get().utf8() : "");
+        file << cell.utf8() << (x < (currentDoc_.width_ - 1) ? (char)currentDoc_.delimiter_ : '\n');
       }
-
-      file << std::endl;
     }
 
     currentDoc_.filename_ = filename;
@@ -196,49 +198,133 @@ namespace doc {
     return true;
   }
 
-  static bool loadDocument(std::istream & stream)
+  struct Parser
   {
-    { // Read column width
-      std::string line, cell;
-      std::getline(stream, line);
-      std::stringstream lineStream(line);
+    Parser(Str const& data, Str::char_type delim)
+      : data_(data),
+        delim_(delim)
+    { }
 
-      while (std::getline(lineStream, cell, (char)DELIMITER.get().front()))
-      {
-        const int width = std::atoi(cell.c_str());
-        currentDoc_.columnWidth_.push_back(width > 0 ? width : kDefaultColumnWidth);
-      }
+    bool next(Str & value)
+    {
+      value.clear();
 
-      currentDoc_.width_ = currentDoc_.columnWidth_.size();
-      currentDoc_.height_ = 0;
+      if (eof())
+        return false;
+
+      while (!eof() && data_[pos_] != delim_ && data_[pos_] != '\n')
+        value.append(data_[pos_++]);
+
+      if (eof())
+        return false;
+
+      const bool newLine = data_[pos_++] == '\n';
+      return !newLine;
     }
 
-    { // Read cell data
-      // For each line
-      std::string line;
-      while (std::getline(stream, line))
+    bool eof() const { return pos_ >= data_.size(); }
+
+    Str const& data_;
+    Str::char_type delim_;
+    int pos_ = 0;
+  };
+
+  static bool loadDocument(Str const& data)
+  {
+    // Examin document to determin delimiter type
+    {
+      const Str delimiters = DELIMITERS.get();
+
+      std::vector<int> delimCount(delimiters.size(), 0);
+      for (auto ch : data)
       {
-        std::stringstream lineStream(line);
-        std::string cellText;
-        int column = 0;
+        const int idx = delimiters.find_char(ch);
+        if (idx >= 0)
+          delimCount[idx]++;
+      }
 
-        while (std::getline(lineStream, cellText, (char)DELIMITER.get().front()))
+      int maxCount = -1;
+      currentDoc_.delimiter_ = delimiters[0];
+      for (int i = 0; i < delimCount.size(); ++i)
+      {
+        if (delimCount[i] > maxCount)
         {
-          if (!cellText.empty())
-          {
-            Cell & cell = getCell(Index(column, currentDoc_.height_));
-            cell.text.set(cellText.c_str());
-          }
+          maxCount = delimCount[i];
+          currentDoc_.delimiter_ = delimiters[i];
+        }
+      }
+    }
 
-          column++;
+    Parser p(data, currentDoc_.delimiter_);
 
-          if (column > currentDoc_.width_)
-          {
-            currentDoc_.width_ = column;
-            currentDoc_.columnWidth_.push_back(kDefaultColumnWidth);
-          }
+    // Read column width
+    if (FIRST_ROW_IS_COLUMN_WIDTH.get().toInt() > 0)
+    {
+      bool onlyNumbers = true;
+      bool firstLine = true;
+
+      std::vector<Str> cells;
+
+      while (firstLine)
+      {
+        Str cellText;
+        firstLine = p.next(cellText);
+
+        cells.push_back(cellText);
+
+        for (auto ch : cellText)
+          onlyNumbers &= isDigit(ch);
+      }
+
+      if (onlyNumbers)
+      {
+        for (auto const& cellText : cells)
+        {
+          const int width = cellText.toInt();
+          currentDoc_.columnWidth_.push_back(width > 0 ? width : kDefaultColumnWidth);
         }
 
+        currentDoc_.width_ = currentDoc_.columnWidth_.size();
+        currentDoc_.height_ = 0;
+      }
+      else
+      {
+        for (uint32_t i = 0; i < cells.size(); ++i)
+        {
+          Cell & cell = getCell(Index(i, 0));
+          cell.text = cells[i];
+
+          currentDoc_.columnWidth_.push_back(kDefaultColumnWidth);
+        }
+
+        currentDoc_.width_ = cells.size();
+        currentDoc_.height_ = 1;
+      }
+    }
+
+    int column = 0;
+    while (!p.eof())
+    {
+      Str cellText;
+      const bool newLine = !p.next(cellText);
+
+      if (!cellText.empty())
+      {
+        Cell & cell = getCell(Index(column, currentDoc_.height_));
+        cell.text = cellText;
+      }
+
+      column++;
+
+      if (column > currentDoc_.width_)
+      {
+        currentDoc_.width_ = column;
+        currentDoc_.columnWidth_.push_back(kDefaultColumnWidth);
+      }
+
+      if (newLine)
+      {
+        column = 0;
         currentDoc_.height_++;
       }
     }
@@ -257,10 +343,25 @@ namespace doc {
       return false;
     }
 
+    // get length of file:
+    file.seekg (0, file.end);
+    const int length = file.tellg();
+    file.seekg (0, file.beg);
+
+    std::vector<char> buffer;
+    buffer.reserve(length + 1);
+    file.read(&buffer[0], length);
+    buffer[length] = '\0';
+
+    // Did we succeed in reading the file
+    if (!file)
+      return false;
+
     // Start by closing thr current document
     close();
 
-    if (!loadDocument(file))
+    const Str data(&buffer[0]);
+    if (!loadDocument(data))
       return false;
 
     currentDoc_.filename_ = filename;
@@ -271,11 +372,9 @@ namespace doc {
 
   bool loadRaw(std::string const& data, Str const& filename)
   {
-    std::istringstream buffer(data);
-
     close();
 
-    if (!loadDocument(buffer))
+    if (!loadDocument(Str(data.c_str())))
       return false;
 
     currentDoc_.filename_ = filename;
@@ -542,5 +641,23 @@ namespace doc {
 
 
     return idx;
+  }
+
+  // -- Tcl procs --
+
+  TCL_PROC2(doc_delimiter, "doc:delimiter")
+  {
+    if (args.size() == 1)
+    {
+      Str result;
+      result.append(currentDoc_.delimiter_);
+      TCL_RETURN(result);
+    }
+    else if (args.size() >= 2)
+    {
+      currentDoc_.delimiter_ = args[1].front();
+    }
+
+    TCL_OK();
   }
 }

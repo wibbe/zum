@@ -98,6 +98,14 @@ bool Str::starts_with(Str const& str) const
   return true;
 }
 
+int Str::find_char(char_type ch) const
+{
+  for (int i = 0, len = size(); i < len; ++i)
+    if (data_[i] == ch)
+      return i;
+  return -1;
+}
+
 bool Str::equals(Str const& str) const
 {
   if (size() != str.size())
@@ -199,26 +207,32 @@ static char convertBuffer_[CONVERT_BUFFER_SIZE];
 
 int Str::toInt() const
 {
-  uint32_t i = 0;
   const uint32_t len = std::min((uint32_t)data_.size(), CONVERT_BUFFER_SIZE - 1);
 
-  while (i < len && isDigit(data_[i]))
+  uint32_t i = 0;
+  while (i < len)
+  {
     convertBuffer_[i] = data_[i];
+    ++i;
+  }
 
-  convertBuffer_[i + 1] = '\0';
-  return std::stoi(convertBuffer_);
+  convertBuffer_[i] = '\0';
+  return std::atoi(convertBuffer_);
 }
 
 double Str::toDouble() const
 {
-  uint32_t i = 0;
   const uint32_t len = std::min((uint32_t)data_.size(), CONVERT_BUFFER_SIZE - 1);
 
-  while (i < len && isDigit(data_[i]))
+  uint32_t i = 0;
+  while (i < len)
+  {
     convertBuffer_[i] = data_[i];
+    ++i;
+  }
 
   convertBuffer_[i + 1] = '\0';
-  return std::stof(convertBuffer_);
+  return std::atof(convertBuffer_);
 }
 
 Str Str::fromInt(int value)
