@@ -428,9 +428,9 @@ namespace tcl {
     // Try to load the config file
     char * home = getenv("HOME");
     if (home)
-      exec(std::string(home) + CONFIG_FILE);
+      execFile(std::string(home) + CONFIG_FILE);
     else
-      exec("~" + CONFIG_FILE);
+      execFile("~" + CONFIG_FILE);
   }
 
   void shutdown()
@@ -534,7 +534,7 @@ namespace tcl {
         args.clear();
       }
 
-      if (!value.empty())
+      if (!value.empty() || parser.token_ == String)
       {
         if (previousToken == Separator || previousToken == EndOfLine)
         {
@@ -547,20 +547,6 @@ namespace tcl {
           else
             args.back().append(value);
         }
-
-        if (debug_)
-        {
-          Str exec("Building arg vector: ");
-
-          for (size_t i = 0; i < args.size(); ++i)
-            exec.append(args[i]).append(' ');
-
-          logInfo(exec);
-        }
-      }
-      else if (debug_)
-      {
-        logInfo(Str("Nothing to do"));
       }
 
       if (parser.token_ == EndOfFile)
@@ -570,7 +556,22 @@ namespace tcl {
     return RET_OK;
   }
 
-  ReturnCode exec(std::string const& filename)
+  ReturnCode exec(const char * command)
+  {
+    return evaluate(Str(command));
+  }
+
+  ReturnCode exec(const char * command, Str const& arg1)
+  {
+    return evaluate(Str(command).append(arg1));
+  }
+
+  ReturnCode exec(const char * command, Str const& arg1, Str const& arg2)
+  {
+    return evaluate(Str(command).append(arg1).append(arg2));
+  }
+
+  ReturnCode execFile(std::string const& filename)
   {
     std::ifstream file(filename.c_str());
     if (!file.is_open())
@@ -608,22 +609,32 @@ namespace tcl {
 
   struct TclProc : public Procedure
   {
-    TclProc(Str const& name)
-      : Procedure(name)
+    TclProc(Str const& name, std::vector<Str> const& arguments, Str const& body)
+      : Procedure(name),
+        arguments_(arguments),
+        body_(body),
+        varargs_(arguments.size() > 0 && arguments.back().equals(Str("args")))
     { }
 
     bool native() const { return false; }
 
     ReturnCode call(ArgumentVector const& args)
     {
-      if ((args.size() - 1) != arguments_.size())
+      if (!varargs_ && (args.size() - 1) != arguments_.size())
         return _reportError(Str::format("Procedure '%s' called with wrong number of arguments, expected %d but got %d", args[0].utf8().c_str(), arguments_.size(), args.size() - 1));
 
       frames().push();
 
       // Setup arguments
-      for (size_t i = 0, len = arguments_.size(); i < len; ++i)
-        frames().current().set(arguments_[i], args[i + 1]);
+      if (varargs_)
+      {
+
+      }
+      else
+      {
+        for (size_t i = 0, len = arguments_.size(); i < len; ++i)
+          frames().current().set(arguments_[i], args[i + 1]);
+      }
 
       const ReturnCode retCode = evaluate(body_);
       const Str result(frames().current().result_);
@@ -635,19 +646,20 @@ namespace tcl {
 
     Str body_;
     ArgumentVector arguments_;
+    bool varargs_ = false;
   };
 
   TCL_PROC(proc)
   {
+    for (auto const& arg : args)
+      logInfo(arg);
+
     TCL_ARITY(4);
 
     if (findProcedure(args[1]))
       return _reportError(Str("Procedure of name '").append(args[1]).append(Str("' already exists")));
 
-    TclProc * procData = new TclProc(args[1]);
-    procData->body_ = args[3];
-    procData->arguments_ = args[2].split(' ');
-
+    new TclProc(args[1], args[2].split(' '), args[3]);
     return RET_OK;
   }
 
@@ -706,7 +718,10 @@ namespace tcl {
     if (args.size() != 3 && args.size() != 5)
       return _arityError(args[0]);
 
-    const double result = calculateExpr(args[1].utf8());
+    Str check("expr ");
+    check.append(args[1]);
+
+    const double result = calculateExpr(check.utf8());
 
     if (result > 0.0)
       return evaluate(args[2]);
@@ -820,24 +835,52 @@ namespace tcl {
   {
     TCL_ARITY(1);
 
-    static const Str LENGTH("length");
-    static const Str INDEX("index");
-
-    const Str command = args[1];
-
-    if (command.equals(LENGTH) && args.size() == 3)
+    const uint32_t command = args[1].hash();
+    switch (command)
     {
-      TCL_RETURN(Str::fromInt(args[2].size()));
-    }
-    else if (command.equals(INDEX) && args.size() == 4)
-    {
-      const int idx = args[3].toInt();
-      if (idx < 0 || idx >= args[2].size())
-        TCL_RETURN(Str::EMPTY);
+      case 3673030522u: // length
+        {
+          TCL_ARITY(2);
+          TCL_RETURN(Str::fromInt(args[2].size()));
+        }
+        break;
 
-      Str result;
-      result.append(args[2][idx]);
-      TCL_RETURN(result);
+      case 3470952552:  // index
+        {
+          TCL_ARITY(3);
+          const int idx = args[3].toInt();
+          if (idx < 0 || idx >= args[2].size())
+            TCL_RETURN(Str::EMPTY);
+
+          Str result;
+          result.append(args[2][idx]);
+          TCL_RETURN(result);
+        }
+        break;
+
+      case 1615745465u: // hash
+        {
+          TCL_ARITY(2);
+          TCL_RETURN(Str::fromInt(args[2].hash()));
+        }
+        break;
+
+      case 1911912945u: // tolower
+        {
+          TCL_ARITY(2);
+          TCL_RETURN(args[2].toLower());
+        }
+        break;
+
+      case 98427793u: // toupper
+        {
+          TCL_ARITY(2);
+          TCL_RETURN(args[2].toUpper());
+        }
+        break;
+
+      default:
+        break;
     }
 
     TCL_OK();

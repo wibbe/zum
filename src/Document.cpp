@@ -69,18 +69,19 @@ namespace doc {
   static std::vector<UndoState> undoStack_;
   static std::vector<UndoState> redoStack_;
 
-  void createEmpty(Str const& filename)
+  FUNC_1(createEmpty, "doc:createEmpty")
   {
     close();
     currentDoc_.width_ = kDefaultRowCount;
     currentDoc_.height_ = kDefaultColumnCount;
     currentDoc_.columnWidth_.resize(kDefaultColumnCount, kDefaultColumnWidth);
-    currentDoc_.filename_ = filename;
+    currentDoc_.filename_ = arg1;
     currentDoc_.delimiter_ = ',';
     currentDoc_.readOnly_ = false;
+    return true;
   }
 
-  void close()
+  FUNC_0(close, "doc:close")
   {
     currentDoc_.width_ = 0;
     currentDoc_.height_ = 0;
@@ -91,6 +92,7 @@ namespace doc {
     currentDoc_.readOnly_ = true;
     undoStack_.clear();
     redoStack_.clear();
+    return true;
   }
 
   static Cell & getCell(Index const& idx)
@@ -121,7 +123,7 @@ namespace doc {
     }
   }
 
-  bool undo()
+  FUNC_0(undo, "doc:undo")
   {
     if (!undoStack_.empty())
     {
@@ -139,7 +141,7 @@ namespace doc {
     return false;
   }
 
-  bool redo()
+  FUNC_0(redo, "doc:redo")
   {
     if (!redoStack_.empty())
     {
@@ -167,11 +169,11 @@ namespace doc {
     return currentDoc_.readOnly_;
   }
 
-  bool save(Str const& filename)
+  FUNC_1(save, "doc:save")
   {
-    logInfo(Str("Saving document: ").append(filename));
+    logInfo(Str("Saving document: ").append(arg1));
 
-    std::ofstream file(filename.utf8().c_str());
+    std::ofstream file(arg1.utf8().c_str());
     if (!file.is_open())
     {
       flashMessage(Str("Could not save document!"));
@@ -193,7 +195,7 @@ namespace doc {
       }
     }
 
-    currentDoc_.filename_ = filename;
+    currentDoc_.filename_ = arg1;
     flashMessage(Str("Document saved!"));
     return true;
   }
@@ -238,7 +240,7 @@ namespace doc {
       std::vector<int> delimCount(delimiters.size(), 0);
       for (auto ch : data)
       {
-        const int idx = delimiters.find_char(ch);
+        const int idx = delimiters.findChar(ch);
         if (idx >= 0)
           delimCount[idx]++;
       }
@@ -332,11 +334,11 @@ namespace doc {
     return true;
   }
 
-  bool load(Str const& filename)
+  FUNC_1(load, "doc:load")
   {
-    logInfo(Str("Loading document: ").append(filename));
+    logInfo(Str("Loading document: ").append(arg1));
 
-    std::ifstream file(filename.utf8().c_str());
+    std::ifstream file(arg1.utf8().c_str());
     if (!file.is_open())
     {
       flashMessage(Str("Could not open document!"));
@@ -364,7 +366,7 @@ namespace doc {
     if (!loadDocument(data))
       return false;
 
-    currentDoc_.filename_ = filename;
+    currentDoc_.filename_ = arg1;
     currentDoc_.readOnly_ = false;
 
     return true;
@@ -616,14 +618,14 @@ namespace doc {
       return idx;
 
     int i = 0;
-    while ((i < str.size()) && str[i] >= 'A' && str[i] <= 'Z')
+    while ((i < str.size()) && isUpperAlpha(str[i]))
     {
       idx.x *= 26;
       idx.x += str[i] - 'A';
       i++;
     }
 
-    while ((i < str.size()) && str[i] >= '0' && str[i] <= '9')
+    while ((i < str.size()) && isDigit(str[i]))
     {
       idx.y *= 10;
       idx.y += str[i] - '0';
@@ -637,8 +639,6 @@ namespace doc {
       idx.x = getColumnCount() - 1;
     if (idx.y >= getRowCount())
       idx.y = getRowCount() - 1;
-
-
 
     return idx;
   }

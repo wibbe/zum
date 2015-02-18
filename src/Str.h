@@ -43,7 +43,7 @@ class Str
 
     std::vector<Str> split(char_type delimiter) const;
 
-    int find_char(char_type ch) const;
+    int findChar(char_type ch) const;
 
     iterator begin() { return data_.begin(); }
     iterator end() { return data_.end(); }
@@ -53,18 +53,25 @@ class Str
     void pop_back();
     void pop_front(uint32_t count = 1);
 
+    Str toUpper() const;
+    Str toLower() const;
+
     Str stripWhitespace() const;
     void eatWhitespaceFront();
 
     int toInt() const;
     double toDouble() const;
 
+    uint32_t hash() const;
+
     std::string utf8() const;
 
     static Str format(const char * fmt, ...);
 
-    static Str fromInt(int value);
+    static Str fromInt(long long int value);
     static Str fromDouble(double value);
+
+    static uint32_t hash(const char * str);
 
   private:
     std::vector<char_type> data_;

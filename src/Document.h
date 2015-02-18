@@ -5,8 +5,8 @@
 
 namespace doc {
 
-  void createEmpty(Str const& filename);
-  void close();
+  bool createEmpty(Str const& filename);
+  bool close();
 
   int getColumnWidth(int column);
   int getRowCount();

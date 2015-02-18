@@ -308,6 +308,9 @@ void executeEditCommands()
   }
 }
 
+static const int COMMAND_HISTORY_LENGHT = 1000;
+static std::vector<Str> commandHistory_;
+
 void executeAppCommands(Str const& commandLine)
 {
   tcl::evaluate(commandLine);
@@ -319,13 +322,6 @@ Str completeCommand(Str const& command)
 }
 
 // -- Application wide commands --
-
-TCL_PROC(q)
-{
-  quitApplication();
-
-  TCL_OK();
-}
 
 TCL_PROC(n)
 {

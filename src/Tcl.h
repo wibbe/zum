@@ -43,7 +43,12 @@ namespace tcl {
   void reset();
 
   ReturnCode evaluate(Str const& code);
-  ReturnCode exec(std::string const& filename);
+
+  ReturnCode exec(const char * command);
+  ReturnCode exec(const char * command, Str const& arg1);
+  ReturnCode exec(const char * command, Str const& arg1, Str const& arg2);
+
+  ReturnCode execFile(std::string const& filename);
 
   Str completeName(Str const& name);
 
@@ -74,3 +79,46 @@ namespace tcl {
   struct TclProc_##funcName : public tcl::Procedure { TclProc_##funcName() : Procedure(Str(tclName)) { } bool native() const { return true; } tcl::ReturnCode call(tcl::ArgumentVector const& args); }; \
   namespace { TclProc_##funcName __dummy##funcName; } \
   tcl::ReturnCode TclProc_##funcName::call(tcl::ArgumentVector const& args)
+
+#define FUNC_0(funcName, tclName) \
+  bool funcName(); \
+  struct CppFunc_##funcName : public tcl::Procedure { \
+    CppFunc_##funcName() : Procedure(Str(tclName)) { } \
+    bool native() const { return true; } \
+    tcl::ReturnCode call(tcl::ArgumentVector const& args) { \
+      if (args.size() != 1) return tcl::_arityError(args[0]); \
+      return funcName() ? tcl::RET_OK : tcl::RET_ERROR; \
+    } \
+  }; \
+  namespace { CppFunc_##funcName __dummy##funcName; } \
+  bool funcName()
+
+#define FUNC_1(funcName, tclName) \
+  bool funcName(Str const& arg1); \
+  struct CppFunc_##funcName : public tcl::Procedure \
+  { \
+    CppFunc_##funcName() : Procedure(Str(tclName)) { } \
+    bool native() const { return true; } \
+    tcl::ReturnCode call(tcl::ArgumentVector const& args) \
+    { \
+      if (args.size() != 2) return tcl::_arityError(args[0]); \
+      return funcName(args[1]) ? tcl::RET_OK : tcl::RET_ERROR; \
+    } \
+  }; \
+  namespace { CppFunc_##funcName __dummy##funcName; } \
+  bool funcName(Str const& arg1)
+
+#define FUNC_2(funcName, tclName) \
+  bool funcName(Str const& arg1, Str const& arg2); \
+  struct CppFunc_##funcName : public tcl::Procedure \
+  { \
+    CppFunc_##funcName() : Procedure(Str(tclName)) { } \
+    bool native() const { return true; } \
+    tcl::ReturnCode call(tcl::ArgumentVector const& args) \
+    { \
+      if (args.size() != 3) return tcl::_arityError(args[0]); \
+      return funcName(args[1], args[2]]) ? tcl::RET_OK : tcl::RET_ERROR; \
+    } \
+  }; \
+  namespace { CppFunc_##funcName __dummy##funcName; } \
+  bool funcName(Str const& arg1, Str const& arg2)

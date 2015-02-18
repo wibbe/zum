@@ -1,11 +1,13 @@
 
 #include "Str.h"
+#include "MurmurHash.h"
 
 #include "termbox.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 
 Str Str::EMPTY;
 
@@ -98,7 +100,7 @@ bool Str::starts_with(Str const& str) const
   return true;
 }
 
-int Str::find_char(char_type ch) const
+int Str::findChar(char_type ch) const
 {
   for (int i = 0, len = size(); i < len; ++i)
     if (data_[i] == ch)
@@ -155,6 +157,40 @@ std::vector<Str> Str::split(char_type delimiter) const
   return result;
 }
 
+Str Str::toUpper() const
+{
+  const int offset = 'A' - 'a';
+
+  Str result;
+  result.data_.reserve(size());
+  for (auto ch : data_)
+  {
+    if (isLowerAlpha(ch))
+      result.data_.push_back(ch + offset);
+    else
+      result.data_.push_back(ch);
+  }
+
+  return result;
+}
+
+Str Str::toLower() const
+{
+  const int offset = 'A' - 'a';
+
+  Str result;
+  result.data_.reserve(size());
+  for (auto ch : data_)
+  {
+    if (isUpperAlpha(ch))
+      result.data_.push_back(ch - offset);
+    else
+      result.data_.push_back(ch);
+  }
+
+  return result;
+}
+
 Str Str::stripWhitespace() const
 {
   Str str(*this);
@@ -202,6 +238,11 @@ Str Str::format(const char * fmt, ...)
   return Str(buffer);
 }
 
+uint32_t Str::hash() const
+{
+  return murmurHash(&data_[0], data_.size() * sizeof(Str::char_type), 0);
+}
+
 static const uint32_t CONVERT_BUFFER_SIZE = 128;
 static char convertBuffer_[CONVERT_BUFFER_SIZE];
 
@@ -235,9 +276,9 @@ double Str::toDouble() const
   return std::atof(convertBuffer_);
 }
 
-Str Str::fromInt(int value)
+Str Str::fromInt(long long int value)
 {
-  snprintf(convertBuffer_, CONVERT_BUFFER_SIZE, "%d", value);
+  snprintf(convertBuffer_, CONVERT_BUFFER_SIZE, "%lld", value);
   return Str(convertBuffer_);
 }
 
@@ -245,4 +286,10 @@ Str Str::fromDouble(double value)
 {
   snprintf(convertBuffer_, CONVERT_BUFFER_SIZE, "%f", value);
   return Str(convertBuffer_);
+}
+
+uint32_t Str::hash(const char * str)
+{
+  const uint32_t len = std::strlen(str);
+  return murmurHash(str, len, 0);
 }

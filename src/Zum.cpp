@@ -10,9 +10,10 @@
 static bool applicationRunning_ = true;
 static int timeout_ = 0;
 
-void quitApplication()
+FUNC_0(quitApplication, "app:quit")
 {
   applicationRunning_ = false;
+  return true;
 }
 
 void clearTimeout()
