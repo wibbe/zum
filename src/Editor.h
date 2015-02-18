@@ -33,6 +33,9 @@ void updateCursor();
 void clearFlashMessage();
 void flashMessage(Str const& message);
 
+void clearCompletionHints();
+void setCompletionHints(std::vector<Str> const& hints);
+
 void clearLog();
 void logInfo(Str const& message);
 void logError(Str const& message);

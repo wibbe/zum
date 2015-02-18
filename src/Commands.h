@@ -26,6 +26,5 @@ void pushEditCommandKey(uint32_t ch);
 void clearEditCommandSequence();
 void executeEditCommands();
 void executeAppCommands(Str const& commandLine);
-Str completeCommand(Str const& command);
 
 std::vector<EditCommand> const& getEditCommands();

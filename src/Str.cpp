@@ -19,6 +19,10 @@ Str::Str(const char * str)
   set(str);
 }
 
+Str::Str(char_type ch)
+  : data_(1, ch)
+{ }
+
 Str::Str(Str const& str)
   : data_(str.begin(), str.end())
 { }
@@ -134,7 +138,7 @@ void Str::pop_front(uint32_t count)
     data_.pop_back();
 }
 
-std::vector<Str> Str::split(char_type delimiter) const
+std::vector<Str> Str::split(char_type delimiter, bool keepDelimiter) const
 {
   std::vector<Str> result;
   Str part;
@@ -145,6 +149,15 @@ std::vector<Str> Str::split(char_type delimiter) const
     {
       if (!part.empty())
         result.push_back(part);
+
+      if (keepDelimiter)
+      {
+        if (!result.empty() && result.back().back() == delimiter)
+          result.back().append(delimiter);
+        else
+          result.push_back(Str(delimiter));
+      }
+
       part.clear();
     }
     else

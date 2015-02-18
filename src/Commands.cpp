@@ -316,11 +316,6 @@ void executeAppCommands(Str const& commandLine)
   tcl::evaluate(commandLine);
 }
 
-Str completeCommand(Str const& command)
-{
-  return tcl::completeName(command);
-}
-
 // -- Application wide commands --
 
 TCL_PROC(n)
@@ -353,10 +348,8 @@ TCL_PROC(w)
   TCL_OK();
 }
 
-TCL_PROC(edit)
+FUNC_X(edit, "edit")
 {
-  TCL_ARITY(1);
-
   for (auto i = 1; i < args.size(); ++i)
   {
     const Str arg = args[i];
@@ -370,11 +363,11 @@ TCL_PROC(edit)
     }
   }
 
-  TCL_OK();
+  return true;
 }
 
-TCL_PROC(help)
+FUNC_0(help, "help")
 {
   doc::loadRaw(getHelpDocument(), Str("[Help]"));
-  TCL_OK();
+  return true;
 }

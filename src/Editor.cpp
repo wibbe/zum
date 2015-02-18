@@ -3,6 +3,7 @@
 #include "Document.h"
 #include "Str.h"
 #include "Commands.h"
+#include "Completion.h"
 
 #include <memory.h>
 #include <stdarg.h>
@@ -40,6 +41,8 @@ int editLinePos_ = 0;
 static Str editLine_;
 static Str yankBuffer_;
 static Str flashMessage_;
+static std::vector<Str> completionHints_;
+static std::vector<Str> completionHintLines_;
 
 extern void parseAndExecute(Str const& command);
 extern Str completeCommand(Str const& command);
@@ -174,6 +177,14 @@ void handleTextInput(struct tb_event * event)
         editLinePos_++;
       break;
 
+    case TB_KEY_HOME:
+      editLinePos_ = 0;
+      break;
+
+    case TB_KEY_END:
+      editLinePos_ = editLine_.size();
+      break;
+
     case TB_KEY_SPACE:
       editLine_.insert(editLinePos_, ' ');
       editLinePos_++;
@@ -300,11 +311,23 @@ void handleCommandEvent(struct tb_event * event)
       break;
 
     case TB_KEY_TAB:
-      //complete_command(editLine_);
+      {
+        Str line = editLine_;
+        completeEditLine(line);
+
+        if (!line.equals(editLine_))
+        {
+          editLine_ = line;
+          editLinePos_ = editLine_.size();
+        }
+      }
       break;
 
     case TB_KEY_ESC:
-      editMode_ = EditorMode::NAVIGATE;
+      if (completionHints_.empty())
+        editMode_ = EditorMode::NAVIGATE;
+      else
+        clearCompletionHints();
       break;
   }
 }
@@ -371,7 +394,6 @@ void flashMessage(Str const& message)
   clearTimeout();
 }
 
-
 static std::string logFile()
 {
   static const std::string LOG_FILE = "/.zumlog";
@@ -403,9 +425,51 @@ void logError(Str const& message)
   fclose(file);
 }
 
+static int getCommandLineHeight()
+{
+  return 2 + completionHintLines_.size();
+}
+
+static void buildCompletionHintLines()
+{
+  completionHintLines_.clear();
+
+  const int width = tb_width();
+
+  Str currentLine;
+  for (auto const& hint : completionHints_)
+  {
+    if (currentLine.size() + hint.size() > width)
+    {
+      completionHintLines_.push_back(currentLine);
+      currentLine = hint;
+    }
+    else
+      currentLine.append(hint);
+
+    while (currentLine.size() % 20 != 0)
+      currentLine.append(' ');
+  }
+
+  if (!currentLine.empty())
+    completionHintLines_.push_back(currentLine);
+}
+
+void clearCompletionHints()
+{
+  completionHints_.clear();
+}
+
+void setCompletionHints(std::vector<Str> const& hints)
+{
+  completionHints_ = hints;
+}
+
+
 void drawInterface()
 {
   calculateColumDrawWidths();
+  buildCompletionHintLines();
 
   tb_set_clear_attributes(TB_DEFAULT, TB_DEFAULT);
   tb_clear();
@@ -437,7 +501,7 @@ void drawHeaders()
 
   // Draw row header
   const int y_end = doc::getRowCount() < (tb_height() - 2) ? doc::getRowCount() : tb_height() - 2;
-  for (int y = 1; y < tb_height() - 2; ++y)
+  for (int y = 1; y < tb_height() - getCommandLineHeight(); ++y)
   {
     const int row = y + currentScroll_.y - 1;
     const uint16_t color = row == currentIndex_.y ? TB_REVERSE | TB_DEFAULT : TB_DEFAULT;
@@ -460,7 +524,7 @@ void drawHeaders()
 
 void drawWorkspace()
 {
-  for (int y = 1; y < tb_height() - 2; ++y)
+  for (int y = 1; y < tb_height() - getCommandLineHeight(); ++y)
   {
     for (int x = 0; x < drawColumnInfo_.size(); ++x)
     {
@@ -534,6 +598,10 @@ void drawCommandLine()
   if (!flashMessage_.empty())
     commandLine = flashMessage_;
 
-  drawText(0, tb_height() - 2, tb_width(), TB_REVERSE | TB_DEFAULT, TB_REVERSE | TB_DEFAULT, infoLine);
+
+  for (int i = 0; i < completionHintLines_.size(); ++i)
+    drawText(0, tb_height() - 1 - completionHintLines_.size() + i, tb_width(), TB_DEFAULT, TB_DEFAULT, completionHintLines_[i]);
+
+  drawText(0, tb_height() - completionHintLines_.size() - 2, tb_width(), TB_REVERSE | TB_DEFAULT, TB_REVERSE | TB_DEFAULT, infoLine);
   drawText(0, tb_height() - 1, tb_width(), TB_DEFAULT, TB_DEFAULT, commandLine);
 }

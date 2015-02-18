@@ -50,7 +50,7 @@ namespace tcl {
 
   ReturnCode execFile(std::string const& filename);
 
-  Str completeName(Str const& name);
+  std::vector<Str> findMatches(Str const& name);
 
   // -- Internal functions --
   ReturnCode _arityError(Str const& command);
@@ -92,6 +92,18 @@ namespace tcl {
   }; \
   namespace { CppFunc_##funcName __dummy##funcName; } \
   bool funcName()
+
+#define FUNC_X(funcName, tclName) \
+  bool funcName(tcl::ArgumentVector const& args); \
+  struct CppFunc_##funcName : public tcl::Procedure { \
+    CppFunc_##funcName() : Procedure(Str(tclName)) { } \
+    bool native() const { return true; } \
+    tcl::ReturnCode call(tcl::ArgumentVector const& args) { \
+      return funcName(args) ? tcl::RET_OK : tcl::RET_ERROR; \
+    } \
+  }; \
+  namespace { CppFunc_##funcName __dummy##funcName; } \
+  bool funcName(tcl::ArgumentVector const& args)
 
 #define FUNC_1(funcName, tclName) \
   bool funcName(Str const& arg1); \

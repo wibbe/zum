@@ -16,6 +16,7 @@ class Str
   public:
     Str();
     explicit Str(const char * str);
+    explicit Str(char_type ch);
     Str(Str const& str);
     Str(Str && str);
 
@@ -41,7 +42,7 @@ class Str
     int size() const { return data_.size(); }
     bool empty() const { return data_.size() == 0; }
 
-    std::vector<Str> split(char_type delimiter) const;
+    std::vector<Str> split(char_type delimiter, bool keepDelimiter = false) const;
 
     int findChar(char_type ch) const;
 

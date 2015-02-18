@@ -300,49 +300,53 @@ namespace tcl {
 
   // -- CallFrame --
 
-  struct CallFrame
+  class CallFrame
   {
-    void set(Str const& name, Str const& value)
-    {
-      for (auto & pair : variables_)
+    public:
+      void set(Str const& name, Str const& value)
       {
-        if (pair.first.equals(name))
+        for (auto & pair : variables_)
         {
-          pair.second = value;
-          return;
+          if (pair.first.equals(name))
+          {
+            pair.second = value;
+            return;
+          }
         }
+
+        variables_.push_back({name, value});
       }
 
-      variables_.push_back({name, value});
-    }
-
-    Str const& get(Str const& name)
-    {
-      for (auto const& pair : variables_)
+      Str const& get(Str const& name)
       {
-        if (pair.first.equals(name))
-          return pair.second;
-      }
-
-      return Str::EMPTY;
-    }
-
-    bool get(Str const& name, Str & value) const
-    {
-      for (auto const& pair : variables_)
-      {
-        if (pair.first.equals(name))
+        for (auto const& pair : variables_)
         {
-          value = pair.second;
-          return true;
+          if (pair.first.equals(name))
+            return pair.second;
         }
+
+        return Str::EMPTY;
       }
 
-      return false;
-    }
+      bool get(Str const& name, Str & value) const
+      {
+        for (auto const& pair : variables_)
+        {
+          if (pair.first.equals(name))
+          {
+            value = pair.second;
+            return true;
+          }
+        }
 
-    std::vector<std::pair<Str, Str>> variables_;
-    Str result_;
+        return false;
+      }
+
+      std::vector<std::pair<Str, Str>> const& variables() const { return variables_; }
+
+    public:
+      std::vector<std::pair<Str, Str>> variables_;
+      Str result_;
   };
 
   class FrameStack
@@ -440,15 +444,23 @@ namespace tcl {
         delete proc.second;
   }
 
-  Str completeName(Str const& name)
+  std::vector<Str> findMatches(Str const& name)
   {
+    std::vector<Str> result;
+
     for (auto const& proc : procedures())
     {
       if (proc.first.starts_with(name))
-        return proc.first;
+        result.push_back(proc.first);
     }
 
-    return Str::EMPTY;
+    for (auto const& var : frames().global().variables())
+    {
+      if (var.first.starts_with(name))
+        result.push_back(var.first);
+    }
+
+    return result;
   }
 
   void _return(Str const& value)
