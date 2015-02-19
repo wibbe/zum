@@ -1,7 +1,5 @@
 
 
-debug 1
-
 # -- Vim bindings for the application --
 
 proc q {} {

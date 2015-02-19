@@ -24,7 +24,7 @@ namespace tcl {
     EndOfFile,
     Separator,
     String,
-    Variable,
+    VariableToken,
     Escaped,
     Command,
     Append,
@@ -36,7 +36,7 @@ namespace tcl {
     "EndOfFile",
     "Separator",
     "String",
-    "Variable",
+    "VariableToken",
     "Escaped",
     "Command",
     "Append",
@@ -179,7 +179,7 @@ namespace tcl {
   static bool parseVariable(Parser * p)
   {
     p->value_.clear();
-    p->token_ = Variable;
+    p->token_ = VariableToken;
     p->inc(); // eat $
 
     while (!p->eof() && (isAlpha(p->current_) || isDigit(p->current_) || p->current_ == ':' || p->current_ == '_'))
@@ -415,8 +415,8 @@ namespace tcl {
 
   // -- Globals --
 
+  static const Variable DEBUG("tcl:debug", "false");
 
-  static bool debug_ = false;
   static Str error_;
 
   // -- Procedures --
@@ -546,7 +546,7 @@ namespace tcl {
 
   ReturnCode evaluate(Str const& code, int level)
   {
-    if (debug_)
+    if (DEBUG.toBool())
     {
       logInfo(Str(' ', level * 2), "evaluate {\n", code, "\n}");
       level++;
@@ -561,20 +561,20 @@ namespace tcl {
     {
       Token previousToken = parser.token_;
 
-      if (debug_)
+      if (DEBUG.toBool())
         logInfo(Str(' ', level * 2), "Parse next token");
 
       if (!parser.next())
         return RET_ERROR;
 
-      if (debug_)
+      if (DEBUG.toBool())
         logInfo(Str(' ', level * 2), "Token: ", tokenAsReadable[parser.token_]," = '", parser.value_,"'");
 
       Str value(parser.value_);
 
-      if (parser.token_ == Variable)
+      if (parser.token_ == VariableToken)
       {
-        if (debug_)
+        if (DEBUG.toBool())
           logInfo(Str(' ', level * 2), "Accessing variable '", parser.value_,"'");
 
         Str var;
@@ -588,7 +588,7 @@ namespace tcl {
       }
       else if (parser.token_ == Command)
       {
-        if (debug_)
+        if (DEBUG.toBool())
           logInfo(Str(' ', level * 2), "Evaluating sub-command: '", parser.value_, "'");
 
         if (evaluate(parser.value_, level + 1) != RET_OK)
@@ -596,7 +596,7 @@ namespace tcl {
 
         value = frames().current().result_;
 
-        if (debug_)
+        if (DEBUG.toBool())
           logInfo(Str(' ', level * 2), "Result: '", value, "'");
       }
       else if (parser.token_ == Separator)
@@ -607,7 +607,7 @@ namespace tcl {
 
       if (parser.token_ == EndOfLine || parser.token_ == EndOfFile)
       {
-        if (debug_)
+        if (DEBUG.toBool())
         {
           Str exec;
           for (size_t i = 0; i < args.size(); ++i)
@@ -956,16 +956,6 @@ namespace tcl {
   TCL_PROC(continue)
   {
     return RET_CONTINUE;
-  }
-
-  TCL_PROC(debug)
-  {
-    TCL_CHECK_ARGS(1, 2, "debug ?enabled?");
-
-    const double result = calculateExpr(args[1].utf8());
-    debug_ = result > 0.0;
-
-    TCL_OK();
   }
 
 }
