@@ -5,10 +5,13 @@
 
 namespace doc {
 
-  bool createEmpty(Str const& filename);
+  bool createDefaultEmpty();
+  bool createEmpty(Str const& width, Str const& height);
   bool close();
 
   int getColumnWidth(int column);
+  void setColumnWidth(int column, int width);
+
   int getRowCount();
   int getColumnCount();
   bool isReadOnly();

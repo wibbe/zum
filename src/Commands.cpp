@@ -6,6 +6,7 @@
 #include "Help.h"
 #include "Tokenizer.h"
 #include "Tcl.h"
+#include "Log.h"
 
 
 static Str commandSequence_;
@@ -153,6 +154,16 @@ static std::vector<EditCommand> editCommands_ = {
     {'j', 0}, false,
     "Move down",
     [] (int) { navigateDown(); }
+  },
+  { // Find next match
+    {'n', 0}, false,
+    "Find next match",
+    [] (int) { findNextMatch(); }
+  },
+  { // Find previous match
+    {'N', 0}, false,
+    "Find previous match",
+    [] (int) { findPreviousMatch(); }
   },
   {
     {'a', 'c'}, false,
@@ -321,19 +332,9 @@ void executeAppCommands(Str const& commandLine)
 
 // -- Application wide commands --
 
-TCL_PROC(n)
-{
-  if (args.size() == 2)
-    doc::createEmpty(args[1]);
-  else
-    doc::createEmpty(Str::EMPTY);
-
-  TCL_OK();
-}
-
 TCL_PROC(e)
 {
-  TCL_ARITY(1);
+  TCL_CHECK_ARG(2, "e filename");
 
   setCursorPos(Index(0, 0));
   doc::load(args[1]);
@@ -343,6 +344,8 @@ TCL_PROC(e)
 
 TCL_PROC(w)
 {
+  TCL_CHECK_ARGS(1, 2, "w ?filename?");
+
   if (args.size() == 2 && !args[1].empty())
     doc::save(args[1]);
   else if (!doc::getFilename().empty())
@@ -351,7 +354,7 @@ TCL_PROC(w)
   TCL_OK();
 }
 
-FUNC_X(edit, "edit")
+FUNC_X(edit, "editor:edit")
 {
   for (auto i = 1; i < args.size(); ++i)
   {
@@ -361,8 +364,6 @@ FUNC_X(edit, "edit")
       clearEditCommandSequence();
       for (auto ch : args[1])
         pushEditCommandKey(ch);
-
-      executeEditCommands();
     }
   }
 
@@ -373,4 +374,20 @@ FUNC_0(help, "help")
 {
   doc::loadRaw(getHelpDocument(), Str("[Help]"));
   return true;
+}
+
+TCL_PROC2(editorCursor, "editor:cursor")
+{
+  TCL_CHECK_ARGS(1, 3, "editor:cursor ?column row?");
+
+  if (args.size() == 3)
+  {
+    const int column = args[1].toInt();
+    const int row = args[2].toInt();
+
+    setCursorPos(Index(column, row));
+  }
+
+  const Index idx = getCursorPos();
+  return tcl::resultStr(Str::format("%d %d", idx.x, idx.y));
 }

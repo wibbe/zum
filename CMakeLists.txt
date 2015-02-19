@@ -33,6 +33,7 @@ set(SOURCE
     src/TclString.cpp
     src/MurmurHash.cpp
     src/Completion.cpp
+    src/Log.cpp
     src/3rdparty/termbox/termbox.c
     src/3rdparty/termbox/utf8.c
     ${CMAKE_CURRENT_BINARY_DIR}/ScriptingLib.tcl.h

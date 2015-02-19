@@ -23,7 +23,7 @@ void completeEditLine(Str & editLine)
       for (int i = 0; i < (parts.size() - 1); ++i)
         editLine.append(parts[i]);
 
-      editLine.append(hints.front());
+      editLine.append(hints.front()).append(' ');
     }
     else
       setCompletionHints(hints);

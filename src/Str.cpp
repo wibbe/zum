@@ -20,8 +20,8 @@ Str::Str(const char * str)
   set(str);
 }
 
-Str::Str(char_type ch)
-  : data_(1, ch)
+Str::Str(char_type ch, int count)
+  : data_(count, ch)
 { }
 
 Str::Str(Str const& str)
@@ -77,9 +77,10 @@ Str & Str::append(Str const& str)
   return *this;
 }
 
-Str & Str::append(char_type ch)
+Str & Str::append(char_type ch, int count)
 {
-  data_.push_back(ch);
+  for (; count > 0; --count)
+    data_.push_back(ch);
   return *this;
 }
 
@@ -111,6 +112,14 @@ int Str::findChar(char_type ch) const
     if (data_[i] == ch)
       return i;
   return -1;
+}
+
+int Str::findStr(Str const& str) const
+{
+  const std::string source = utf8();
+  const std::string match = str.utf8();
+  const int pos = source.find(match);
+  return pos == std::string::npos ? -1 : pos;
 }
 
 bool Str::equals(Str const& str, bool ignoreCase, int length) const
@@ -238,6 +247,19 @@ Str Str::stripWhitespace() const
     str.pop_back();
 
   return str;
+}
+
+Str Str::substr(int start, int length) const
+{
+  const int len = length < 0 ? data_.size() : std::min(length, (int)data_.size());
+
+  Str result;
+  result.data_.reserve(len);
+
+  for (int i = 0; i < len; ++i)
+    result.data_.push_back(data_[start + i]);
+
+  return result;
 }
 
 void Str::eatWhitespaceFront()

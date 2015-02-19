@@ -3,6 +3,7 @@
 #include "Str.h"
 #include "Types.h"
 #include "Editor.h"
+#include "Log.h"
 
 #include <assert.h>
 #include <stdlib.h>
@@ -23,12 +24,11 @@
 
 namespace doc {
 
-  static const int kDefaultRowCount = 10;
-  static const int kDefaultColumnCount = 10;
-  static const int kDefaultColumnWidth = 12;
-
   static const tcl::Variable DELIMITERS("app:delimiters", ",;");
   static const tcl::Variable IGNORE_FIRST_ROW("app:ignore_first_row", "true");
+  static const tcl::Variable DEFAULT_ROW_COUNT("doc:default_row_count", "10");
+  static const tcl::Variable DEFAULT_COLUMN_COUNT("doc:default_column_count", "5");
+  static const tcl::Variable DEFAULT_COLUMN_WIDTH("doc:default_column_width", "20");
 
   struct Document
   {
@@ -69,15 +69,23 @@ namespace doc {
   static std::vector<UndoState> undoStack_;
   static std::vector<UndoState> redoStack_;
 
-  FUNC_1(createEmpty, "doc:createEmpty")
+  FUNC_0(createDefaultEmpty, "doc:createDefaultEmpty")
   {
     close();
-    currentDoc_.width_ = kDefaultRowCount;
-    currentDoc_.height_ = kDefaultColumnCount;
-    currentDoc_.columnWidth_.resize(kDefaultColumnCount, kDefaultColumnWidth);
-    currentDoc_.filename_ = arg1;
+    currentDoc_.width_ = DEFAULT_ROW_COUNT.toInt();
+    currentDoc_.height_ = DEFAULT_COLUMN_COUNT.toInt();
+    currentDoc_.columnWidth_.resize(DEFAULT_COLUMN_COUNT.toInt(), DEFAULT_COLUMN_WIDTH.toInt());
+    currentDoc_.filename_ = Str("[NoName]");
     currentDoc_.delimiter_ = ',';
     currentDoc_.readOnly_ = false;
+    return true;
+  }
+
+  FUNC_2(createEmpty, "doc:createEmpty", "doc:createEmpty columnCount rowCount")
+  {
+    createDefaultEmpty();
+    currentDoc_.width_ = arg1.toInt();
+    currentDoc_.height_ = arg2.toInt();
     return true;
   }
 
@@ -169,7 +177,7 @@ namespace doc {
     return currentDoc_.readOnly_;
   }
 
-  FUNC_1(save, "doc:save")
+  FUNC_1(save, "doc:save", "doc:save filename")
   {
     logInfo(Str("Saving document: ").append(arg1));
 
@@ -260,6 +268,7 @@ namespace doc {
     else
      currentDoc_.delimiter_ = defaultDelimiter;
 
+    logInfo("Document delimiter ", (char)currentDoc_.delimiter_);
     Parser p(data, currentDoc_.delimiter_);
 
     // Read column width
@@ -286,7 +295,7 @@ namespace doc {
         for (auto const& cellText : cells)
         {
           const int width = cellText.toInt();
-          currentDoc_.columnWidth_.push_back(width > 0 ? width : kDefaultColumnWidth);
+          currentDoc_.columnWidth_.push_back(width > 0 ? width : DEFAULT_COLUMN_WIDTH.toInt());
         }
 
         currentDoc_.width_ = currentDoc_.columnWidth_.size();
@@ -299,7 +308,7 @@ namespace doc {
           Cell & cell = getCell(Index(i, 0));
           cell.text = cells[i];
 
-          currentDoc_.columnWidth_.push_back(kDefaultColumnWidth);
+          currentDoc_.columnWidth_.push_back(DEFAULT_COLUMN_WIDTH.toInt());
         }
 
         currentDoc_.width_ = cells.size();
@@ -324,7 +333,7 @@ namespace doc {
       if (column > currentDoc_.width_)
       {
         currentDoc_.width_ = column;
-        currentDoc_.columnWidth_.push_back(kDefaultColumnWidth);
+        currentDoc_.columnWidth_.push_back(DEFAULT_COLUMN_WIDTH.toInt());
       }
 
       if (newLine)
@@ -337,7 +346,7 @@ namespace doc {
     return true;
   }
 
-  FUNC_1(load, "doc:load")
+  FUNC_1(load, "doc:load", "doc:load filename")
   {
     logInfo(Str("Loading document: ").append(arg1));
 
@@ -360,6 +369,9 @@ namespace doc {
 
     // Did we succeed in reading the file
     if (!file)
+      return false;
+
+    if (length == 0)
       return false;
 
     // Start by closing thr current document
@@ -392,6 +404,18 @@ namespace doc {
   {
     assert(column < currentDoc_.width_);
     return currentDoc_.columnWidth_[column];
+  }
+
+  void setColumnWidth(int column, int width)
+  {
+    if (column >= currentDoc_.width_)
+      return;
+
+    if (currentDoc_.readOnly_)
+      return;
+
+    takeUndoSnapshot(EditAction::ColumnWidth, true);
+    currentDoc_.columnWidth_[column] = std::max(3, width);
   }
 
   int getRowCount()
@@ -463,7 +487,7 @@ namespace doc {
 
   void addColumn(int column)
   {
-    assert(column < currentDoc_.width_);
+    column = std::min(column, currentDoc_.width_ - 1);
 
     if (currentDoc_.readOnly_)
       return;
@@ -471,7 +495,7 @@ namespace doc {
     takeUndoSnapshot(EditAction::AddColumn, true);
 
     currentDoc_.width_++;
-    currentDoc_.columnWidth_.insert(currentDoc_.columnWidth_.begin() + column + 1, kDefaultColumnWidth);
+    currentDoc_.columnWidth_.insert(currentDoc_.columnWidth_.begin() + column + 1, DEFAULT_COLUMN_WIDTH.toInt());
 
     std::unordered_map<Index, Cell> newCells;
 
@@ -488,7 +512,7 @@ namespace doc {
 
   void addRow(int row)
   {
-    assert(row < currentDoc_.height_);
+    row = std::min(row, currentDoc_.height_ - 1);
 
     if (currentDoc_.readOnly_)
       return;
@@ -650,22 +674,69 @@ namespace doc {
 
   TCL_PROC2(docDelimiter, "doc:delimiter")
   {
+    TCL_CHECK_ARGS(1, 2, "doc:delimiter ?delimiter?");
+
     if (args.size() == 1)
-    {
-      Str result;
-      result.append(currentDoc_.delimiter_);
-      TCL_RETURN(result);
-    }
+      return tcl::resultStr(Str(currentDoc_.delimiter_));
     else if (args.size() >= 2)
-    {
       currentDoc_.delimiter_ = args[1].front();
-    }
 
     TCL_OK();
   }
 
   TCL_PROC2(docFilename, "doc:filename")
   {
+    TCL_CHECK_ARG(1, "doc:filename");
     return tcl::resultStr(currentDoc_.filename_);
+  }
+
+  TCL_PROC2(docColumWidth, "doc:columnWidth")
+  {
+    TCL_CHECK_ARGS(2, 3, "doc:columnWidth column ?width?");
+
+    const int column = args[1].toInt();
+
+    if (args.size() == 3)
+      setColumnWidth(column, args[2].toInt());
+
+    return tcl::resultInt(getColumnWidth(column));
+  }
+
+  TCL_PROC2(docColumnCount, "doc:columnCount")
+  {
+    TCL_CHECK_ARG(1, "doc:columnCount");
+    return tcl::resultInt(currentDoc_.width_);
+  }
+
+  TCL_PROC2(docRowCount, "doc:rowCount")
+  {
+    TCL_CHECK_ARG(1, "doc:rowCount");
+    return tcl::resultInt(currentDoc_.height_);
+  }
+
+  TCL_PROC2(docAddRow, "doc:addRow")
+  {
+    TCL_CHECK_ARG(2, "doc:addRow row");
+    addRow(args[1].toInt());
+    TCL_OK();
+  }
+
+  TCL_PROC2(docAddColumn, "doc:addColumn")
+  {
+    TCL_CHECK_ARG(2, "doc:addColumn column");
+    addColumn(args[1].toInt());
+    TCL_OK();
+  }
+
+  TCL_PROC2(docCell, "doc:cell")
+  {
+    TCL_CHECK_ARGS(3, 4, "doc:cell column row ?value?");
+    const int column = args[1].toInt();
+    const int row = args[2].toInt();
+
+    if (args.size() == 4)
+      setCellText(Index(column, row), args[3]);
+
+    return tcl::resultStr(getCellText(Index(column, row)));
   }
 }

@@ -4,6 +4,7 @@
 #include "Str.h"
 #include "Commands.h"
 #include "Completion.h"
+#include "Tcl.h"
 
 #include <memory.h>
 #include <stdarg.h>
@@ -41,12 +42,20 @@ int editLinePos_ = 0;
 static Str editLine_;
 static Str yankBuffer_;
 static Str flashMessage_;
+static Str searchTerm_;
 static std::vector<Str> completionHints_;
 static std::vector<Str> completionHintLines_;
+
+static const tcl::Variable ALWAYS_SHOW_HEADER("app:always_show_header", "false");
 
 extern void parseAndExecute(Str const& command);
 extern Str completeCommand(Str const& command);
 extern void clearTimeout();
+
+static int getCommandLineHeight()
+{
+  return 2 + completionHintLines_.size();
+}
 
 void updateCursor()
 {
@@ -61,6 +70,7 @@ void updateCursor()
       break;
 
     case EditorMode::COMMAND:
+    case EditorMode::SEARCH:
       tb_set_cursor(editLinePos_ + 1, tb_height() - 1);
       break;
   }
@@ -71,8 +81,8 @@ static void ensureCursorVisibility()
   if (currentIndex_.x < currentScroll_.x)
     currentScroll_.x = currentIndex_.x;
 
-  if (currentIndex_.y < currentScroll_.y)
-    currentScroll_.y = currentIndex_.y;
+  if ((currentIndex_.y - (ALWAYS_SHOW_HEADER.toBool() ? 1 : 0)) < currentScroll_.y)
+    currentScroll_.y = currentIndex_.y - (ALWAYS_SHOW_HEADER.toBool() && currentIndex_.y != 0 ? 1 : 0);
 
   int width = ROW_HEADER_WIDTH;
   bool scroll = false;
@@ -149,6 +159,90 @@ void navigateDown()
     currentIndex_.y++;
 
   ensureCursorVisibility();
+}
+
+void navigatePageUp()
+{
+  currentIndex_.y -= tb_height() - getCommandLineHeight() - 1;
+  currentScroll_.y -= tb_height() - getCommandLineHeight() - 1;
+
+  if (currentIndex_.y < 0)
+  {
+    currentIndex_.y = 0;
+    currentScroll_.y = 0;
+  }
+
+  ensureCursorVisibility();
+}
+
+void navigatePageDown()
+{
+  currentIndex_.y += tb_height() - getCommandLineHeight() - 1;
+  currentScroll_.y += tb_height() - getCommandLineHeight() - 1;
+  if (currentIndex_.y > (doc::getRowCount() - 1))
+    currentIndex_.y = doc::getRowCount() - 1;
+
+  ensureCursorVisibility();
+}
+
+bool findNextMatch()
+{
+  if (searchTerm_.empty())
+    return false;
+
+  Index pos = getCursorPos();
+  pos.x++;
+
+  while (pos.y < doc::getRowCount())
+  {
+    while (pos.x < doc::getColumnCount())
+    {
+      Str const& cellText = doc::getCellText(pos);
+      if (cellText.findStr(searchTerm_) != -1)
+      {
+        setCursorPos(pos);
+        ensureCursorVisibility();
+        return true;
+      }
+
+      pos.x++;
+    }
+
+    pos.y++;
+    pos.x = 0;
+  }
+
+  return false;
+}
+
+bool findPreviousMatch()
+{
+  if (searchTerm_.empty())
+    return false;
+
+  Index pos = getCursorPos();
+  pos.x--;
+
+  while (pos.y >= 0)
+  {
+    while (pos.x >= 0)
+    {
+      Str const& cellText = doc::getCellText(pos);
+      if (cellText.findStr(searchTerm_) != -1)
+      {
+        setCursorPos(pos);
+        ensureCursorVisibility();
+        return false;
+      }
+
+      pos.x--;
+    }
+
+    pos.y--;
+    pos.x = doc::getColumnCount() - 1;
+  }
+
+  return false;
 }
 
 void editCurrentCell()
@@ -248,6 +342,16 @@ void handleNavigateEvent(struct tb_event * event)
       clearEditCommandSequence();
       break;
 
+    case TB_KEY_PGUP:
+    case TB_KEY_CTRL_B:
+      navigatePageUp();
+      break;
+
+    case TB_KEY_PGDN:
+    case TB_KEY_CTRL_F:
+      navigatePageDown();
+      break;
+
     default:
       {
         switch (event->ch)
@@ -255,6 +359,15 @@ void handleNavigateEvent(struct tb_event * event)
           case ':':
             {
               editMode_ = EditorMode::COMMAND;
+              editLine_.clear();
+              editLinePos_ = 0;
+              clearFlashMessage();
+            }
+            break;
+
+          case '/':
+            {
+              editMode_ = EditorMode::SEARCH;
               editLine_.clear();
               editLinePos_ = 0;
               clearFlashMessage();
@@ -332,6 +445,25 @@ void handleCommandEvent(struct tb_event * event)
   }
 }
 
+void handleSearchEvent(struct tb_event * event)
+{
+  handleTextInput(event);
+
+  switch (event->key)
+  {
+    case TB_KEY_ENTER:
+      searchTerm_ = editLine_;
+      editMode_ = EditorMode::NAVIGATE;
+      findNextMatch();
+      break;
+
+    case TB_KEY_ESC:
+      searchTerm_.clear();
+      editMode_ = EditorMode::NAVIGATE;
+      break;
+  }
+}
+
 void handleKeyEvent(struct tb_event * event)
 {
   switch (editMode_)
@@ -346,6 +478,10 @@ void handleKeyEvent(struct tb_event * event)
 
     case EditorMode::COMMAND:
       handleCommandEvent(event);
+      break;
+
+    case EditorMode::SEARCH:
+      handleSearchEvent(event);
       break;
   }
 }
@@ -392,42 +528,6 @@ void flashMessage(Str const& message)
 {
   flashMessage_ = message;
   clearTimeout();
-}
-
-static std::string logFile()
-{
-  static const std::string LOG_FILE = "/.zumlog";
-  const char * home = getenv("HOME");
-
-  if (home)
-    return std::string(home) + LOG_FILE;
-  else
-    return "~" + LOG_FILE;
-}
-
-void clearLog()
-{
-  FILE * file = fopen(logFile().c_str(), "w");
-  fclose(file);
-}
-
-void logInfo(Str const& message)
-{
-  FILE * file = fopen(logFile().c_str(), "a");
-  fprintf(file, "INFO: %s\n", message.utf8().c_str());
-  fclose(file);
-}
-
-void logError(Str const& message)
-{
-  FILE * file = fopen(logFile().c_str(), "a");
-  fprintf(file, "ERROR: %s\n", message.utf8().c_str());
-  fclose(file);
-}
-
-static int getCommandLineHeight()
-{
-  return 2 + completionHintLines_.size();
 }
 
 static void buildCompletionHintLines()
@@ -503,8 +603,11 @@ void drawHeaders()
   const int y_end = doc::getRowCount() < (tb_height() - 2) ? doc::getRowCount() : tb_height() - 2;
   for (int y = 1; y < tb_height() - getCommandLineHeight(); ++y)
   {
-    const int row = y + currentScroll_.y - 1;
+    int row = y + currentScroll_.y - 1;
     const uint16_t color = row == currentIndex_.y ? TB_REVERSE | TB_DEFAULT : TB_DEFAULT;
+
+    if (y == 1 && ALWAYS_SHOW_HEADER.toBool())
+      row = 0;
 
     if (row < doc::getRowCount())
     {
@@ -528,9 +631,12 @@ void drawWorkspace()
   {
     for (int x = 0; x < drawColumnInfo_.size(); ++x)
     {
-      const int row = y + currentScroll_.y - 1;
+      int row = y + currentScroll_.y - 1;
       const int selected = drawColumnInfo_[x].column_ == currentIndex_.x && row == currentIndex_.y;
       const uint16_t color = selected ? TB_REVERSE | TB_DEFAULT : TB_DEFAULT;
+
+      if (y == 1 && ALWAYS_SHOW_HEADER.toBool())
+        row = 0;
 
       const int width = doc::getColumnWidth(drawColumnInfo_[x].column_);
 
@@ -539,7 +645,16 @@ void drawWorkspace()
         if (selected && editMode_ == EditorMode::EDIT)
           drawText(drawColumnInfo_[x].x_, y, width, color, color, editLine_);
         else
-          drawText(drawColumnInfo_[x].x_, y, width, color, color, doc::getCellText(Index(drawColumnInfo_[x].column_, row)));
+        {
+          Str cellText = doc::getCellText(Index(drawColumnInfo_[x].column_, row));
+          if (cellText.size() >= width)
+          {
+            cellText = cellText.substr(0, width - 3);
+            cellText.append('.').append('.').append(' ');
+          }
+
+          drawText(drawColumnInfo_[x].x_, y, width, color, color, cellText);
+        }
       }
     }
   }
@@ -568,6 +683,12 @@ void drawCommandLine()
       commandLine.append(':')
                  .append(editLine_);
       break;
+
+    case EditorMode::SEARCH:
+      mode = '/';
+      commandLine.append('/')
+                 .append(editLine_);
+      break;
   }
 
   { // Costruct the info line
@@ -579,7 +700,10 @@ void drawCommandLine()
     pos.append(doc::columnToLabel(currentIndex_.x))
        .append(doc::rowToLabel(currentIndex_.y));
 
-    const int maxFileAreaSize = tb_width() - pos.size() - 5;
+    Str progress = Str::fromInt((int)(((double)currentIndex_.y / (double)doc::getRowCount()) * 100.0));
+    progress.append('%');
+
+    const int maxFileAreaSize = tb_width() - pos.size() - progress.size() - 5;
     if (filename.size() > maxFileAreaSize)
       filename.pop_front(filename.size() - maxFileAreaSize);
     while (filename.size() < maxFileAreaSize)
@@ -590,6 +714,7 @@ void drawCommandLine()
             .append(' ')
             .append(pos)
             .append(' ')
+            .append(progress)
             .append(' ')
             .append(mode)
             .append(' ');
@@ -597,7 +722,6 @@ void drawCommandLine()
 
   if (!flashMessage_.empty())
     commandLine = flashMessage_;
-
 
   for (int i = 0; i < completionHintLines_.size(); ++i)
     drawText(0, tb_height() - 1 - completionHintLines_.size() + i, tb_width(), TB_DEFAULT, TB_DEFAULT, completionHintLines_[i]);

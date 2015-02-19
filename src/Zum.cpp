@@ -6,6 +6,7 @@
 #include "Editor.h"
 #include "Commands.h"
 #include "Tcl.h"
+#include "Log.h"
 
 static bool applicationRunning_ = true;
 static int timeout_ = 0;
@@ -28,7 +29,7 @@ int main(int argc, char * argv[])
   int result = tb_init();
   if (result)
   {
-    logError(Str::format("Faild to initialize Termbox with error code %d", result));
+    logError("Faild to initialize Termbox with error code", result);
     return 1;
   }
 
@@ -37,10 +38,10 @@ int main(int argc, char * argv[])
   if (argc > 1)
   {
     if (!doc::load(Str(argv[1])))
-      doc::createEmpty(Str::EMPTY);
+      doc::createDefaultEmpty();
   }
   else
-    doc::createEmpty(Str::EMPTY);
+    doc::createDefaultEmpty();
 
   updateCursor();
   drawInterface();

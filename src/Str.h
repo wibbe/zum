@@ -15,8 +15,8 @@ class Str
 
   public:
     Str();
+    explicit Str(char_type ch, int count = 1);
     explicit Str(const char * str);
-    explicit Str(char_type ch);
     Str(Str const& str);
     Str(Str && str);
 
@@ -28,7 +28,7 @@ class Str
     Str & clear();
 
     Str & append(Str const& str);
-    Str & append(char_type ch);
+    Str & append(char_type ch, int count = 1);
 
     char_type front() const { return data_.front(); }
     char_type back() const { return data_.back(); }
@@ -46,6 +46,8 @@ class Str
 
     int findChar(char_type ch) const;
 
+    int findStr(Str const& str) const;
+
     iterator begin() { return data_.begin(); }
     iterator end() { return data_.end(); }
     const_iterator begin() const { return data_.begin(); }
@@ -59,6 +61,8 @@ class Str
 
     Str stripWhitespace() const;
     void eatWhitespaceFront();
+
+    Str substr(int start, int length) const;
 
     int toInt() const;
     double toDouble() const;

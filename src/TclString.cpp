@@ -6,15 +6,14 @@ namespace tcl {
 
   TCL_PROC(string)
   {
-    TCL_ARITY(2);
+    TCL_CHECK_ARGS(2, 1000, "string subcommand ?argument ...?");
 
     const uint32_t command = args[1].hash();
     switch (command)
     {
       case kLength:
         {
-          if (args.size() != 3)
-            return resultInt(0);
+          TCL_CHECK_ARG(3, "string length string");
 
           return resultInt(args[2].size());
         }
@@ -22,7 +21,8 @@ namespace tcl {
 
       case kIndex:
         {
-          TCL_ARITY(3);
+          TCL_CHECK_ARG(4, "string index string idx");
+
           const int idx = args[3].toInt();
           if (idx < 0 || idx >= args[2].size())
             return resultStr(Str::EMPTY);
@@ -33,28 +33,28 @@ namespace tcl {
 
       case kHash:
         {
-          TCL_ARITY(2);
+          TCL_CHECK_ARG(3, "string hash string");
           return resultInt(args[2].hash());
         }
         break;
 
       case kToLower:
         {
-          TCL_ARITY(2);
+          TCL_CHECK_ARG(3, "string tolower string");
           return resultStr(args[2].toLower());
         }
         break;
 
       case kToUpper:
         {
-          TCL_ARITY(2);
+          TCL_CHECK_ARG(3, "string toupper string");
           return resultStr(args[2].toUpper());
         }
         break;
 
       case kEqual:
         {
-          TCL_ARITY(4);
+          TCL_CHECK_ARGS(4, 7, "string equals ?-length length? ?-nocase? string1 string2");
 
           int length = -1;
           bool ignoreCase = false;
@@ -69,7 +69,7 @@ namespace tcl {
               if (i < (args.size() - 2))
                 length = args[i++].toInt();
               else
-                return tcl::_reportError(Str("Missing length parameter"));
+                return tcl::argError("string equals ?-length length? ?-nocase? string1 string2");
             }
             else if (flag == kNoCase_)
             {
@@ -89,7 +89,7 @@ namespace tcl {
 
       case kIs:
         {
-          TCL_ARITY(3);
+          TCL_CHECK_ARG(4, "string is class string");
 
           switch (args[2].hash())
           {
@@ -150,7 +150,7 @@ namespace tcl {
 
       case kRepeat:
         {
-          TCL_ARITY(3);
+          TCL_CHECK_ARG(4, "string repeat string count");
 
           int count = args[3].toInt();
           Str result;

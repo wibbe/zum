@@ -9,7 +9,8 @@ enum class EditorMode
 {
   NAVIGATE,
   EDIT,
-  COMMAND
+  COMMAND,
+  SEARCH,
 };
 
 EditorMode getEditorMode();
@@ -24,6 +25,11 @@ void navigateLeft();
 void navigateRight();
 void navigateUp();
 void navigateDown();
+void navigatePageUp();
+void navigatePageDown();
+
+bool findNextMatch();
+bool findPreviousMatch();
 
 void editCurrentCell();
 
@@ -35,10 +41,6 @@ void flashMessage(Str const& message);
 
 void clearCompletionHints();
 void setCompletionHints(std::vector<Str> const& hints);
-
-void clearLog();
-void logInfo(Str const& message);
-void logError(Str const& message);
 
 void drawInterface();
 void drawHeaders();

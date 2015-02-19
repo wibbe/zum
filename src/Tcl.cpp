@@ -2,9 +2,12 @@
 #include "Tcl.h"
 #include "ScriptingLib.tcl.h"
 #include "Editor.h"
+#include "Log.h"
 
 #include <iostream>
 #include <fstream>
+#include <algorithm>
+#include <functional>
 #include <map>
 
 namespace tcl {
@@ -401,7 +404,7 @@ namespace tcl {
 
   bool Variable::toBool() const
   {
-    return isTrue(get());
+    return !isFalse(get());
   }
 
   int Variable::toInt() const
@@ -416,28 +419,57 @@ namespace tcl {
   static bool debug_ = false;
   static Str error_;
 
-  using Procedures = std::vector<std::pair<Str, Procedure *>>;
+  // -- Procedures --
 
-  static Procedures & procedures()
+  struct ProcedureInfo
   {
-    static Procedures procs;
+    ProcedureInfo(uint32_t hash, Str const& name, Procedure * proc)
+      : hash_(hash),
+        name_(name),
+        proc_(proc)
+    { }
+
+    uint32_t hash_ = 0;
+    Str name_;
+    Procedure * proc_ = nullptr;
+  };
+
+  struct ProcedureInfoOrder
+  {
+    inline bool operator () (ProcedureInfo const& left, ProcedureInfo const right) const
+    {
+        return left.hash_ < right.hash_;
+    }
+
+    inline bool operator () (ProcedureInfo const& left, uint32_t right) const
+    {
+        return left.hash_ < right;
+    }
+  };
+
+  static std::vector<ProcedureInfo> & procedures()
+  {
+    static std::vector<ProcedureInfo> procs;
     return procs;
   }
 
   static Procedure * findProcedure(Str const& name)
   {
-    for (auto const& proc : procedures())
-    {
-      if (proc.first.equals(name))
-        return proc.second;
-    }
+    const uint32_t hash = name.hash();
+
+    const auto result = std::lower_bound(procedures().begin(), procedures().end(), hash, ProcedureInfoOrder());
+    if (result != procedures().end() && result->hash_ == hash)
+      return result->proc_;
 
     return nullptr;
   }
 
   Procedure::Procedure(Str const& name)
   {
-    procedures().push_back({name, this});
+    procedures().emplace_back(ProcedureInfo(name.hash(), name, this));
+
+    // Make sure the procedure vector is sorted
+    std::sort(procedures().begin(), procedures().end(), ProcedureInfoOrder());
   }
 
 
@@ -448,8 +480,10 @@ namespace tcl {
 
   void initialize()
   {
+    logInfo("Evaluating ScriptingLib...");
     evaluate(Str(std::string((char *)&ScriptingLib_tcl[0], ScriptingLib_tcl_len).c_str()));
 
+    logInfo("Evaluating ~/.zumrc");
     // Try to load the config file
     char * home = getenv("HOME");
     if (home)
@@ -460,9 +494,9 @@ namespace tcl {
 
   void shutdown()
   {
-    for (auto & proc : procedures())
-      if (!proc.second->native())
-        delete proc.second;
+    for (auto & info : procedures())
+      if (!info.proc_->native())
+        delete info.proc_;
   }
 
   std::vector<Str> findMatches(Str const& name)
@@ -471,8 +505,8 @@ namespace tcl {
 
     for (auto const& proc : procedures())
     {
-      if (proc.first.starts_with(name))
-        result.push_back(proc.first);
+      if (proc.name_.starts_with(name))
+        result.push_back(proc.name_);
     }
 
     for (auto const& var : frames().global().variables())
@@ -510,10 +544,13 @@ namespace tcl {
     return frames().current().result_;
   }
 
-  ReturnCode evaluate(Str const& code)
+  ReturnCode evaluate(Str const& code, int level)
   {
     if (debug_)
-      logInfo(Str("evaluate(\n").append(code).append(Str("\n)")));
+    {
+      logInfo(Str(' ', level * 2), "evaluate {\n", code, "\n}");
+      level++;
+    }
 
     Parser parser(code);
 
@@ -525,20 +562,20 @@ namespace tcl {
       Token previousToken = parser.token_;
 
       if (debug_)
-        logInfo(Str("Parse next token"));
+        logInfo(Str(' ', level * 2), "Parse next token");
 
       if (!parser.next())
         return RET_ERROR;
 
       if (debug_)
-        logInfo(Str::format("Token: %s = '%s'", tokenAsReadable[parser.token_], parser.value_.utf8().c_str()));
+        logInfo(Str(' ', level * 2), "Token: ", tokenAsReadable[parser.token_]," = '", parser.value_,"'");
 
       Str value(parser.value_);
 
       if (parser.token_ == Variable)
       {
         if (debug_)
-          logInfo(Str::format("Accessing variable '%s'", parser.value_.utf8().c_str()));
+          logInfo(Str(' ', level * 2), "Accessing variable '", parser.value_,"'");
 
         Str var;
         if (frames().current().get(value, var))
@@ -552,15 +589,15 @@ namespace tcl {
       else if (parser.token_ == Command)
       {
         if (debug_)
-          logInfo(Str::format("Evaluating sub-command: '%s'", parser.value_.utf8().c_str()));
+          logInfo(Str(' ', level * 2), "Evaluating sub-command: '", parser.value_, "'");
 
-        if (evaluate(parser.value_) != RET_OK)
+        if (evaluate(parser.value_, level + 1) != RET_OK)
           return RET_ERROR;
 
         value = frames().current().result_;
 
         if (debug_)
-          logInfo(Str::format("Result from sub-command: '%s'", value.utf8().c_str()));
+          logInfo(Str(' ', level * 2), "Result: '", value, "'");
       }
       else if (parser.token_ == Separator)
       {
@@ -572,12 +609,11 @@ namespace tcl {
       {
         if (debug_)
         {
-          Str exec("Executing: '");
-
+          Str exec;
           for (size_t i = 0; i < args.size(); ++i)
             exec.append(args[i]).append(i < (args.size() - 1) ? ' ' : '\'');
 
-          logInfo(exec);
+          logInfo(Str(' ', level * 2), "Calling procedure: '", exec);
         }
 
         if (args.size() >= 1)
@@ -653,7 +689,7 @@ namespace tcl {
 
   ReturnCode _arityError(Str const& command)
   {
-    return _reportError(Str("Wrong number of arguments to procedure '").append(command).append('\''));
+    return argError(command.utf8().c_str());
   }
 
   ReturnCode _reportError(Str const& error)
@@ -664,6 +700,11 @@ namespace tcl {
     flashMessage(error);
 
     return RET_ERROR;
+  }
+
+  ReturnCode argError(const char * desc)
+  {
+    return _reportError(Str("wrong # args: should be \"").append(Str(desc)).append('\"'));
   }
 
   // -- Type checking --
@@ -763,10 +804,7 @@ namespace tcl {
 
   TCL_PROC(proc)
   {
-    for (auto const& arg : args)
-      logInfo(arg);
-
-    TCL_ARITY(4);
+    TCL_CHECK_ARG(4, "proc name args body");
 
     if (findProcedure(args[1]))
       return _reportError(Str("Procedure of name '").append(args[1]).append(Str("' already exists")));
@@ -777,24 +815,23 @@ namespace tcl {
 
   TCL_PROC(puts)
   {
-    if (args.size() > 1)
-    {
-      Str log;
+    TCL_CHECK_ARGS(2, 1000, "puts string ?string ...?");
 
-      for (uint32_t i = 1, len = args.size(); i < len; ++i)
-        log.append(args[i]).append((i - 1) == len ? Str::EMPTY : Str(" "));
+    Str log;
+    for (uint32_t i = 1, len = args.size(); i < len; ++i)
+      log.append(args[i]).append((i - 1) == len ? Str::EMPTY : Str(" "));
 
-      logInfo(log);
-      flashMessage(log);
-    }
+    logInfo(log);
+    flashMessage(log);
 
     return RET_OK;
   }
 
   TCL_PROC(set)
   {
-    const uint32_t len = args.size();
+    TCL_CHECK_ARGS(2, 3, "set varName ?newValue?");
 
+    const uint32_t len = args.size();
     if (len == 2)
     {
       return frames().current().get(args[1], frames().current().result_) ? RET_OK : RET_ERROR;
@@ -805,14 +842,11 @@ namespace tcl {
       frames().current().set(args[1], args[2]);
       return RET_OK;
     }
-    else
-      return _arityError(args[0]);
   }
 
   TCL_PROC(expr)
   {
-    if (args.size() == 1)
-      return _arityError(args[0]);
+    TCL_CHECK_ARGS(2, 1000, "expr arg ?arg ...?");
 
     Str str;
     for (uint32_t i = 1; i < args.size(); ++i)
@@ -843,24 +877,19 @@ namespace tcl {
 
   TCL_PROC(return)
   {
-    if (args.size() != 2)
-      return _arityError(args[0]);
-
-    frames().current().result_ = args[1];
-    return RET_RETURN;
+    TCL_CHECK_ARG(2, "return value");
+    return resultStr(args[1]);
   }
 
   TCL_PROC(error)
   {
-    if (args.size() != 2)
-      return _arityError(args[0]);
+    TCL_CHECK_ARG(2, "error string");
     return _reportError(args[1]);
   }
 
   TCL_PROC(eval)
   {
-    if (args.size() != 2)
-      return _arityError(args[0]);
+    TCL_CHECK_ARGS(2, 1000, "eval arg ?arg ...?");
 
     Str str;
     for (size_t i = 1; i < args.size(); ++i)
@@ -871,8 +900,7 @@ namespace tcl {
 
   TCL_PROC(while)
   {
-    if (args.size() != 3)
-      return _arityError(args[0]);
+    TCL_CHECK_ARG(3, "while test command");
 
     Str check("expr ");
     check.append(args[1]);
@@ -902,8 +930,7 @@ namespace tcl {
 
   TCL_PROC(incr)
   {
-    if (args.size() != 2 && args.size() != 3)
-      return _arityError(args[0]);
+    TCL_CHECK_ARGS(2, 3, "incr varName ?increment?");
 
     Str var;
     if (!frames().current().get(args[1], var))
@@ -933,7 +960,7 @@ namespace tcl {
 
   TCL_PROC(debug)
   {
-    TCL_ARITY(1);
+    TCL_CHECK_ARGS(1, 2, "debug ?enabled?");
 
     const double result = calculateExpr(args[1].utf8());
     debug_ = result > 0.0;
