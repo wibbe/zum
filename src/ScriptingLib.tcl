@@ -27,13 +27,13 @@ proc todo:new {} {
   # Create a new empty document
   doc:createEmpty 2 2
   doc:columnWidth 0 7
-  doc:columnWidth 1 50
+  doc:columnWidth 1 60
 
   # Header
-  doc:cell 0 0 "STATUS"
-  doc:cell 0 1 "------"
-  doc:cell 1 0 "DESCRIPTION"
-  doc:cell 1 1 "-----------"
+  doc:cell A1 "STATUS"
+  doc:cell A2 "------"
+  doc:cell B1 "DESCRIPTION"
+  doc:cell B2 "-----------"
 
   todo:item
 }
@@ -42,7 +42,24 @@ proc todo:new {} {
 proc todo:item {} {
   set row [doc:rowCount]
   doc:addRow $row
-  doc:cell 0 $row "☐"
-  editor:cursor 1 $row
-  editor:edit i
+  doc:cell [index new 0 $row] "  ☐"
+  app:cursor [index new 1 $row]
+  app:edit i
+}
+
+proc todo:done {} {
+  set row [index row [app:cursor]]
+  doc:cell [index new 0 $row] "  ☑"
+}
+
+proc todo:toggle {} {
+  set row [index row [app:cursor]]
+  set text [doc:cell [index new 0 $row]]
+
+  if {[string equal $text "  ☐"]} {
+    doc:cell [index new 0 $row] "  ☑"
+  } else {
+    doc:cell [index new 0 $row] "  ☐"
+  }
+
 }

@@ -32,12 +32,12 @@ namespace doc {
 
   struct Document
   {
-    int width_;
-    int height_;
-    std::vector<int> columnWidth_;
+    int width_ = 0;
+    int height_ = 0;
+    std::vector<int> columnWidth_ = {0};
     std::unordered_map<Index, Cell> cells_;
     Str filename_;
-    bool readOnly_;
+    bool readOnly_ = false;
     Str::char_type delimiter_;
   };
 
@@ -72,10 +72,10 @@ namespace doc {
   FUNC_0(createDefaultEmpty, "doc:createDefaultEmpty")
   {
     close();
-    currentDoc_.width_ = DEFAULT_ROW_COUNT.toInt();
-    currentDoc_.height_ = DEFAULT_COLUMN_COUNT.toInt();
+    currentDoc_.width_ = std::max((int)DEFAULT_ROW_COUNT.toInt(), 1);
+    currentDoc_.height_ = std::max((int)DEFAULT_COLUMN_COUNT.toInt(), 1);
     currentDoc_.columnWidth_.resize(DEFAULT_COLUMN_COUNT.toInt(), DEFAULT_COLUMN_WIDTH.toInt());
-    currentDoc_.filename_ = Str("[NoName]");
+    currentDoc_.filename_ = Str("[No Name]");
     currentDoc_.delimiter_ = ',';
     currentDoc_.readOnly_ = false;
     return true;
@@ -84,8 +84,9 @@ namespace doc {
   FUNC_2(createEmpty, "doc:createEmpty", "doc:createEmpty columnCount rowCount")
   {
     createDefaultEmpty();
-    currentDoc_.width_ = arg1.toInt();
-    currentDoc_.height_ = arg2.toInt();
+    currentDoc_.width_ = std::max((int)arg1.toInt(), 1);
+    currentDoc_.height_ = std::max((int)arg2.toInt(), 1);
+    currentDoc_.columnWidth_.resize(currentDoc_.width_, DEFAULT_COLUMN_WIDTH.toInt());
     return true;
   }
 
@@ -595,7 +596,7 @@ namespace doc {
 
   Str rowToLabel(int row)
   {
-    return Str::format("%d", row + 1);
+    return Str::fromInt(row + 1);
   }
 
   Str columnToLabel(int col)
@@ -635,6 +636,11 @@ namespace doc {
     }
 
     return result;
+  }
+
+  Str toCellRef(Index const& idx)
+  {
+    return columnToLabel(idx.x).append(rowToLabel(idx.y));
   }
 
   Index parseCellRef(Str const& str)
@@ -730,13 +736,12 @@ namespace doc {
 
   TCL_PROC2(docCell, "doc:cell")
   {
-    TCL_CHECK_ARGS(3, 4, "doc:cell column row ?value?");
-    const int column = args[1].toInt();
-    const int row = args[2].toInt();
+    TCL_CHECK_ARGS(2, 3, "doc:cell index ?value?");
+    const Index idx = parseCellRef(args[1]);
 
-    if (args.size() == 4)
-      setCellText(Index(column, row), args[3]);
+    if (args.size() == 3)
+      setCellText(idx, args[2]);
 
-    return tcl::resultStr(getCellText(Index(column, row)));
+    return tcl::resultStr(getCellText(idx));
   }
 }

@@ -45,7 +45,6 @@ class Str
     std::vector<Str> split(char_type delimiter, bool keepDelimiter = false) const;
 
     int findChar(char_type ch) const;
-
     int findStr(Str const& str) const;
 
     iterator begin() { return data_.begin(); }
@@ -77,6 +76,8 @@ class Str
     static Str fromDouble(double value);
 
     static uint32_t hash(const char * str);
+
+    static Str join(std::vector<Str> const& vec, Str::char_type delim);
 
   private:
     std::vector<char_type> data_;

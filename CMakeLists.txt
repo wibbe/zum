@@ -31,6 +31,7 @@ set(SOURCE
     src/Tcl.cpp
     src/TclExpr.cpp
     src/TclString.cpp
+    src/TclIndex.cpp
     src/MurmurHash.cpp
     src/Completion.cpp
     src/Log.cpp

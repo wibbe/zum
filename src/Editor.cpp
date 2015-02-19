@@ -574,8 +574,12 @@ void drawInterface()
   tb_set_clear_attributes(TB_DEFAULT, TB_DEFAULT);
   tb_clear();
 
-  drawHeaders();
-  drawWorkspace();
+  if (doc::getColumnCount() > 0 && doc::getRowCount() > 0)
+  {
+    drawHeaders();
+    drawWorkspace();
+  }
+  
   drawCommandLine();
 
   tb_present();
@@ -590,10 +594,7 @@ void drawHeaders()
 
     const int before = (drawColumnInfo_[x].width_ - 1) / 2;
 
-    Str header;
-    for (int i = 0; i < before; ++i)
-      header.append(' ');
-
+    Str header(' ', before);
     header.append(doc::columnToLabel(drawColumnInfo_[x].column_));
 
     drawText(drawColumnInfo_[x].x_, 0, drawColumnInfo_[x].width_, color, color, header);
@@ -700,7 +701,7 @@ void drawCommandLine()
     pos.append(doc::columnToLabel(currentIndex_.x))
        .append(doc::rowToLabel(currentIndex_.y));
 
-    Str progress = Str::fromInt((int)(((double)currentIndex_.y / (double)doc::getRowCount()) * 100.0));
+    Str progress = Str::fromInt((int)(((double)(currentIndex_.y + 1) / (double)doc::getRowCount()) * 100.0));
     progress.append('%');
 
     const int maxFileAreaSize = tb_width() - pos.size() - progress.size() - 5;

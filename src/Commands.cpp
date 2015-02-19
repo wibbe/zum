@@ -354,9 +354,9 @@ TCL_PROC(w)
   TCL_OK();
 }
 
-FUNC_X(edit, "editor:edit")
+FUNC_X(edit, "app:edit")
 {
-  for (auto i = 1; i < args.size(); ++i)
+  for (int i = 1; i < args.size(); ++i)
   {
     const Str arg = args[i];
     if (!arg.empty())
@@ -376,18 +376,12 @@ FUNC_0(help, "help")
   return true;
 }
 
-TCL_PROC2(editorCursor, "editor:cursor")
+TCL_PROC2(editorCursor, "app:cursor")
 {
-  TCL_CHECK_ARGS(1, 3, "editor:cursor ?column row?");
+  TCL_CHECK_ARGS(1, 2, "app:cursor ?index?");
 
-  if (args.size() == 3)
-  {
-    const int column = args[1].toInt();
-    const int row = args[2].toInt();
+  if (args.size() == 2)
+    setCursorPos(doc::parseCellRef(args[1]));
 
-    setCursorPos(Index(column, row));
-  }
-
-  const Index idx = getCursorPos();
-  return tcl::resultStr(Str::format("%d %d", idx.x, idx.y));
+  return tcl::resultStr(doc::toCellRef(getCursorPos()));
 }

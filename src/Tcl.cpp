@@ -55,9 +55,18 @@ namespace tcl {
     { }
 
     bool next();
-    void inc() { if (pos_ < code_.size()) current_ = code_[++pos_]; }
     bool eof() const { return pos_ >= code_.size(); }
     uint32_t len() const { return code_.size() - pos_; }
+
+    void inc()
+    { 
+      const int len = code_.size();
+      if (pos_ < len)
+      {
+        ++pos_;
+        current_ = pos_ < len ? code_[pos_] : 0;
+      }
+    }
 
     const Str code_;
     Str value_;
@@ -169,7 +178,7 @@ namespace tcl {
 
   static bool parseEndOfLine(Parser * p)
   {
-    while (isWhitespace(p->current_) || p->current_ == ';')
+    while (!p->eof() && (isWhitespace(p->current_) || p->current_ == ';'))
       p->inc();
 
     p->token_ = EndOfLine;
@@ -866,7 +875,7 @@ namespace tcl {
 
     if (exec("expr", args[1]) == RET_OK)
     {
-      if (!isFalse(frames().current().result_))
+      if (frames().current().result_.toDouble() > 0.0)
         return evaluate(args[2]);
       else
         return evaluate(args[4]);
@@ -956,6 +965,52 @@ namespace tcl {
   TCL_PROC(continue)
   {
     return RET_CONTINUE;
+  }
+
+  TCL_PROC(info)
+  {
+    TCL_CHECK_ARGS(2, 1000, "info subcommand ?argument ...?");
+
+    const uint32_t command = args[1].hash();
+    switch (command)
+    {
+      case kArgs:
+        {
+          TCL_CHECK_ARG(3, "info args procname");
+          if (Procedure * proc = findProcedure(args[2]))
+          {
+            if (!proc->native())
+            {
+              if (TclProc * p = dynamic_cast<TclProc *>(proc))
+                return resultStr(Str::join(p->arguments_, ' '));
+            }
+          }
+          
+          return _reportError(Str::format("\"%s\" isn't a procedure", args[2].utf8().c_str()));
+        }
+        break;
+
+      case kBody:
+        {
+          TCL_CHECK_ARG(3, "info args procname");
+          if (Procedure * proc = findProcedure(args[2]))
+          {
+            if (!proc->native())
+            {
+              if (TclProc * p = dynamic_cast<TclProc *>(proc))
+                return resultStr(p->body_);
+            }
+          }
+          
+          return _reportError(Str::format("\"%s\" isn't a procedure", args[2].utf8().c_str()));
+        }
+        break;      
+
+      default:
+        break;
+    }
+
+    TCL_OK();
   }
 
 }

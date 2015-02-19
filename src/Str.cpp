@@ -351,3 +351,12 @@ uint32_t Str::hash(const char * str)
   const uint32_t len = std::strlen(str);
   return murmurHash(str, len, 0);
 }
+
+Str Str::join(std::vector<Str> const& vec, Str::char_type delim)
+{
+  Str result;
+  for (int i = 0; i < vec.size(); ++i)
+    result.append(vec[i]).append(delim, i < (vec.size() - 1) ? 1 : 0);
+
+  return result;
+}

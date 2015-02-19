@@ -41,6 +41,7 @@ namespace doc {
   Str rowToLabel(int row);
   Str columnToLabel(int col);
 
+  Str toCellRef(Index const& idx);
   Index parseCellRef(Str const& str);
 
 }
