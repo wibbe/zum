@@ -4,6 +4,7 @@
 
 #include "termbox.h"
 #include "Types.h"
+#include "Index.h"
 
 enum class EditorMode
 {

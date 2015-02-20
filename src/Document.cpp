@@ -594,88 +594,6 @@ namespace doc {
     currentDoc_.cells_ = std::move(newCells);
   }
 
-  Str rowToLabel(int row)
-  {
-    return Str::fromInt(row + 1);
-  }
-
-  Str columnToLabel(int col)
-  {
-    int power = 0;
-    for (int i = 0; i < 10; ++i)
-    {
-      const int value = std::pow(26, i);
-      if (value > col)
-      {
-        power = i;
-        break;
-      }
-    }
-
-    Str result;
-    while (power >= 0)
-    {
-      const int value = std::pow(26, power);
-      if (value > col)
-      {
-        power--;
-
-        if (power < 0)
-          result.append('A');
-      }
-      else
-      {
-        const int division = col / value;
-        const int remainder = col % value;
-
-        result.append('A' + division);
-
-        col = remainder;
-        power--;
-      }
-    }
-
-    return result;
-  }
-
-  Str toCellRef(Index const& idx)
-  {
-    return columnToLabel(idx.x).append(rowToLabel(idx.y));
-  }
-
-  Index parseCellRef(Str const& str)
-  {
-    Index idx(0, 0);
-
-    if (str.empty())
-      return idx;
-
-    int i = 0;
-    while ((i < str.size()) && isUpperAlpha(str[i]))
-    {
-      idx.x *= 26;
-      idx.x += str[i] - 'A';
-      i++;
-    }
-
-    while ((i < str.size()) && isDigit(str[i]))
-    {
-      idx.y *= 10;
-      idx.y += str[i] - '0';
-      i++;
-    }
-
-    if (idx.y > 0)
-      idx.y--;
-
-    if (idx.x >= getColumnCount())
-      idx.x = getColumnCount() - 1;
-    if (idx.y >= getRowCount())
-      idx.y = getRowCount() - 1;
-
-    return idx;
-  }
-
   // -- Tcl procs --
 
   TCL_PROC2(docDelimiter, "doc:delimiter")
@@ -737,7 +655,7 @@ namespace doc {
   TCL_PROC2(docCell, "doc:cell")
   {
     TCL_CHECK_ARGS(2, 3, "doc:cell index ?value?");
-    const Index idx = parseCellRef(args[1]);
+    const Index idx = Index::fromStr(args[1]);
 
     if (args.size() == 3)
       setCellText(idx, args[2]);

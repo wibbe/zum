@@ -381,7 +381,7 @@ TCL_PROC2(editorCursor, "app:cursor")
   TCL_CHECK_ARGS(1, 2, "app:cursor ?index?");
 
   if (args.size() == 2)
-    setCursorPos(doc::parseCellRef(args[1]));
+    setCursorPos(Index::fromStr(args[1]));
 
-  return tcl::resultStr(doc::toCellRef(getCursorPos()));
+  return tcl::resultStr(getCursorPos().toStr());
 }

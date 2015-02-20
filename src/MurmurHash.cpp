@@ -17,7 +17,7 @@ uint32_t murmurHash(void const * key, int len, uint32_t seed)
   // Mix 4 bytes at a time into the hash
   unsigned char const * data = (unsigned char const *)key;
 
-  while(len >= 4)
+  while (len >= 4)
   {
     uint32_t k = *(uint32_t*)data;
 
@@ -33,7 +33,6 @@ uint32_t murmurHash(void const * key, int len, uint32_t seed)
   }
 
   // Handle the last few bytes of the input array
-
   switch (len)
   {
     case 3: hash ^= data[2] << 16;

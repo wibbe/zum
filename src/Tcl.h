@@ -29,9 +29,6 @@ namespace tcl {
     kBoolean = 1395558365u,   // boolean
     kInteger = 318025161u,    // integer
     kRepeat = 1415255128u,    // repeat
-    kNew = 1888419793u,       // new
-    kRow = 306722537u,        // row
-    kColumn = 46931336u,      // column
     kArgs = 2284312459u,      // args
     kBody = 3886621310u,      // body
     kLength_ = 1325425629u,   // -length

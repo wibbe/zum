@@ -2,6 +2,7 @@
 #pragma once
 
 #include "Types.h"
+#include "Index.h"
 
 namespace doc {
 

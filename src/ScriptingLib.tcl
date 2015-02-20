@@ -23,7 +23,7 @@ proc wq {} {
 # -- A Simple Todo app plugin --
 
 # Create a new document
-proc todo:new {} {
+proc todo:createDocument {} {
   # Create a new empty document
   doc:createEmpty 2 2
   doc:columnWidth 0 7

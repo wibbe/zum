@@ -579,7 +579,7 @@ void drawInterface()
     drawHeaders();
     drawWorkspace();
   }
-  
+
   drawCommandLine();
 
   tb_present();
@@ -595,7 +595,7 @@ void drawHeaders()
     const int before = (drawColumnInfo_[x].width_ - 1) / 2;
 
     Str header(' ', before);
-    header.append(doc::columnToLabel(drawColumnInfo_[x].column_));
+    header.append(Index::columnToStr(drawColumnInfo_[x].column_));
 
     drawText(drawColumnInfo_[x].x_, 0, drawColumnInfo_[x].width_, color, color, header);
   }
@@ -612,7 +612,7 @@ void drawHeaders()
 
     if (row < doc::getRowCount())
     {
-      const Str columnNumber = doc::rowToLabel(row);
+      const Str columnNumber = Index::rowToStr(row);
 
       Str header;
       while (header.size() < (ROW_HEADER_WIDTH - columnNumber.size() - 1))
@@ -698,8 +698,8 @@ void drawCommandLine()
       filename.set("[NoName]");
 
     Str pos;
-    pos.append(doc::columnToLabel(currentIndex_.x))
-       .append(doc::rowToLabel(currentIndex_.y));
+    pos.append(Index::columnToStr(currentIndex_.x))
+       .append(Index::rowToStr(currentIndex_.y));
 
     Str progress = Str::fromInt((int)(((double)(currentIndex_.y + 1) / (double)doc::getRowCount()) * 100.0));
     progress.append('%');
