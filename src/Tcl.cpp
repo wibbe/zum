@@ -59,7 +59,7 @@ namespace tcl {
     uint32_t len() const { return code_.size() - pos_; }
 
     void inc()
-    { 
+    {
       const int len = code_.size();
       if (pos_ < len)
       {
@@ -985,7 +985,7 @@ namespace tcl {
                 return resultStr(Str::join(p->arguments_, ' '));
             }
           }
-          
+
           return _reportError(Str::format("\"%s\" isn't a procedure", args[2].utf8().c_str()));
         }
         break;
@@ -1001,10 +1001,10 @@ namespace tcl {
                 return resultStr(p->body_);
             }
           }
-          
+
           return _reportError(Str::format("\"%s\" isn't a procedure", args[2].utf8().c_str()));
         }
-        break;      
+        break;
 
       default:
         break;
