@@ -12,8 +12,6 @@
 
 namespace tcl {
 
-  static Jim_Interp * interpreter_ = nullptr;
-
   // -- Externs
 
   double calculateExpr(std::string const& str);
@@ -491,8 +489,6 @@ namespace tcl {
 
   void initialize()
   {
-    interpreter_ = Jim_CreateInterp();
-
     logInfo("Evaluating ScriptingLib...");
     evaluate(Str(std::string((char *)&ScriptingLib_tcl[0], ScriptingLib_tcl_len).c_str()));
 
@@ -510,9 +506,6 @@ namespace tcl {
     for (auto & info : procedures())
       if (!info.proc_->native())
         delete info.proc_;
-
-    Jim_FreeInterp(interpreter_);
-    interpreter_ = nullptr;
   }
 
   std::vector<Str> findMatches(Str const& name)
