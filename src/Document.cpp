@@ -636,7 +636,7 @@ namespace doc {
 
   TCL_PROC2(docDelimiter, "doc:delimiter")
   {
-    TCL_CHECK_ARG_OLDS(1, 2, "doc:delimiter ?delimiter?");
+    TCL_CHECK_ARGS(1, 2, "doc:delimiter ?delimiter?");
 
     if (args.size() == 1)
       return tcl::resultStr(Str(currentDoc().delimiter_));
@@ -648,13 +648,13 @@ namespace doc {
 
   TCL_PROC2(docFilename, "doc:filename")
   {
-    TCL_CHECK_ARG_OLD(1, "doc:filename");
+    TCL_CHECK_ARG(1, "doc:filename");
     return tcl::resultStr(currentDoc().filename_);
   }
 
   TCL_PROC2(docColumWidth, "doc:columnWidth")
   {
-    TCL_CHECK_ARG_OLDS(2, 3, "doc:columnWidth column ?width?");
+    TCL_CHECK_ARGS(2, 3, "doc:columnWidth column ?width?");
 
     const int column = args[1].toInt();
 
@@ -666,68 +666,38 @@ namespace doc {
 
   TCL_PROC2(docColumnCount, "doc:columnCount")
   {
-    TCL_CHECK_ARG_OLD(1, "doc:columnCount");
+    TCL_CHECK_ARG(1, "doc:columnCount");
     return tcl::resultInt(currentDoc().width_);
   }
 
   TCL_PROC2(docRowCount, "doc:rowCount")
   {
-    TCL_CHECK_ARG_OLD(1, "doc:rowCount");
+    TCL_CHECK_ARG(1, "doc:rowCount");
     return tcl::resultInt(currentDoc().height_);
   }
 
   TCL_PROC2(docAddRow, "doc:addRow")
   {
-    TCL_CHECK_ARG_OLD(2, "doc:addRow row");
+    TCL_CHECK_ARG(2, "doc:addRow row");
     addRow(args[1].toInt());
     TCL_OK();
   }
 
   TCL_PROC2(docAddColumn, "doc:addColumn")
   {
-    TCL_CHECK_ARG_OLD(2, "doc:addColumn column");
+    TCL_CHECK_ARG(2, "doc:addColumn column");
     addColumn(args[1].toInt());
     TCL_OK();
   }
 
   TCL_PROC2(docCell, "doc:cell")
   {
-    TCL_CHECK_ARG_OLDS(2, 3, "doc:cell index ?value?");
+    TCL_CHECK_ARGS(2, 3, "doc:cell index ?value?");
     const Index idx = Index::fromStr(args[1]);
 
     if (args.size() == 3)
       setCellText(idx, args[2]);
 
     return tcl::resultStr(getCellText(idx));
-  }
-
-  // New Tcl bindings
-
-  TCL_FUNC(doc_columnCount)
-  {
-    TCL_INT_RESULT(currentDoc().width_);
-  }
-
-  TCL_FUNC(doc_rowCount)
-  {
-    TCL_INT_RESULT(currentDoc().height_);
-  }
-
-  TCL_FUNC(doc_addColumn)
-  {
-    TCL_CHECK_ARG(1, "column");
-    TCL_INT_ARG(0, column);
-
-    addColumn(column);
-    return JIM_OK;
-  }
-
-  TCL_FUNC(doc_addRow)
-  {
-    TCL_CHECK_ARG(1, "row");
-    TCL_INT_ARG(0, row);
-
-    addRow(row);
-    return JIM_OK;
   }
 }

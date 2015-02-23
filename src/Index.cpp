@@ -87,28 +87,28 @@ Index Index::fromStr(Str const& str)
 namespace tcl {
   TCL_PROC(index)
   {
-    TCL_CHECK_ARG_OLDS(2, 1000, "index subcommand ?argument ...?");
+    TCL_CHECK_ARGS(2, 1000, "index subcommand ?argument ...?");
 
     const uint32_t command = args[1].hash();
     switch (command)
     {
       case kNew:
         {
-          TCL_CHECK_ARG_OLD(4, "index new column row");
+          TCL_CHECK_ARG(4, "index new column row");
           return resultStr(Index(args[2].toInt(), args[3].toInt()).toStr());
         }
         break;
 
       case kRow:
         {
-          TCL_CHECK_ARG_OLD(3, "index row index");
+          TCL_CHECK_ARG(3, "index row index");
           return resultInt(Index::fromStr(args[2]).y);
         }
         break;
 
       case kColumn:
         {
-          TCL_CHECK_ARG_OLD(3, "index column index");
+          TCL_CHECK_ARG(3, "index column index");
           return resultInt(Index::fromStr(args[2]).x);
         }
         break;

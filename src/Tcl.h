@@ -47,13 +47,6 @@ namespace tcl {
 
   using ArgumentVector = std::vector<Str>;
 
-  class BuiltInProc
-  {
-    public:
-      BuiltInProc(const char * name, Jim_CmdProc * proc);
-  };
-
-
   struct Procedure
   {
     Procedure(Str const& name);
@@ -114,34 +107,13 @@ namespace tcl {
 
 // -- Useful macros --
 
-#define TCL_FUNC(name) \
-  int tclBuiltIn__##name(Jim_Interp *, int argc, Jim_Obj * const *); \
-  namespace { const tcl::BuiltInProc __dummy##name(#name, &tclBuiltIn__##name); } \
-  int tclBuiltIn__##name(Jim_Interp * interp, int argc, Jim_Obj * const * argv)
-
-#define TCL_CHECK_ARG(count, desc) \
-  do { if (argc != count) Jim_WrongNumArgs(interp, 1, argv, desc); return JIM_ERR; } while (false)
-
-#define TCL_INT_ARG(i, name) \
-  long name = 0; \
-  if (Jim_GetLong(interp, argv[i], &name) != JIM_OK) \
-    return JIM_ERR
-
-#define TCL_INT_RESULT(value) \
-  Jim_SetResultInt(interp, value); \
-  return JIM_OK
-
-
-
-// -- Old Macros --
-
 #define TCL_OK() \
   return tcl::RET_OK
 
-#define TCL_CHECK_ARG_OLD(count, desc) \
+#define TCL_CHECK_ARG(count, desc) \
   do { if (args.size() != count) return tcl::argError(desc); } while (false)
 
-#define TCL_CHECK_ARG_OLDS(min, max, desc) \
+#define TCL_CHECK_ARGS(min, max, desc) \
   do { if (args.size() < min || args.size() > max) return tcl::argError(desc); } while (false)
 
 #define TCL_PROC(name) \
