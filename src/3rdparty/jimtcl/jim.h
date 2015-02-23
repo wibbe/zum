@@ -349,9 +349,12 @@ typedef struct Jim_Obj {
 } Jim_Obj;
 
 /* Jim_Obj related macros */
-#define Jim_IncrRefCount(objPtr) ++(objPtr)->refCount
-#define Jim_DecrRefCount(interp, objPtr) if (--(objPtr)->refCount <= 0) Jim_FreeObj(interp, objPtr)
-#define Jim_IsShared(objPtr) ((objPtr)->refCount > 1)
+#define Jim_IncrRefCount(objPtr) \
+    ++(objPtr)->refCount
+#define Jim_DecrRefCount(interp, objPtr) \
+    if (--(objPtr)->refCount <= 0) Jim_FreeObj(interp, objPtr)
+#define Jim_IsShared(objPtr) \
+    ((objPtr)->refCount > 1)
 
 /* This macro is used when we allocate a new object using
  * Jim_New...Obj(), but for some error we need to destroy it.
@@ -391,8 +394,10 @@ typedef struct Jim_Obj {
 
 struct Jim_Interp;
 
-typedef void (Jim_FreeInternalRepProc)(struct Jim_Interp *interp, struct Jim_Obj *objPtr);
-typedef void (Jim_DupInternalRepProc)(struct Jim_Interp *interp, struct Jim_Obj *srcPtr, Jim_Obj *dupPtr);
+typedef void (Jim_FreeInternalRepProc)(struct Jim_Interp *interp,
+        struct Jim_Obj *objPtr);
+typedef void (Jim_DupInternalRepProc)(struct Jim_Interp *interp,
+        struct Jim_Obj *srcPtr, Jim_Obj *dupPtr);
 typedef void (Jim_UpdateStringProc)(struct Jim_Obj *objPtr);
 
 typedef struct Jim_ObjType {
@@ -450,7 +455,8 @@ typedef struct Jim_Var {
 } Jim_Var;
 
 /* The cmd structure. */
-typedef int Jim_CmdProc(struct Jim_Interp *interp, int argc, Jim_Obj *const *argv);
+typedef int Jim_CmdProc(struct Jim_Interp *interp, int argc,
+    Jim_Obj *const *argv);
 typedef void Jim_DelCmdProc(struct Jim_Interp *interp, void *privData);
 
 
@@ -599,14 +605,14 @@ typedef struct Jim_Reference {
 #define JIM_EXPORT
 
 /* Memory allocation */
-JIM_EXPORT void * Jim_Alloc(int size);
-JIM_EXPORT void * Jim_Realloc(void *ptr, int size);
-JIM_EXPORT void Jim_Free(void *ptr);
-JIM_EXPORT char * Jim_StrDup(const char *s);
-JIM_EXPORT char * Jim_StrDupLen(const char *s, int l);
+JIM_EXPORT void *Jim_Alloc (int size);
+JIM_EXPORT void *Jim_Realloc(void *ptr, int size);
+JIM_EXPORT void Jim_Free (void *ptr);
+JIM_EXPORT char * Jim_StrDup (const char *s);
+JIM_EXPORT char *Jim_StrDupLen(const char *s, int l);
 
 /* environment */
-JIM_EXPORT char ** Jim_GetEnviron(void);
+JIM_EXPORT char **Jim_GetEnviron(void);
 JIM_EXPORT void Jim_SetEnviron(char **env);
 JIM_EXPORT int Jim_MakeTempFile(Jim_Interp *interp, const char *templ);
 
@@ -621,13 +627,16 @@ JIM_EXPORT int Jim_EvalSource(Jim_Interp *interp, const char *filename, int line
 JIM_EXPORT int Jim_EvalGlobal(Jim_Interp *interp, const char *script);
 JIM_EXPORT int Jim_EvalFile(Jim_Interp *interp, const char *filename);
 JIM_EXPORT int Jim_EvalFileGlobal(Jim_Interp *interp, const char *filename);
-JIM_EXPORT int Jim_EvalObj(Jim_Interp *interp, Jim_Obj *scriptObjPtr);
-JIM_EXPORT int Jim_EvalObjVector(Jim_Interp *interp, int objc, Jim_Obj *const *objv);
+JIM_EXPORT int Jim_EvalObj (Jim_Interp *interp, Jim_Obj *scriptObjPtr);
+JIM_EXPORT int Jim_EvalObjVector (Jim_Interp *interp, int objc,
+        Jim_Obj *const *objv);
 JIM_EXPORT int Jim_EvalObjList(Jim_Interp *interp, Jim_Obj *listObj);
-JIM_EXPORT int Jim_EvalObjPrefix(Jim_Interp *interp, Jim_Obj *prefix, int objc, Jim_Obj *const *objv);
+JIM_EXPORT int Jim_EvalObjPrefix(Jim_Interp *interp, Jim_Obj *prefix,
+        int objc, Jim_Obj *const *objv);
 #define Jim_EvalPrefix(i, p, oc, ov) Jim_EvalObjPrefix((i), Jim_NewStringObj((i), (p), -1), (oc), (ov))
 JIM_EXPORT int Jim_EvalNamespace(Jim_Interp *interp, Jim_Obj *scriptObj, Jim_Obj *nsObj);
-JIM_EXPORT int Jim_SubstObj(Jim_Interp *interp, Jim_Obj *substObjPtr, Jim_Obj **resObjPtrPtr, int flags);
+JIM_EXPORT int Jim_SubstObj (Jim_Interp *interp, Jim_Obj *substObjPtr,
+        Jim_Obj **resObjPtrPtr, int flags);
 
 /* stack */
 JIM_EXPORT void Jim_InitStack(Jim_Stack *stack);
@@ -639,130 +648,203 @@ JIM_EXPORT void * Jim_StackPeek(Jim_Stack *stack);
 JIM_EXPORT void Jim_FreeStackElements(Jim_Stack *stack, void (*freeFunc)(void *ptr));
 
 /* hash table */
-JIM_EXPORT int Jim_InitHashTable(Jim_HashTable *ht, const Jim_HashTableType *type, void *privdata);
-JIM_EXPORT void Jim_ExpandHashTable(Jim_HashTable *ht, unsigned int size);
-JIM_EXPORT int Jim_AddHashEntry(Jim_HashTable *ht, const void *key, void *val);
-JIM_EXPORT int Jim_ReplaceHashEntry(Jim_HashTable *ht, const void *key, void *val);
-JIM_EXPORT int Jim_DeleteHashEntry(Jim_HashTable *ht, const void *key);
-JIM_EXPORT int Jim_FreeHashTable(Jim_HashTable *ht);
-JIM_EXPORT Jim_HashEntry * Jim_FindHashEntry(Jim_HashTable *ht, const void *key);
-JIM_EXPORT void Jim_ResizeHashTable(Jim_HashTable *ht);
-JIM_EXPORT Jim_HashTableIterator *Jim_GetHashTableIterator(Jim_HashTable *ht);
-JIM_EXPORT Jim_HashEntry * Jim_NextHashEntry(Jim_HashTableIterator *iter);
+JIM_EXPORT int Jim_InitHashTable (Jim_HashTable *ht,
+        const Jim_HashTableType *type, void *privdata);
+JIM_EXPORT void Jim_ExpandHashTable (Jim_HashTable *ht,
+        unsigned int size);
+JIM_EXPORT int Jim_AddHashEntry (Jim_HashTable *ht, const void *key,
+        void *val);
+JIM_EXPORT int Jim_ReplaceHashEntry (Jim_HashTable *ht,
+        const void *key, void *val);
+JIM_EXPORT int Jim_DeleteHashEntry (Jim_HashTable *ht,
+        const void *key);
+JIM_EXPORT int Jim_FreeHashTable (Jim_HashTable *ht);
+JIM_EXPORT Jim_HashEntry * Jim_FindHashEntry (Jim_HashTable *ht,
+        const void *key);
+JIM_EXPORT void Jim_ResizeHashTable (Jim_HashTable *ht);
+JIM_EXPORT Jim_HashTableIterator *Jim_GetHashTableIterator
+        (Jim_HashTable *ht);
+JIM_EXPORT Jim_HashEntry * Jim_NextHashEntry
+        (Jim_HashTableIterator *iter);
 
 /* objects */
-JIM_EXPORT Jim_Obj * Jim_NewObj(Jim_Interp *interp);
-JIM_EXPORT void Jim_FreeObj(Jim_Interp *interp, Jim_Obj *objPtr);
-JIM_EXPORT void Jim_InvalidateStringRep(Jim_Obj *objPtr);
-JIM_EXPORT Jim_Obj * Jim_DuplicateObj(Jim_Interp *interp, Jim_Obj *objPtr);
-JIM_EXPORT const char * Jim_GetString(Jim_Obj *objPtr, int *lenPtr);
-JIM_EXPORT const char * Jim_String(Jim_Obj *objPtr);
+JIM_EXPORT Jim_Obj * Jim_NewObj (Jim_Interp *interp);
+JIM_EXPORT void Jim_FreeObj (Jim_Interp *interp, Jim_Obj *objPtr);
+JIM_EXPORT void Jim_InvalidateStringRep (Jim_Obj *objPtr);
+JIM_EXPORT Jim_Obj * Jim_DuplicateObj (Jim_Interp *interp,
+        Jim_Obj *objPtr);
+JIM_EXPORT const char * Jim_GetString(Jim_Obj *objPtr,
+        int *lenPtr);
+JIM_EXPORT const char *Jim_String(Jim_Obj *objPtr);
 JIM_EXPORT int Jim_Length(Jim_Obj *objPtr);
 
 /* string object */
-JIM_EXPORT Jim_Obj * Jim_NewStringObj(Jim_Interp *interp, const char *s, int len);
-JIM_EXPORT Jim_Obj * Jim_NewStringObjUtf8(Jim_Interp *interp, const char *s, int charlen);
-JIM_EXPORT Jim_Obj * Jim_NewStringObjNoAlloc(Jim_Interp *interp, char *s, int len);
-JIM_EXPORT void Jim_AppendString(Jim_Interp *interp, Jim_Obj *objPtr, const char *str, int len);
-JIM_EXPORT void Jim_AppendObj(Jim_Interp *interp, Jim_Obj *objPtr, Jim_Obj *appendObjPtr);
-JIM_EXPORT void Jim_AppendStrings(Jim_Interp *interp, Jim_Obj *objPtr, ...);
+JIM_EXPORT Jim_Obj * Jim_NewStringObj (Jim_Interp *interp,
+        const char *s, int len);
+JIM_EXPORT Jim_Obj *Jim_NewStringObjUtf8(Jim_Interp *interp,
+        const char *s, int charlen);
+JIM_EXPORT Jim_Obj * Jim_NewStringObjNoAlloc (Jim_Interp *interp,
+        char *s, int len);
+JIM_EXPORT void Jim_AppendString (Jim_Interp *interp, Jim_Obj *objPtr,
+        const char *str, int len);
+JIM_EXPORT void Jim_AppendObj (Jim_Interp *interp, Jim_Obj *objPtr,
+        Jim_Obj *appendObjPtr);
+JIM_EXPORT void Jim_AppendStrings (Jim_Interp *interp,
+        Jim_Obj *objPtr, ...);
 JIM_EXPORT int Jim_StringEqObj(Jim_Obj *aObjPtr, Jim_Obj *bObjPtr);
-JIM_EXPORT int Jim_StringMatchObj(Jim_Interp *interp, Jim_Obj *patternObjPtr, Jim_Obj *objPtr, int nocase);
-JIM_EXPORT Jim_Obj * Jim_StringRangeObj(Jim_Interp *interp, Jim_Obj *strObjPtr, Jim_Obj *firstObjPtr, Jim_Obj *lastObjPtr);
-JIM_EXPORT Jim_Obj * Jim_FormatString(Jim_Interp *interp, Jim_Obj *fmtObjPtr, int objc, Jim_Obj *const *objv);
-JIM_EXPORT Jim_Obj * Jim_ScanString(Jim_Interp *interp, Jim_Obj *strObjPtr, Jim_Obj *fmtObjPtr, int flags);
-JIM_EXPORT int Jim_CompareStringImmediate(Jim_Interp *interp, Jim_Obj *objPtr, const char *str);
-JIM_EXPORT int Jim_StringCompareObj(Jim_Interp *interp, Jim_Obj *firstObjPtr, Jim_Obj *secondObjPtr, int nocase);
-JIM_EXPORT int Jim_StringCompareLenObj(Jim_Interp *interp, Jim_Obj *firstObjPtr, Jim_Obj *secondObjPtr, int nocase);
+JIM_EXPORT int Jim_StringMatchObj (Jim_Interp *interp, Jim_Obj *patternObjPtr,
+        Jim_Obj *objPtr, int nocase);
+JIM_EXPORT Jim_Obj * Jim_StringRangeObj (Jim_Interp *interp,
+        Jim_Obj *strObjPtr, Jim_Obj *firstObjPtr,
+        Jim_Obj *lastObjPtr);
+JIM_EXPORT Jim_Obj * Jim_FormatString (Jim_Interp *interp,
+        Jim_Obj *fmtObjPtr, int objc, Jim_Obj *const *objv);
+JIM_EXPORT Jim_Obj * Jim_ScanString (Jim_Interp *interp, Jim_Obj *strObjPtr,
+        Jim_Obj *fmtObjPtr, int flags);
+JIM_EXPORT int Jim_CompareStringImmediate (Jim_Interp *interp,
+        Jim_Obj *objPtr, const char *str);
+JIM_EXPORT int Jim_StringCompareObj(Jim_Interp *interp, Jim_Obj *firstObjPtr,
+        Jim_Obj *secondObjPtr, int nocase);
+JIM_EXPORT int Jim_StringCompareLenObj(Jim_Interp *interp, Jim_Obj *firstObjPtr,
+        Jim_Obj *secondObjPtr, int nocase);
 JIM_EXPORT int Jim_Utf8Length(Jim_Interp *interp, Jim_Obj *objPtr);
 
 /* reference object */
-JIM_EXPORT Jim_Obj * Jim_NewReference(Jim_Interp *interp, Jim_Obj *objPtr, Jim_Obj *tagPtr, Jim_Obj *cmdNamePtr);
-JIM_EXPORT Jim_Reference * Jim_GetReference(Jim_Interp *interp, Jim_Obj *objPtr);
-JIM_EXPORT int Jim_SetFinalizer(Jim_Interp *interp, Jim_Obj *objPtr, Jim_Obj *cmdNamePtr);
-JIM_EXPORT int Jim_GetFinalizer(Jim_Interp *interp, Jim_Obj *objPtr, Jim_Obj **cmdNamePtrPtr);
+JIM_EXPORT Jim_Obj * Jim_NewReference (Jim_Interp *interp,
+        Jim_Obj *objPtr, Jim_Obj *tagPtr, Jim_Obj *cmdNamePtr);
+JIM_EXPORT Jim_Reference * Jim_GetReference (Jim_Interp *interp,
+        Jim_Obj *objPtr);
+JIM_EXPORT int Jim_SetFinalizer (Jim_Interp *interp, Jim_Obj *objPtr, Jim_Obj *cmdNamePtr);
+JIM_EXPORT int Jim_GetFinalizer (Jim_Interp *interp, Jim_Obj *objPtr, Jim_Obj **cmdNamePtrPtr);
 
 /* interpreter */
-JIM_EXPORT Jim_Interp * Jim_CreateInterp(void);
-JIM_EXPORT void Jim_FreeInterp(Jim_Interp *i);
-JIM_EXPORT int Jim_GetExitCode(Jim_Interp *interp);
-JIM_EXPORT const char * Jim_ReturnCode(int code);
+JIM_EXPORT Jim_Interp * Jim_CreateInterp (void);
+JIM_EXPORT void Jim_FreeInterp (Jim_Interp *i);
+JIM_EXPORT int Jim_GetExitCode (Jim_Interp *interp);
+JIM_EXPORT const char *Jim_ReturnCode(int code);
 JIM_EXPORT void Jim_SetResultFormatted(Jim_Interp *interp, const char *format, ...);
 
 /* commands */
-JIM_EXPORT void Jim_RegisterCoreCommands(Jim_Interp *interp);
-JIM_EXPORT int Jim_CreateCommand(Jim_Interp *interp, const char *cmdName, Jim_CmdProc cmdProc, void *privData, Jim_DelCmdProc delProc);
-JIM_EXPORT int Jim_DeleteCommand(Jim_Interp *interp, const char *cmdName);
-JIM_EXPORT int Jim_RenameCommand(Jim_Interp *interp, const char *oldName, const char *newName);
-JIM_EXPORT Jim_Cmd * Jim_GetCommand(Jim_Interp *interp, Jim_Obj *objPtr, int flags);
-JIM_EXPORT int Jim_SetVariable(Jim_Interp *interp, Jim_Obj *nameObjPtr, Jim_Obj *valObjPtr);
-JIM_EXPORT int Jim_SetVariableStr(Jim_Interp *interp, const char *name, Jim_Obj *objPtr);
-JIM_EXPORT int Jim_SetGlobalVariableStr(Jim_Interp *interp, const char *name, Jim_Obj *objPtr);
-JIM_EXPORT int Jim_SetVariableStrWithStr(Jim_Interp *interp, const char *name, const char *val);
-JIM_EXPORT int Jim_SetVariableLink(Jim_Interp *interp, Jim_Obj *nameObjPtr, Jim_Obj *targetNameObjPtr, Jim_CallFrame *targetCallFrame);
-JIM_EXPORT Jim_Obj * Jim_MakeGlobalNamespaceName(Jim_Interp *interp, Jim_Obj *nameObjPtr);
-JIM_EXPORT Jim_Obj * Jim_GetVariable(Jim_Interp *interp, Jim_Obj *nameObjPtr, int flags);
-JIM_EXPORT Jim_Obj * Jim_GetGlobalVariable(Jim_Interp *interp, Jim_Obj *nameObjPtr, int flags);
-JIM_EXPORT Jim_Obj * Jim_GetVariableStr(Jim_Interp *interp, const char *name, int flags);
-JIM_EXPORT Jim_Obj * Jim_GetGlobalVariableStr(Jim_Interp *interp, const char *name, int flags);
-JIM_EXPORT int Jim_UnsetVariable(Jim_Interp *interp, Jim_Obj *nameObjPtr, int flags);
+JIM_EXPORT void Jim_RegisterCoreCommands (Jim_Interp *interp);
+JIM_EXPORT int Jim_CreateCommand (Jim_Interp *interp,
+        const char *cmdName, Jim_CmdProc cmdProc, void *privData,
+         Jim_DelCmdProc delProc);
+JIM_EXPORT int Jim_DeleteCommand (Jim_Interp *interp,
+        const char *cmdName);
+JIM_EXPORT int Jim_RenameCommand (Jim_Interp *interp,
+        const char *oldName, const char *newName);
+JIM_EXPORT Jim_Cmd * Jim_GetCommand (Jim_Interp *interp,
+        Jim_Obj *objPtr, int flags);
+JIM_EXPORT int Jim_SetVariable (Jim_Interp *interp,
+        Jim_Obj *nameObjPtr, Jim_Obj *valObjPtr);
+JIM_EXPORT int Jim_SetVariableStr (Jim_Interp *interp,
+        const char *name, Jim_Obj *objPtr);
+JIM_EXPORT int Jim_SetGlobalVariableStr (Jim_Interp *interp,
+        const char *name, Jim_Obj *objPtr);
+JIM_EXPORT int Jim_SetVariableStrWithStr (Jim_Interp *interp,
+        const char *name, const char *val);
+JIM_EXPORT int Jim_SetVariableLink (Jim_Interp *interp,
+        Jim_Obj *nameObjPtr, Jim_Obj *targetNameObjPtr,
+        Jim_CallFrame *targetCallFrame);
+JIM_EXPORT Jim_Obj * Jim_MakeGlobalNamespaceName(Jim_Interp *interp,
+        Jim_Obj *nameObjPtr);
+JIM_EXPORT Jim_Obj * Jim_GetVariable (Jim_Interp *interp,
+        Jim_Obj *nameObjPtr, int flags);
+JIM_EXPORT Jim_Obj * Jim_GetGlobalVariable (Jim_Interp *interp,
+        Jim_Obj *nameObjPtr, int flags);
+JIM_EXPORT Jim_Obj * Jim_GetVariableStr (Jim_Interp *interp,
+        const char *name, int flags);
+JIM_EXPORT Jim_Obj * Jim_GetGlobalVariableStr (Jim_Interp *interp,
+        const char *name, int flags);
+JIM_EXPORT int Jim_UnsetVariable (Jim_Interp *interp,
+        Jim_Obj *nameObjPtr, int flags);
 
 /* call frame */
-JIM_EXPORT Jim_CallFrame *Jim_GetCallFrameByLevel(Jim_Interp *interp, Jim_Obj *levelObjPtr);
+JIM_EXPORT Jim_CallFrame *Jim_GetCallFrameByLevel(Jim_Interp *interp,
+        Jim_Obj *levelObjPtr);
 
 /* garbage collection */
-JIM_EXPORT int Jim_Collect(Jim_Interp *interp);
-JIM_EXPORT void Jim_CollectIfNeeded(Jim_Interp *interp);
+JIM_EXPORT int Jim_Collect (Jim_Interp *interp);
+JIM_EXPORT void Jim_CollectIfNeeded (Jim_Interp *interp);
 
 /* index object */
-JIM_EXPORT int Jim_GetIndex(Jim_Interp *interp, Jim_Obj *objPtr, int *indexPtr);
+JIM_EXPORT int Jim_GetIndex (Jim_Interp *interp, Jim_Obj *objPtr,
+        int *indexPtr);
 
 /* list object */
-JIM_EXPORT Jim_Obj * Jim_NewListObj(Jim_Interp *interp, Jim_Obj *const *elements, int len);
-JIM_EXPORT void Jim_ListInsertElements(Jim_Interp *interp, Jim_Obj *listPtr, int listindex, int objc, Jim_Obj *const *objVec);
-JIM_EXPORT void Jim_ListAppendElement(Jim_Interp *interp, Jim_Obj *listPtr, Jim_Obj *objPtr);
-JIM_EXPORT void Jim_ListAppendList(Jim_Interp *interp, Jim_Obj *listPtr, Jim_Obj *appendListPtr);
-JIM_EXPORT int Jim_ListLength(Jim_Interp *interp, Jim_Obj *objPtr);
-JIM_EXPORT int Jim_ListIndex(Jim_Interp *interp, Jim_Obj *listPrt, int listindex, Jim_Obj **objPtrPtr, int seterr);
-JIM_EXPORT Jim_Obj * Jim_ListGetIndex(Jim_Interp *interp, Jim_Obj *listPtr, int idx);
-JIM_EXPORT int Jim_SetListIndex(Jim_Interp *interp, Jim_Obj *varNamePtr, Jim_Obj *const *indexv, int indexc, Jim_Obj *newObjPtr);
-JIM_EXPORT Jim_Obj * Jim_ConcatObj(Jim_Interp *interp, int objc, Jim_Obj *const *objv);
-JIM_EXPORT Jim_Obj * Jim_ListJoin(Jim_Interp *interp, Jim_Obj *listObjPtr, const char *joinStr, int joinStrLen);
+JIM_EXPORT Jim_Obj * Jim_NewListObj (Jim_Interp *interp,
+        Jim_Obj *const *elements, int len);
+JIM_EXPORT void Jim_ListInsertElements (Jim_Interp *interp,
+        Jim_Obj *listPtr, int listindex, int objc, Jim_Obj *const *objVec);
+JIM_EXPORT void Jim_ListAppendElement (Jim_Interp *interp,
+        Jim_Obj *listPtr, Jim_Obj *objPtr);
+JIM_EXPORT void Jim_ListAppendList (Jim_Interp *interp,
+        Jim_Obj *listPtr, Jim_Obj *appendListPtr);
+JIM_EXPORT int Jim_ListLength (Jim_Interp *interp, Jim_Obj *objPtr);
+JIM_EXPORT int Jim_ListIndex (Jim_Interp *interp, Jim_Obj *listPrt,
+        int listindex, Jim_Obj **objPtrPtr, int seterr);
+JIM_EXPORT Jim_Obj *Jim_ListGetIndex(Jim_Interp *interp, Jim_Obj *listPtr, int idx);
+JIM_EXPORT int Jim_SetListIndex (Jim_Interp *interp,
+        Jim_Obj *varNamePtr, Jim_Obj *const *indexv, int indexc,
+        Jim_Obj *newObjPtr);
+JIM_EXPORT Jim_Obj * Jim_ConcatObj (Jim_Interp *interp, int objc,
+        Jim_Obj *const *objv);
+JIM_EXPORT Jim_Obj *Jim_ListJoin(Jim_Interp *interp,
+        Jim_Obj *listObjPtr, const char *joinStr, int joinStrLen);
 
 /* dict object */
-JIM_EXPORT Jim_Obj * Jim_NewDictObj(Jim_Interp *interp, Jim_Obj *const *elements, int len);
-JIM_EXPORT int Jim_DictKey(Jim_Interp *interp, Jim_Obj *dictPtr, Jim_Obj *keyPtr, Jim_Obj **objPtrPtr, int flags);
-JIM_EXPORT int Jim_DictKeysVector(Jim_Interp *interp, Jim_Obj *dictPtr, Jim_Obj *const *keyv, int keyc, Jim_Obj **objPtrPtr, int flags);
-JIM_EXPORT int Jim_SetDictKeysVector(Jim_Interp *interp, Jim_Obj *varNamePtr, Jim_Obj *const *keyv, int keyc, Jim_Obj *newObjPtr, int flags);
-JIM_EXPORT int Jim_DictPairs(Jim_Interp *interp, Jim_Obj *dictPtr, Jim_Obj ***objPtrPtr, int *len);
-JIM_EXPORT int Jim_DictAddElement(Jim_Interp *interp, Jim_Obj *objPtr, Jim_Obj *keyObjPtr, Jim_Obj *valueObjPtr);
+JIM_EXPORT Jim_Obj * Jim_NewDictObj (Jim_Interp *interp,
+        Jim_Obj *const *elements, int len);
+JIM_EXPORT int Jim_DictKey (Jim_Interp *interp, Jim_Obj *dictPtr,
+        Jim_Obj *keyPtr, Jim_Obj **objPtrPtr, int flags);
+JIM_EXPORT int Jim_DictKeysVector (Jim_Interp *interp,
+        Jim_Obj *dictPtr, Jim_Obj *const *keyv, int keyc,
+        Jim_Obj **objPtrPtr, int flags);
+JIM_EXPORT int Jim_SetDictKeysVector (Jim_Interp *interp,
+        Jim_Obj *varNamePtr, Jim_Obj *const *keyv, int keyc,
+        Jim_Obj *newObjPtr, int flags);
+JIM_EXPORT int Jim_DictPairs(Jim_Interp *interp,
+        Jim_Obj *dictPtr, Jim_Obj ***objPtrPtr, int *len);
+JIM_EXPORT int Jim_DictAddElement(Jim_Interp *interp, Jim_Obj *objPtr,
+        Jim_Obj *keyObjPtr, Jim_Obj *valueObjPtr);
 JIM_EXPORT int Jim_DictKeys(Jim_Interp *interp, Jim_Obj *objPtr, Jim_Obj *patternObj);
 JIM_EXPORT int Jim_DictValues(Jim_Interp *interp, Jim_Obj *dictObjPtr, Jim_Obj *patternObjPtr);
 JIM_EXPORT int Jim_DictSize(Jim_Interp *interp, Jim_Obj *objPtr);
 JIM_EXPORT int Jim_DictInfo(Jim_Interp *interp, Jim_Obj *objPtr);
 
 /* return code object */
-JIM_EXPORT int Jim_GetReturnCode(Jim_Interp *interp, Jim_Obj *objPtr, int *intPtr);
+JIM_EXPORT int Jim_GetReturnCode (Jim_Interp *interp, Jim_Obj *objPtr,
+        int *intPtr);
 
 /* expression object */
-JIM_EXPORT int Jim_EvalExpression(Jim_Interp *interp, Jim_Obj *exprObjPtr, Jim_Obj **exprResultPtrPtr);
-JIM_EXPORT int Jim_GetBoolFromExpr(Jim_Interp *interp, Jim_Obj *exprObjPtr, int *boolPtr);
+JIM_EXPORT int Jim_EvalExpression (Jim_Interp *interp,
+        Jim_Obj *exprObjPtr, Jim_Obj **exprResultPtrPtr);
+JIM_EXPORT int Jim_GetBoolFromExpr (Jim_Interp *interp,
+        Jim_Obj *exprObjPtr, int *boolPtr);
 
 /* integer object */
-JIM_EXPORT int Jim_GetWide(Jim_Interp *interp, Jim_Obj *objPtr, jim_wide *widePtr);
-JIM_EXPORT int Jim_GetLong(Jim_Interp *interp, Jim_Obj *objPtr, long *longPtr);
+JIM_EXPORT int Jim_GetWide (Jim_Interp *interp, Jim_Obj *objPtr,
+        jim_wide *widePtr);
+JIM_EXPORT int Jim_GetLong (Jim_Interp *interp, Jim_Obj *objPtr,
+        long *longPtr);
 #define Jim_NewWideObj  Jim_NewIntObj
-JIM_EXPORT Jim_Obj * Jim_NewIntObj(Jim_Interp *interp, jim_wide wideValue);
+JIM_EXPORT Jim_Obj * Jim_NewIntObj (Jim_Interp *interp,
+        jim_wide wideValue);
 
 /* double object */
-JIM_EXPORT int Jim_GetDouble(Jim_Interp *interp, Jim_Obj *objPtr, double *doublePtr);
-JIM_EXPORT void Jim_SetDouble(Jim_Interp *interp, Jim_Obj *objPtr, double doubleValue);
+JIM_EXPORT int Jim_GetDouble(Jim_Interp *interp, Jim_Obj *objPtr,
+        double *doublePtr);
+JIM_EXPORT void Jim_SetDouble(Jim_Interp *interp, Jim_Obj *objPtr,
+        double doubleValue);
 JIM_EXPORT Jim_Obj * Jim_NewDoubleObj(Jim_Interp *interp, double doubleValue);
 
 /* commands utilities */
-JIM_EXPORT void Jim_WrongNumArgs(Jim_Interp *interp, int argc, Jim_Obj *const *argv, const char *msg);
-JIM_EXPORT int Jim_GetEnum(Jim_Interp *interp, Jim_Obj *objPtr, const char * const *tablePtr, int *indexPtr, const char *name, int flags);
-JIM_EXPORT int Jim_ScriptIsComplete(const char *s, int len, char *stateCharPtr);
+JIM_EXPORT void Jim_WrongNumArgs (Jim_Interp *interp, int argc,
+        Jim_Obj *const *argv, const char *msg);
+JIM_EXPORT int Jim_GetEnum (Jim_Interp *interp, Jim_Obj *objPtr,
+        const char * const *tablePtr, int *indexPtr, const char *name, int flags);
+JIM_EXPORT int Jim_ScriptIsComplete (const char *s, int len,
+        char *stateCharPtr);
 /**
  * Find a matching name in the array of the given length.
  *
@@ -775,22 +857,25 @@ JIM_EXPORT int Jim_FindByName(const char *name, const char * const array[], size
 /* package utilities */
 typedef void (Jim_InterpDeleteProc)(Jim_Interp *interp, void *data);
 JIM_EXPORT void * Jim_GetAssocData(Jim_Interp *interp, const char *key);
-JIM_EXPORT int Jim_SetAssocData(Jim_Interp *interp, const char *key, Jim_InterpDeleteProc *delProc, void *data);
+JIM_EXPORT int Jim_SetAssocData(Jim_Interp *interp, const char *key,
+        Jim_InterpDeleteProc *delProc, void *data);
 JIM_EXPORT int Jim_DeleteAssocData(Jim_Interp *interp, const char *key);
 
 /* Packages C API */
 /* jim-package.c */
-JIM_EXPORT int Jim_PackageProvide(Jim_Interp *interp, const char *name, const char *ver, int flags);
-JIM_EXPORT int Jim_PackageRequire(Jim_Interp *interp, const char *name, int flags);
+JIM_EXPORT int Jim_PackageProvide (Jim_Interp *interp,
+        const char *name, const char *ver, int flags);
+JIM_EXPORT int Jim_PackageRequire (Jim_Interp *interp,
+        const char *name, int flags);
 
 /* error messages */
-JIM_EXPORT void Jim_MakeErrorMessage(Jim_Interp *interp);
+JIM_EXPORT void Jim_MakeErrorMessage (Jim_Interp *interp);
 
 /* interactive mode */
-JIM_EXPORT int Jim_InteractivePrompt(Jim_Interp *interp);
+JIM_EXPORT int Jim_InteractivePrompt (Jim_Interp *interp);
 JIM_EXPORT void Jim_HistoryLoad(const char *filename);
 JIM_EXPORT void Jim_HistorySave(const char *filename);
-JIM_EXPORT char * Jim_HistoryGetline(const char *prompt);
+JIM_EXPORT char *Jim_HistoryGetline(const char *prompt);
 JIM_EXPORT void Jim_HistoryAdd(const char *line);
 JIM_EXPORT void Jim_HistoryShow(void);
 
@@ -810,7 +895,7 @@ JIM_EXPORT int Jim_LoadLibrary(Jim_Interp *interp, const char *pathName);
 JIM_EXPORT void Jim_FreeLoadHandles(Jim_Interp *interp);
 
 /* jim-aio.c */
-JIM_EXPORT FILE * Jim_AioFilehandle(Jim_Interp *interp, Jim_Obj *command);
+JIM_EXPORT FILE *Jim_AioFilehandle(Jim_Interp *interp, Jim_Obj *command);
 
 /* type inspection - avoid where possible */
 JIM_EXPORT int Jim_IsDict(Jim_Obj *objPtr);
