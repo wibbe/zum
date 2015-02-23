@@ -27,9 +27,9 @@ namespace doc {
 
   static const tcl::Variable DELIMITERS("app:delimiters", ",;");
   static const tcl::Variable IGNORE_FIRST_ROW("app:ignore_first_row", "true");
-  static const tcl::Variable DEFAULT_ROW_COUNT("doc:default_row_count", "10");
-  static const tcl::Variable DEFAULT_COLUMN_COUNT("doc:default_column_count", "5");
-  static const tcl::Variable DEFAULT_COLUMN_WIDTH("doc:default_column_width", "20");
+  static const tcl::Variable DEFAULT_ROW_COUNT("doc_defaultRowCount", "10");
+  static const tcl::Variable DEFAULT_COLUMN_COUNT("doc_defaultColumnCount", "5");
+  static const tcl::Variable DEFAULT_COLUMN_WIDTH("doc_defaultColumnWidth", "20");
 
   struct Document
   {
@@ -102,40 +102,40 @@ namespace doc {
     return currentBuffer().scroll_;
   }
 
-  FUNC_0(nextBuffer, "doc:nextBuffer")
+  FUNC_0(nextBuffer, "doc_nextBuffer")
   {
     documentBuffer().push_back(currentBuffer());
     documentBuffer().pop_front();
   }
 
-  FUNC_0(prevBuffer, "doc:prevBuffer")
+  FUNC_0(prevBuffer, "doc_prevBuffer")
   {
     documentBuffer().push_front(documentBuffer().back());
     documentBuffer().pop_back();
   }
 
-  FUNC_0(createDefaultEmpty, "doc:createDefaultEmpty")
+  FUNC_0(createDefaultEmpty, "doc_createDefaultEmpty")
   {
     documentBuffer().push_front({});
-    currentDoc().width_ = std::max(DEFAULT_ROW_COUNT.toInt(), 1);
-    currentDoc().height_ = std::max(DEFAULT_COLUMN_COUNT.toInt(), 1);
-    currentDoc().columnWidth_.resize(DEFAULT_COLUMN_COUNT.toInt(), DEFAULT_COLUMN_WIDTH.toInt());
+    currentDoc().width_ = std::max(DEFAULT_COLUMN_COUNT.toInt(), 1);
+    currentDoc().height_ = std::max(DEFAULT_ROW_COUNT.toInt(), 1);
+    currentDoc().columnWidth_ = std::vector<int>(currentDoc().width_, DEFAULT_COLUMN_WIDTH.toInt());
     currentDoc().filename_ = Str("[No Name]");
     currentDoc().delimiter_ = ',';
     currentDoc().readOnly_ = false;
     return true;
   }
 
-  FUNC_2(createEmpty, "doc:createEmpty", "doc:createEmpty columnCount rowCount")
+  FUNC_2(createEmpty, "doc_createEmpty", "doc_createEmpty columnCount rowCount")
   {
     createDefaultEmpty();
     currentDoc().width_ = std::max(arg1.toInt(), 1);
     currentDoc().height_ = std::max(arg2.toInt(), 1);
-    currentDoc().columnWidth_.resize(currentDoc().width_, DEFAULT_COLUMN_WIDTH.toInt());
+    currentDoc().columnWidth_ = std::vector<int>(currentDoc().width_, DEFAULT_COLUMN_WIDTH.toInt());
     return true;
   }
 
-  FUNC_0(close, "doc:closeBuffer")
+  FUNC_0(close, "doc_closeBuffer")
   {
     documentBuffer().pop_front();
 
@@ -147,11 +147,7 @@ namespace doc {
 
   static Cell & getCell(Index const& idx)
   {
-    auto result = currentDoc().cells_.find(idx);
-    if (result == currentDoc().cells_.end())
-      result = currentDoc().cells_.emplace(idx, Cell()).first;
-
-    return result->second;
+    return currentDoc().cells_[idx];
   }
 
   static void takeUndoSnapshot(EditAction action, bool canMerge)
@@ -173,7 +169,7 @@ namespace doc {
     }
   }
 
-  FUNC_0(undo, "doc:undo")
+  FUNC_0(undo, "doc_undo")
   {
     if (!currentBuffer().undoStack_.empty())
     {
@@ -191,7 +187,7 @@ namespace doc {
     return false;
   }
 
-  FUNC_0(redo, "doc:redo")
+  FUNC_0(redo, "doc_redo")
   {
     if (!currentBuffer().redoStack_.empty())
     {
@@ -219,7 +215,7 @@ namespace doc {
     return currentDoc().readOnly_;
   }
 
-  FUNC_1(save, "doc:save", "doc:save filename")
+  FUNC_1(save, "doc_save", "doc_save filename")
   {
     logInfo(Str("Saving document: ").append(arg1));
 
@@ -392,7 +388,7 @@ namespace doc {
     return true;
   }
 
-  FUNC_1(load, "doc:load", "doc:load filename")
+  FUNC_1(load, "doc_load", "doc_load filename")
   {
     std::ifstream file(arg1.utf8().c_str());
     if (!file.is_open())
@@ -634,9 +630,9 @@ namespace doc {
 
   // -- Tcl procs --
 
-  TCL_PROC2(docDelimiter, "doc:delimiter")
+  TCL_PROC2(docDelimiter, "doc_delimiter")
   {
-    TCL_CHECK_ARGS(1, 2, "doc:delimiter ?delimiter?");
+    TCL_CHECK_ARGS(1, 2, "doc_delimiter ?delimiter?");
 
     if (args.size() == 1)
       return tcl::resultStr(Str(currentDoc().delimiter_));
@@ -646,15 +642,15 @@ namespace doc {
     TCL_OK();
   }
 
-  TCL_PROC2(docFilename, "doc:filename")
+  TCL_PROC(doc_filename)
   {
-    TCL_CHECK_ARG(1, "doc:filename");
+    TCL_CHECK_ARG(1, "doc_filename");
     return tcl::resultStr(currentDoc().filename_);
   }
 
-  TCL_PROC2(docColumWidth, "doc:columnWidth")
+  TCL_PROC(doc_columnWidth)
   {
-    TCL_CHECK_ARGS(2, 3, "doc:columnWidth column ?width?");
+    TCL_CHECK_ARGS(2, 3, "doc_columnWidth column ?width?");
 
     const int column = args[1].toInt();
 
@@ -664,35 +660,36 @@ namespace doc {
     return tcl::resultInt(getColumnWidth(column));
   }
 
-  TCL_PROC2(docColumnCount, "doc:columnCount")
+  TCL_PROC(doc_columnCount)
   {
-    TCL_CHECK_ARG(1, "doc:columnCount");
+    TCL_CHECK_ARG(1, "doc_columnCount");
     return tcl::resultInt(currentDoc().width_);
   }
 
-  TCL_PROC2(docRowCount, "doc:rowCount")
+  TCL_PROC(doc_rowCount)
   {
-    TCL_CHECK_ARG(1, "doc:rowCount");
+    TCL_CHECK_ARG(1, "doc_rowCount");
     return tcl::resultInt(currentDoc().height_);
   }
 
-  TCL_PROC2(docAddRow, "doc:addRow")
+  TCL_PROC(doc_addRow)
   {
-    TCL_CHECK_ARG(2, "doc:addRow row");
+    TCL_DESC("Adds a new row to the document below the indicated one");
+    TCL_CHECK_ARG(2, "doc_addRow row");
     addRow(args[1].toInt());
     TCL_OK();
   }
 
-  TCL_PROC2(docAddColumn, "doc:addColumn")
+  TCL_PROC(doc_addColumn)
   {
-    TCL_CHECK_ARG(2, "doc:addColumn column");
+    TCL_CHECK_ARG(2, "doc_addColumn column");
     addColumn(args[1].toInt());
     TCL_OK();
   }
 
-  TCL_PROC2(docCell, "doc:cell")
+  TCL_PROC(doc_cell)
   {
-    TCL_CHECK_ARGS(2, 3, "doc:cell index ?value?");
+    TCL_CHECK_ARGS(2, 3, "doc_cell index ?value?");
     const Index idx = Index::fromStr(args[1]);
 
     if (args.size() == 3)

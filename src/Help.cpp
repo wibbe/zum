@@ -1,6 +1,7 @@
 
-#include "Help.h"
+#include "Document.h"
 #include "Commands.h"
+#include "Tcl.h"
 
 #include <string.h>
 
@@ -10,24 +11,27 @@ static const char * helpStrHeader_ = R"RAW(80
 
 Zum is a spreadsheet application that can be used to edit CSV files.
 
-The navigation in the application is heavily influenced by Vim. But this does
-not mean every command in Vim maps to a corresponding command in Zum.
+The application navigation is influenced by Vim. But a lot of commands
+that you would normally find in Vim is absent in Zum.
 
-Zum has three editing modes:
+Zum has three basic modes of operation:
 
 * Navigation Mode - This is the mode the application starts in. This mode is
                     used to traverse the spreadsheet and make modifications to
                     the document.
 
-* Cell Edit Mode - By pressing 'i' in navigation mode the application switches
-                   to cell edit mode. It is then possible to edit the content of
-                   a single cell in the document.
+* Cell Mode - By pressing 'i' while in navigation mode, the application
+              switches to cell edit mode. While in this mode it's possible
+              to edit the text in the selected cell.
 
-* Command Mode - The command mode is entered by typing ':'. From there it is
-                 possible to enter commands that affect the whole application.
+* Command Mode - The application has a build-in interpreter inspired by Tcl,
+                 that is activated by pressing ':' while in navigation mode.
+                 From the command mode it's possible to create, save and load
+                 document, and issue a number of different commands to the
+                 application.
 
-By pressing the ESCAPE key in either cell-edit or command mode the application
-switches back into the navigation mode.
+While in any other mode than navigation the ESCAPE key will cancel the current
+activity and jump back into the navigation mode.
 
 Below is a list of all commands that exists in for the different modes.
 )RAW";
@@ -35,7 +39,7 @@ Below is a list of all commands that exists in for the different modes.
 static const char * helpStrNavCmd_ = R"RAW(
                                 NAVIGATION MODE
 
-The commands listed below can be used in the navigation mode.
+The commands listed below can be issued while in the navigation mode.
 
 KEY COMBO     DESCRIPTION
 )RAW";
@@ -48,8 +52,7 @@ The commands listed below can be used in the command mode.
 NAME                  DESCRIPTION
 )RAW";
 
-
-std::string getHelpDocument()
+TCL_PROC(help)
 {
   std::string help(helpStrHeader_);
   help += helpStrNavCmd_;
@@ -69,20 +72,6 @@ std::string getHelpDocument()
     help += "\n";
   }
 
-/*
-  help += helpStrAppCmd_;
-  for (AppCommand const& cmd : getAppCommands())
-  {
-    help += ":" + cmd.id.utf8();
-    help += " " + std::string(cmd.arg);
-
-    int spacing = 20 - cmd.id.size() - strlen(cmd.arg);
-    for (; spacing > 0; --spacing)
-      help += " ";
-
-    help += cmd.description;
-    help += "\n";
-  }
-*/
-  return help;
+  doc::loadRaw(help, Str("[Help]"), ';');
+  TCL_OK();
 }

@@ -47,7 +47,7 @@ class Str
     std::vector<Str> split(char_type delimiter, bool keepDelimiter = false) const;
 
     int findChar(char_type ch) const;
-    int findStr(Str const& str) const;
+    int findStr(Str const& str, int startPos = 0) const;
 
     iterator begin() { return data_.begin(); }
     iterator end() { return data_.end(); }

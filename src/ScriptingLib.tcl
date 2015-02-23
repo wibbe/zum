@@ -7,58 +7,56 @@ proc q {} {
 }
 
 proc n {} {
-  doc:createDefaultEmpty
+  doc_createDefaultEmpty
 }
 
 proc wq {} {
-  if {[string lenght [doc:filename]] > 0} {
-    doc:save [doc:filename]
+  if {[string lenght [doc_filename]] > 0} {
+    doc_save [doc_filename]
     app:quit
   } else {
     puts "No document filename specified"
   }
 }
 
-proc bn {} { doc:nextBuffer }
-proc bnext {} { doc:nextBuffer }
-proc bp {} { doc:prevBuffer }
-proc bprev {} { doc:prevBuffer }
+proc bn {} { doc_nextBuffer }
+proc bnext {} { doc_nextBuffer }
+proc bp {} { doc_prevBuffer }
+proc bprev {} { doc_prevBuffer }
 
 
 # -- A Simple Task app plugin --
 
 # Create a new document
-proc task:createDocument {} {
+proc task_createDocument {} {
   # Create a new empty document
-  doc:createEmpty 2 2
-  doc:columnWidth 0 7
-  doc:columnWidth 1 60
+  doc_createEmpty 1 3
+  doc_columnWidth 1 100
 
   # Header
-  doc:cell A1 "STATUS"
-  doc:cell A2 "------"
-  doc:cell B1 "DESCRIPTION"
-  doc:cell B2 "-----------"
+  doc_cell A1 "TASK"
+  doc_cell A2 "----"
 
-  todo:new
+  task_new
 }
 
 # Add a new item
-proc task:new {} {
-  set row [doc:rowCount]
-  doc:addRow $row
-  doc:cell [index new 0 $row] "  ☐"
-  app:edit [index new 1 $row]
+proc task_new {} {
+  set row [doc_rowCount]
+  doc_addRow $row
+  doc_cell [index new 0 $row] "☐ "
+  app_edit [index new 0 $row]
 }
 
-proc task:check {} {
-  set row [index row [app:cursor]]
-  set text [doc:cell [index new 0 $row]]
-
-  if {[string equal $text "  ☐"]} {
-    doc:cell [index new 0 $row] "  ☑"
+proc task_check {} {
+  set row [index row [app_cursor]]
+  set text [doc_cell [index new 0 $row]]
+  set pos [string first "☐" $text]
+  
+  if {[string first "☐" $text]} {
+    doc_cell [index new 0 $row] "  ☑"
   } else {
-    doc:cell [index new 0 $row] "  ☐"
+    doc_cell [index new 0 $row] "  ☐"
   }
 
 }

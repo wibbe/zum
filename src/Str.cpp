@@ -114,11 +114,11 @@ int Str::findChar(char_type ch) const
   return -1;
 }
 
-int Str::findStr(Str const& str) const
+int Str::findStr(Str const& str, int startPos) const
 {
   const std::string source = utf8();
   const std::string match = str.utf8();
-  const int pos = source.find(match);
+  const int pos = source.find(match, startPos);
   return pos == std::string::npos ? -1 : pos;
 }
 

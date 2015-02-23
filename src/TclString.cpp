@@ -52,6 +52,18 @@ namespace tcl {
         }
         break;
 
+      case kFirst:
+        {
+          TCL_CHECK_ARGS(4, 5, "string first needleString haystackString ?startIndex?");
+
+          int start = 0;
+          if (args.size() == 5)
+            start = args[4].toInt();
+
+          return resultInt(args[3].findStr(args[2], start));
+        }
+        break;
+
       case kEqual:
         {
           TCL_CHECK_ARGS(4, 7, "string equals ?-length length? ?-nocase? string1 string2");

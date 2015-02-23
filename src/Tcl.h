@@ -23,6 +23,7 @@ namespace tcl {
     kToLower = 1911912945u,   // tolower
     kToUpper = 98427793u,     // toupper
     kEqual = 1526800470u,     // equal
+    kFirst = 3996466946u,     // first
     kIs = 983832745u,         // is
     kAlpha = 553757373u,      // alpha
     kAlnum = 3831713840u,     // alnum
@@ -53,6 +54,8 @@ namespace tcl {
     virtual ~Procedure() { }
     virtual bool native() const = 0;
     virtual ReturnCode call(ArgumentVector const& args) = 0;
+
+    Str desc_;
   };
 
   class Variable
@@ -114,6 +117,9 @@ namespace tcl {
 
 #define TCL_CHECK_ARGS(min, max, desc) \
   do { if (args.size() < min || args.size() > max) return tcl::argError(desc); } while (false)
+
+#define TCL_DESC(descStr) \
+  this->desc_ = Str(descStr)
 
 #define TCL_PROC(name) \
   struct TclProc_##name : public tcl::Procedure { TclProc_##name() : Procedure(Str(#name)) { } bool native() const { return true; } tcl::ReturnCode call(tcl::ArgumentVector const& args); }; \
