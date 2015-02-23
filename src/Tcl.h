@@ -3,6 +3,7 @@
 
 #include <vector>
 #include "Str.h"
+#include "jim.h"
 
 namespace tcl {
 
