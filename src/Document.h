@@ -10,6 +10,9 @@ namespace doc {
   bool createEmpty(Str const& width, Str const& height);
   bool close();
 
+  Index & cursorPos();
+  Index & scroll();
+
   int getColumnWidth(int column);
   void setColumnWidth(int column, int width);
 
