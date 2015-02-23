@@ -483,6 +483,18 @@ namespace tcl {
     std::sort(procedures().begin(), procedures().end(), ProcedureInfoOrder());
   }
 
+  // -- BuiltInProc --
+
+  static std::vector<std::pair<const char *, Jim_CmdProc *>> & builtInProcs()
+  {
+    static std::vector<std::pair<const char *, Jim_CmdProc *>> procs;
+    return procs;
+  }
+
+  BuiltInProc::BuiltInProc(const char * name, Jim_CmdProc * proc)
+  {
+    builtInProcs().push_back({name, proc});
+  }
 
   // -- Interface --
 
@@ -492,6 +504,11 @@ namespace tcl {
   void initialize()
   {
     interpreter_ = Jim_CreateInterp();
+
+    Jim_RegisterCoreCommands(interpreter_);
+
+    for (auto const& it : builtInProcs())
+      Jim_CreateCommand(interpreter_, it.first, it.second, nullptr, nullptr);
 
     logInfo("Evaluating ScriptingLib...");
     evaluate(Str(std::string((char *)&ScriptingLib_tcl[0], ScriptingLib_tcl_len).c_str()));
@@ -820,7 +837,7 @@ namespace tcl {
 
   TCL_PROC(proc)
   {
-    TCL_CHECK_ARG(4, "proc name args body");
+    TCL_CHECK_ARG_OLD(4, "proc name args body");
 
     if (findProcedure(args[1]))
       return _reportError(Str("Procedure of name '").append(args[1]).append(Str("' already exists")));
@@ -831,7 +848,7 @@ namespace tcl {
 
   TCL_PROC(puts)
   {
-    TCL_CHECK_ARGS(2, 1000, "puts string ?string ...?");
+    TCL_CHECK_ARG_OLDS(2, 1000, "puts string ?string ...?");
 
     Str log;
     for (uint32_t i = 1, len = args.size(); i < len; ++i)
@@ -845,7 +862,7 @@ namespace tcl {
 
   TCL_PROC(set)
   {
-    TCL_CHECK_ARGS(2, 3, "set varName ?newValue?");
+    TCL_CHECK_ARG_OLDS(2, 3, "set varName ?newValue?");
 
     const uint32_t len = args.size();
     if (len == 2)
@@ -862,7 +879,7 @@ namespace tcl {
 
   TCL_PROC(expr)
   {
-    TCL_CHECK_ARGS(2, 1000, "expr arg ?arg ...?");
+    TCL_CHECK_ARG_OLDS(2, 1000, "expr arg ?arg ...?");
 
     Str str;
     for (uint32_t i = 1; i < args.size(); ++i)
@@ -893,19 +910,19 @@ namespace tcl {
 
   TCL_PROC(return)
   {
-    TCL_CHECK_ARG(2, "return value");
+    TCL_CHECK_ARG_OLD(2, "return value");
     return resultStr(args[1]);
   }
 
   TCL_PROC(error)
   {
-    TCL_CHECK_ARG(2, "error string");
+    TCL_CHECK_ARG_OLD(2, "error string");
     return _reportError(args[1]);
   }
 
   TCL_PROC(eval)
   {
-    TCL_CHECK_ARGS(2, 1000, "eval arg ?arg ...?");
+    TCL_CHECK_ARG_OLDS(2, 1000, "eval arg ?arg ...?");
 
     Str str;
     for (size_t i = 1; i < args.size(); ++i)
@@ -916,7 +933,7 @@ namespace tcl {
 
   TCL_PROC(while)
   {
-    TCL_CHECK_ARG(3, "while test command");
+    TCL_CHECK_ARG_OLD(3, "while test command");
 
     Str check("expr ");
     check.append(args[1]);
@@ -946,7 +963,7 @@ namespace tcl {
 
   TCL_PROC(incr)
   {
-    TCL_CHECK_ARGS(2, 3, "incr varName ?increment?");
+    TCL_CHECK_ARG_OLDS(2, 3, "incr varName ?increment?");
 
     Str var;
     if (!frames().current().get(args[1], var))
@@ -976,14 +993,14 @@ namespace tcl {
 
   TCL_PROC(info)
   {
-    TCL_CHECK_ARGS(2, 1000, "info subcommand ?argument ...?");
+    TCL_CHECK_ARG_OLDS(2, 1000, "info subcommand ?argument ...?");
 
     const uint32_t command = args[1].hash();
     switch (command)
     {
       case kArgs:
         {
-          TCL_CHECK_ARG(3, "info args procname");
+          TCL_CHECK_ARG_OLD(3, "info args procname");
           if (Procedure * proc = findProcedure(args[2]))
           {
             if (!proc->native())
@@ -999,7 +1016,7 @@ namespace tcl {
 
       case kBody:
         {
-          TCL_CHECK_ARG(3, "info args procname");
+          TCL_CHECK_ARG_OLD(3, "info args procname");
           if (Procedure * proc = findProcedure(args[2]))
           {
             if (!proc->native())
