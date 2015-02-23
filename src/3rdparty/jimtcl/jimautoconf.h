@@ -1,0 +1,15 @@
+#ifndef _JIMAUTOCONF_H
+#define _JIMAUTOCONF_H
+#define HAVE_SYS_TIME_H 1
+#define JIM_DOCS 1
+#define JIM_INSTALL 1
+/* #undef JIM_RANDOMISE_HASH */
+#define JIM_REFERENCES 1
+#define JIM_REGEXP 1
+#define JIM_STATICLIB 1
+#define JIM_UTF8 1
+#define JIM_MATH_FUNCTIONS 1
+#define JIM_VERSION 76
+#define SIZEOF_OFF_T 8
+#define USE_LINENOISE 0
+#endif

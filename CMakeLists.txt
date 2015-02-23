@@ -16,7 +16,8 @@ endif()
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src
                     ${CMAKE_CURRENT_BINARY_DIR}
-                    ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/termbox)
+                    ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/termbox
+                    ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/jimtcl)
 
 set(SOURCE
     src/Zum.cpp
@@ -37,6 +38,14 @@ set(SOURCE
     src/Index.cpp
     src/3rdparty/termbox/termbox.c
     src/3rdparty/termbox/utf8.c
+    src/3rdparty/jimtcl/jim.c
+    src/3rdparty/jimtcl/jim-subcmd.c
+    src/3rdparty/jimtcl/jim-win32compat.c
+    src/3rdparty/jimtcl/jim-clock.c
+    src/3rdparty/jimtcl/jim-regexp.c
+    src/3rdparty/jimtcl/jim-format.c
+    src/3rdparty/jimtcl/jimregexp.c
+    src/3rdparty/jimtcl/utf8.c
     ${CMAKE_CURRENT_BINARY_DIR}/ScriptingLib.tcl.h
 )
 
