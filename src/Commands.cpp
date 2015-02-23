@@ -19,7 +19,7 @@ static std::vector<EditCommand> editCommands_ = {
     [] (int) {
       if (!doc::isReadOnly())
       {
-        doc::setCellText(getCursorPos(), getYankBuffer());
+        doc::setCellText(doc::cursorPos(), getYankBuffer());
         navigateDown();
       }
     }
@@ -30,7 +30,7 @@ static std::vector<EditCommand> editCommands_ = {
     [] (int) {
       if (!doc::isReadOnly())
       {
-        doc::setCellText(getCursorPos(), getYankBuffer());
+        doc::setCellText(doc::cursorPos(), getYankBuffer());
         navigateRight();
       }
     }
@@ -41,10 +41,10 @@ static std::vector<EditCommand> editCommands_ = {
     [] (int) {
       if (!doc::isReadOnly())
       {
-        Index idx = getCursorPos();
+        Index idx = doc::cursorPos();
         doc::addRow(idx.y);
         idx.y += 1;
-        setCursorPos(idx);
+        doc::cursorPos() = idx;
         editCurrentCell();
       }
     }
@@ -53,9 +53,9 @@ static std::vector<EditCommand> editCommands_ = {
     {'O', 0}, true,
     "Add new row above the current and start editing that row",
     [] (int) {
-      if (!doc::isReadOnly() && getCursorPos().y > 0)
+      if (!doc::isReadOnly() && doc::cursorPos().y > 0)
       {
-        Index idx = getCursorPos();
+        Index idx = doc::cursorPos();
         doc::addRow(idx.y - 1);
         editCurrentCell();
       }
@@ -65,7 +65,7 @@ static std::vector<EditCommand> editCommands_ = {
     {'d', 'w'}, false,
     "Clear the current cell",
     [] (int) {
-      doc::setCellText(getCursorPos(), Str::EMPTY);
+      doc::setCellText(doc::cursorPos(), Str::EMPTY);
     }
   },
   {
@@ -76,13 +76,13 @@ static std::vector<EditCommand> editCommands_ = {
       {
         if (doc::getColumnCount() > 1)
         {
-          Index pos = getCursorPos();
+          Index pos = doc::cursorPos();
           doc::removeColumn(pos.x);
 
           if (pos.x >= doc::getColumnCount())
             pos.x--;
 
-          setCursorPos(pos);
+          doc::cursorPos() = pos;
         }
         else
           flashMessage(Str("Not allowed to delete the last column"));
@@ -97,13 +97,13 @@ static std::vector<EditCommand> editCommands_ = {
       {
         if (doc::getRowCount() > 1)
         {
-          Index pos = getCursorPos();
+          Index pos = doc::cursorPos();
           doc::removeRow(pos.y);
 
           if (pos.y >= doc::getRowCount())
             pos.y--;
 
-          setCursorPos(pos);
+          doc::cursorPos() = pos;
         }
         else
           flashMessage(Str("Not allowed to delete the last row"));
@@ -118,12 +118,12 @@ static std::vector<EditCommand> editCommands_ = {
   { // Increase column width
     {'+', 0}, false,
     "Increase current column with",
-    [] (int) { doc::increaseColumnWidth(getCursorPos().x); }
+    [] (int) { doc::increaseColumnWidth(doc::cursorPos().x); }
   },
   { // Decrease column with
     {'-', 0}, false,
     "Decrease current column width",
-    [] (int) { doc::decreaseColumnWidth(getCursorPos().x); }
+    [] (int) { doc::decreaseColumnWidth(doc::cursorPos().x); }
   },
   { // Undo
     {'u', 0}, false,
@@ -169,20 +169,20 @@ static std::vector<EditCommand> editCommands_ = {
     {'a', 'c'}, false,
     "Insert a new column after the current column",
     [] (int) {
-      Index idx = getCursorPos();
+      Index idx = doc::cursorPos();
       doc::addColumn(idx.x);
       idx.x += 1;
-      setCursorPos(idx);
+      doc::cursorPos() = idx;
     }
   },
   {
     {'a', 'r'}, false,
     "Insert a new row after the current row",
     [] (int) {
-      Index idx = getCursorPos();
+      Index idx = doc::cursorPos();
       doc::addRow(idx.y);
       idx.y += 1;
-      setCursorPos(idx);
+      doc::cursorPos() = idx;
     }
   },
   {
@@ -191,10 +191,10 @@ static std::vector<EditCommand> editCommands_ = {
     [] (int) {
       if (!doc::isReadOnly())
       {
-        Str text = doc::getCellText(getCursorPos());
+        Str text = doc::getCellText(doc::cursorPos());
         text.append(getYankBuffer());
 
-        doc::setCellText(getCursorPos(), text);
+        doc::setCellText(doc::cursorPos(), text);
       }
     }
   },
@@ -202,7 +202,7 @@ static std::vector<EditCommand> editCommands_ = {
     {'t', 'r'}, false,
     "Right-justify the text in the current cell",
     [] (int) {
-      const Index idx = getCursorPos();
+      const Index idx = doc::cursorPos();
       const int columnWidth = doc::getColumnWidth(idx.x);
       const Str text = doc::getCellText(idx).stripWhitespace();
 
@@ -222,7 +222,7 @@ static std::vector<EditCommand> editCommands_ = {
     {'t', 'c'}, false,
     "Center-justify the text in the current cell",
     [] (int) {
-      const Index idx = getCursorPos();
+      const Index idx = doc::cursorPos();
       const int columnWidth = doc::getColumnWidth(idx.x);
       const Str text = doc::getCellText(idx).stripWhitespace();
 
@@ -242,7 +242,7 @@ static std::vector<EditCommand> editCommands_ = {
     {'t', 'l'}, false,
     "Left-justify the text in the current cell",
     [] (int) {
-      const Index idx = getCursorPos();
+      const Index idx = doc::cursorPos();
       const Str text = doc::getCellText(idx).stripWhitespace();
 
       doc::setCellText(idx, text);
@@ -336,7 +336,7 @@ TCL_PROC(e)
 {
   TCL_CHECK_ARG(2, "e filename");
 
-  setCursorPos(Index(0, 0));
+  doc::cursorPos() = Index(0, 0);
   doc::load(args[1]);
 
   TCL_OK();
@@ -354,20 +354,13 @@ TCL_PROC(w)
   TCL_OK();
 }
 
-FUNC_X(edit, "app:edit")
+TCL_PROC2(edit, "app:edit")
 {
-  for (int i = 1; i < args.size(); ++i)
-  {
-    const Str arg = args[i];
-    if (!arg.empty())
-    {
-      clearEditCommandSequence();
-      for (auto ch : args[1])
-        pushEditCommandKey(ch);
-    }
-  }
+  TCL_CHECK_ARG(2, "app:edit index");
+  doc::cursorPos() = Index::fromStr(args[1]);
+  editCurrentCell();
 
-  return true;
+  TCL_OK();
 }
 
 FUNC_0(help, "help")
@@ -381,7 +374,7 @@ TCL_PROC2(editorCursor, "app:cursor")
   TCL_CHECK_ARGS(1, 2, "app:cursor ?index?");
 
   if (args.size() == 2)
-    setCursorPos(Index::fromStr(args[1]));
+    doc::cursorPos() = Index::fromStr(args[1]);
 
-  return tcl::resultStr(getCursorPos().toStr());
+  return tcl::resultStr(doc::cursorPos().toStr());
 }

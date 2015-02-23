@@ -35,9 +35,6 @@ static struct tb_cell cell_buffer[CELL_BUFFER_LEN];
 
 static std::vector<ColumnInfo> drawColumnInfo_;
 
-static Index currentScroll_(0, 0);
-static Index currentIndex_(0, 0);
-
 int editLinePos_ = 0;
 static Str editLine_;
 static Str yankBuffer_;
@@ -78,39 +75,39 @@ void updateCursor()
 
 static void ensureCursorVisibility()
 {
-  if (currentIndex_.x < currentScroll_.x)
-    currentScroll_.x = currentIndex_.x;
+  if (doc::cursorPos().x < doc::scroll().x)
+    doc::scroll().x = doc::cursorPos().x;
 
-  if ((currentIndex_.y - (ALWAYS_SHOW_HEADER.toBool() ? 1 : 0)) < currentScroll_.y)
-    currentScroll_.y = currentIndex_.y - (ALWAYS_SHOW_HEADER.toBool() && currentIndex_.y != 0 ? 1 : 0);
+  if ((doc::cursorPos().y - (ALWAYS_SHOW_HEADER.toBool() ? 1 : 0)) < doc::scroll().y)
+    doc::scroll().y = doc::cursorPos().y - (ALWAYS_SHOW_HEADER.toBool() && doc::cursorPos().y != 0 ? 1 : 0);
 
   int width = ROW_HEADER_WIDTH;
   bool scroll = false;
-  for (int i = currentScroll_.x; i <= currentIndex_.x && !scroll; ++i)
+  for (int i = doc::scroll().x; i <= doc::cursorPos().x && !scroll; ++i)
   {
     width += doc::getColumnWidth(i);
 
     while (width >= tb_width())
     {
       scroll = true;
-      width -= doc::getColumnWidth(currentScroll_.x);
-      currentScroll_.x++;
+      width -= doc::getColumnWidth(doc::scroll().x);
+      doc::scroll().x++;
     }
   }
 
-  while ((currentIndex_.y - currentScroll_.y) >= (tb_height() - 3))
-    currentScroll_.y++;
+  while ((doc::cursorPos().y - doc::scroll().y) >= (tb_height() - 3))
+    doc::scroll().y++;
 }
 
 Index getCursorPos()
 {
-  return currentIndex_;
+  return doc::cursorPos();
 }
 
 void setCursorPos(Index const& idx)
 {
-  currentIndex_.x = std::min(std::max(idx.x, 0), doc::getColumnCount());
-  currentIndex_.y = std::min(std::max(idx.y, 0), doc::getRowCount());
+  doc::cursorPos().x = std::min(std::max(idx.x, 0), doc::getColumnCount());
+  doc::cursorPos().y = std::min(std::max(idx.y, 0), doc::getRowCount());
   ensureCursorVisibility();
 }
 
@@ -126,50 +123,50 @@ Str getYankBuffer()
 
 void yankCurrentCell()
 {
-  yankBuffer_ = doc::getCellText(currentIndex_);
+  yankBuffer_ = doc::getCellText(doc::cursorPos());
 }
 
 void navigateLeft()
 {
-  if (currentIndex_.x > 0)
-   currentIndex_.x--;
+  if (doc::cursorPos().x > 0)
+   doc::cursorPos().x--;
 
   ensureCursorVisibility();
 }
 
 void navigateRight()
 {
-  if (currentIndex_.x < (doc::getColumnCount() - 1))
-   currentIndex_.x++;
+  if (doc::cursorPos().x < (doc::getColumnCount() - 1))
+   doc::cursorPos().x++;
 
   ensureCursorVisibility();
 }
 
 void navigateUp()
 {
-  if (currentIndex_.y > 0)
-    currentIndex_.y--;
+  if (doc::cursorPos().y > 0)
+    doc::cursorPos().y--;
 
   ensureCursorVisibility();
 }
 
 void navigateDown()
 {
-  if (currentIndex_.y < (doc::getRowCount() - 1))
-    currentIndex_.y++;
+  if (doc::cursorPos().y < (doc::getRowCount() - 1))
+    doc::cursorPos().y++;
 
   ensureCursorVisibility();
 }
 
 void navigatePageUp()
 {
-  currentIndex_.y -= tb_height() - getCommandLineHeight() - 1;
-  currentScroll_.y -= tb_height() - getCommandLineHeight() - 1;
+  doc::cursorPos().y -= tb_height() - getCommandLineHeight() - 1;
+  doc::scroll().y -= tb_height() - getCommandLineHeight() - 1;
 
-  if (currentIndex_.y < 0)
+  if (doc::cursorPos().y < 0)
   {
-    currentIndex_.y = 0;
-    currentScroll_.y = 0;
+    doc::cursorPos().y = 0;
+    doc::scroll().y = 0;
   }
 
   ensureCursorVisibility();
@@ -177,10 +174,10 @@ void navigatePageUp()
 
 void navigatePageDown()
 {
-  currentIndex_.y += tb_height() - getCommandLineHeight() - 1;
-  currentScroll_.y += tb_height() - getCommandLineHeight() - 1;
-  if (currentIndex_.y > (doc::getRowCount() - 1))
-    currentIndex_.y = doc::getRowCount() - 1;
+  doc::cursorPos().y += tb_height() - getCommandLineHeight() - 1;
+  doc::scroll().y += tb_height() - getCommandLineHeight() - 1;
+  if (doc::cursorPos().y > (doc::getRowCount() - 1))
+    doc::cursorPos().y = doc::getRowCount() - 1;
 
   ensureCursorVisibility();
 }
@@ -249,9 +246,8 @@ void editCurrentCell()
 {
   if (!doc::isReadOnly())
   {
-
     editMode_ = EditorMode::EDIT;
-    editLine_ = doc::getCellText(currentIndex_);
+    editLine_ = doc::getCellText(doc::cursorPos());
     editLinePos_ = editLine_.size();
     clearFlashMessage();
   }
@@ -397,14 +393,14 @@ void handleEditEvent(struct tb_event * event)
       break;
 
     case TB_KEY_TAB:
-      doc::setCellText(currentIndex_, editLine_);
+      doc::setCellText(doc::cursorPos(), editLine_);
       editLine_.clear();
       navigateRight();
       editMode_ = EditorMode::NAVIGATE;
       break;
 
     case TB_KEY_ENTER:
-      doc::setCellText(currentIndex_, editLine_);
+      doc::setCellText(doc::cursorPos(), editLine_);
       editLine_.clear();
       navigateDown();
       editMode_ = EditorMode::NAVIGATE;
@@ -507,7 +503,7 @@ void calculateColumDrawWidths()
   drawColumnInfo_.clear();
 
   int x = ROW_HEADER_WIDTH;
-  for (int i = currentScroll_.x; i < doc::getColumnCount(); ++i)
+  for (int i = doc::scroll().x; i < doc::getColumnCount(); ++i)
   {
     const int width = doc::getColumnWidth(i);
     drawColumnInfo_.emplace_back(i, x, width);
@@ -590,7 +586,7 @@ void drawHeaders()
   // Draw column header
   for (int x = 0; x < drawColumnInfo_.size(); ++x)
   {
-    const uint16_t color = (drawColumnInfo_[x].column_) == currentIndex_.x ? TB_REVERSE | TB_DEFAULT : TB_DEFAULT;
+    const uint16_t color = (drawColumnInfo_[x].column_) == doc::cursorPos().x ? TB_REVERSE | TB_DEFAULT : TB_DEFAULT;
 
     const int before = (drawColumnInfo_[x].width_ - 1) / 2;
 
@@ -604,8 +600,8 @@ void drawHeaders()
   const int y_end = doc::getRowCount() < (tb_height() - 2) ? doc::getRowCount() : tb_height() - 2;
   for (int y = 1; y < tb_height() - getCommandLineHeight(); ++y)
   {
-    int row = y + currentScroll_.y - 1;
-    const uint16_t color = row == currentIndex_.y ? TB_REVERSE | TB_DEFAULT : TB_DEFAULT;
+    int row = y + doc::scroll().y - 1;
+    const uint16_t color = row == doc::cursorPos().y ? TB_REVERSE | TB_DEFAULT : TB_DEFAULT;
 
     if (y == 1 && ALWAYS_SHOW_HEADER.toBool())
       row = 0;
@@ -632,8 +628,8 @@ void drawWorkspace()
   {
     for (int x = 0; x < drawColumnInfo_.size(); ++x)
     {
-      int row = y + currentScroll_.y - 1;
-      const int selected = drawColumnInfo_[x].column_ == currentIndex_.x && row == currentIndex_.y;
+      int row = y + doc::scroll().y - 1;
+      const int selected = drawColumnInfo_[x].column_ == doc::cursorPos().x && row == doc::cursorPos().y;
       const uint16_t color = selected ? TB_REVERSE | TB_DEFAULT : TB_DEFAULT;
 
       if (y == 1 && ALWAYS_SHOW_HEADER.toBool())
@@ -671,7 +667,7 @@ void drawCommandLine()
   {
     case EditorMode::NAVIGATE:
       mode = 'N';
-      commandLine = doc::getCellText(currentIndex_);
+      commandLine = doc::getCellText(doc::cursorPos());
       break;
 
     case EditorMode::EDIT:
@@ -698,10 +694,10 @@ void drawCommandLine()
       filename.set("[NoName]");
 
     Str pos;
-    pos.append(Index::columnToStr(currentIndex_.x))
-       .append(Index::rowToStr(currentIndex_.y));
+    pos.append(Index::columnToStr(doc::cursorPos().x))
+       .append(Index::rowToStr(doc::cursorPos().y));
 
-    Str progress = Str::fromInt((int)(((double)(currentIndex_.y + 1) / (double)doc::getRowCount()) * 100.0));
+    Str progress = Str::fromInt((int)(((double)(doc::cursorPos().y + 1) / (double)doc::getRowCount()) * 100.0));
     progress.append('%');
 
     const int maxFileAreaSize = tb_width() - pos.size() - progress.size() - 5;

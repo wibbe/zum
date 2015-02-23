@@ -13,6 +13,7 @@
 #include <string.h>
 
 #include <vector>
+#include <list>
 #include <utility>
 #include <iostream>
 #include <fstream>
@@ -65,50 +66,90 @@ namespace doc {
     EditAction action_;
   };
 
-  static Document currentDoc_;
-  static std::vector<UndoState> undoStack_;
-  static std::vector<UndoState> redoStack_;
+  struct Buffer
+  {
+    Document doc_;
+    Index cursorPos_ = Index(0, 0);
+    Index scroll_ = Index(0, 0);
+    std::vector<UndoState> undoStack_;
+    std::vector<UndoState> redoStack_;
+  };
+
+  static std::list<Buffer> & documentBuffer()
+  {
+    static std::list<Buffer> buffer;
+    return buffer;
+  }
+
+  static Buffer & currentBuffer()
+  {
+    assert(!documentBuffer().empty());
+    return documentBuffer().front();
+  }
+
+  static Document & currentDoc()
+  {
+    return currentBuffer().doc_;
+  }
+
+  Index & cursorPos()
+  {
+    return currentBuffer().cursorPos_;
+  }
+
+  Index & scroll()
+  {
+    return currentBuffer().scroll_;
+  }
+
+  FUNC_0(nextBuffer, "doc:nextBuffer")
+  {
+    documentBuffer().push_back(currentBuffer());
+    documentBuffer().pop_front();
+  }
+
+  FUNC_0(prevBuffer, "doc:prevBuffer")
+  {
+    documentBuffer().push_front(documentBuffer().back());
+    documentBuffer().pop_back();
+  }
 
   FUNC_0(createDefaultEmpty, "doc:createDefaultEmpty")
   {
-    close();
-    currentDoc_.width_ = std::max((int)DEFAULT_ROW_COUNT.toInt(), 1);
-    currentDoc_.height_ = std::max((int)DEFAULT_COLUMN_COUNT.toInt(), 1);
-    currentDoc_.columnWidth_.resize(DEFAULT_COLUMN_COUNT.toInt(), DEFAULT_COLUMN_WIDTH.toInt());
-    currentDoc_.filename_ = Str("[No Name]");
-    currentDoc_.delimiter_ = ',';
-    currentDoc_.readOnly_ = false;
+    documentBuffer().push_front({});
+    currentDoc().width_ = std::max(DEFAULT_ROW_COUNT.toInt(), 1);
+    currentDoc().height_ = std::max(DEFAULT_COLUMN_COUNT.toInt(), 1);
+    currentDoc().columnWidth_.resize(DEFAULT_COLUMN_COUNT.toInt(), DEFAULT_COLUMN_WIDTH.toInt());
+    currentDoc().filename_ = Str("[No Name]");
+    currentDoc().delimiter_ = ',';
+    currentDoc().readOnly_ = false;
     return true;
   }
 
   FUNC_2(createEmpty, "doc:createEmpty", "doc:createEmpty columnCount rowCount")
   {
     createDefaultEmpty();
-    currentDoc_.width_ = std::max((int)arg1.toInt(), 1);
-    currentDoc_.height_ = std::max((int)arg2.toInt(), 1);
-    currentDoc_.columnWidth_.resize(currentDoc_.width_, DEFAULT_COLUMN_WIDTH.toInt());
+    currentDoc().width_ = std::max(arg1.toInt(), 1);
+    currentDoc().height_ = std::max(arg2.toInt(), 1);
+    currentDoc().columnWidth_.resize(currentDoc().width_, DEFAULT_COLUMN_WIDTH.toInt());
     return true;
   }
 
-  FUNC_0(close, "doc:close")
+  FUNC_0(close, "doc:closeBuffer")
   {
-    currentDoc_.width_ = 0;
-    currentDoc_.height_ = 0;
-    currentDoc_.filename_ = Str::EMPTY;
-    currentDoc_.delimiter_ = ',';
-    currentDoc_.cells_.clear();
-    currentDoc_.columnWidth_.clear();
-    currentDoc_.readOnly_ = true;
-    undoStack_.clear();
-    redoStack_.clear();
+    documentBuffer().pop_front();
+
+    if (documentBuffer().empty())
+      createDefaultEmpty();
+
     return true;
   }
 
   static Cell & getCell(Index const& idx)
   {
-    auto result = currentDoc_.cells_.find(idx);
-    if (result == currentDoc_.cells_.end())
-      result = currentDoc_.cells_.emplace(idx, Cell()).first;
+    auto result = currentDoc().cells_.find(idx);
+    if (result == currentDoc().cells_.end())
+      result = currentDoc().cells_.emplace(idx, Cell()).first;
 
     return result->second;
   }
@@ -117,9 +158,9 @@ namespace doc {
   {
     bool createNew = true;
 
-    if (!undoStack_.empty())
+    if (!currentBuffer().undoStack_.empty())
     {
-      UndoState & state = undoStack_.back();
+      UndoState & state = currentBuffer().undoStack_.back();
 
       if (state.action_ == action && canMerge)
         createNew = false;
@@ -127,22 +168,22 @@ namespace doc {
 
     if (createNew)
     {
-      undoStack_.emplace_back(currentDoc_, getCursorPos(), action);
-      redoStack_.clear();
+      currentBuffer().undoStack_.emplace_back(currentDoc(), cursorPos(), action);
+      currentBuffer().redoStack_.clear();
     }
   }
 
   FUNC_0(undo, "doc:undo")
   {
-    if (!undoStack_.empty())
+    if (!currentBuffer().undoStack_.empty())
     {
-      redoStack_.emplace_back(currentDoc_, getCursorPos(), EditAction::UndoRedo);
+      currentBuffer().redoStack_.emplace_back(currentDoc(), cursorPos(), EditAction::UndoRedo);
 
-      UndoState const& state = undoStack_.back();
-      currentDoc_ = state.doc_;
-      setCursorPos(state.cursor_);
+      UndoState const& state = currentBuffer().undoStack_.back();
+      currentDoc() = state.doc_;
+      cursorPos() = state.cursor_;
 
-      undoStack_.pop_back();
+      currentBuffer().undoStack_.pop_back();
 
       return true;
     }
@@ -152,15 +193,15 @@ namespace doc {
 
   FUNC_0(redo, "doc:redo")
   {
-    if (!redoStack_.empty())
+    if (!currentBuffer().redoStack_.empty())
     {
-      undoStack_.emplace_back(currentDoc_, getCursorPos(), EditAction::UndoRedo);
+      currentBuffer().undoStack_.emplace_back(currentDoc(), cursorPos(), EditAction::UndoRedo);
 
-      UndoState const& state = redoStack_.back();
-      currentDoc_ = state.doc_;
-      setCursorPos(state.cursor_);
+      UndoState const& state = currentBuffer().redoStack_.back();
+      currentDoc() = state.doc_;
+      cursorPos() = state.cursor_;
 
-      redoStack_.pop_back();
+      currentBuffer().redoStack_.pop_back();
 
       return true;
     }
@@ -170,12 +211,12 @@ namespace doc {
 
   Str getFilename()
   {
-    return currentDoc_.filename_;
+    return currentDoc().filename_;
   }
 
   bool isReadOnly()
   {
-    return currentDoc_.readOnly_;
+    return currentDoc().readOnly_;
   }
 
   FUNC_1(save, "doc:save", "doc:save filename")
@@ -191,20 +232,20 @@ namespace doc {
 
     // Write header info
     if (IGNORE_FIRST_ROW.toBool())
-      for (int i = 0; i < currentDoc_.width_; ++i)
-        file << currentDoc_.columnWidth_[i] << (i < (currentDoc_.width_ - 1) ? (char)currentDoc_.delimiter_ : '\n');
+      for (int i = 0; i < currentDoc().width_; ++i)
+        file << currentDoc().columnWidth_[i] << (i < (currentDoc().width_ - 1) ? (char)currentDoc().delimiter_ : '\n');
 
     // Write all the cells
-    for (int y = 0; y < currentDoc_.height_; ++y)
+    for (int y = 0; y < currentDoc().height_; ++y)
     {
-      for (int x = 0; x < currentDoc_.width_; ++x)
+      for (int x = 0; x < currentDoc().width_; ++x)
       {
         Str const& cell = getCellText(Index(x, y));
-        file << cell.utf8() << (x < (currentDoc_.width_ - 1) ? (char)currentDoc_.delimiter_ : '\n');
+        file << cell.utf8() << (x < (currentDoc().width_ - 1) ? (char)currentDoc().delimiter_ : '\n');
       }
     }
 
-    currentDoc_.filename_ = arg1;
+    currentDoc().filename_ = arg1;
     flashMessage(Str("Document saved!"));
     return true;
   }
@@ -242,6 +283,11 @@ namespace doc {
 
   static bool loadDocument(Str const& data, Str::char_type defaultDelimiter)
   {
+    createDefaultEmpty();
+    currentDoc().width_ = 0;
+    currentDoc().height_ = 0;
+    currentDoc().columnWidth_.resize(0);
+
     // Examin document to determin delimiter type
     if (defaultDelimiter == 0)
     {
@@ -256,21 +302,20 @@ namespace doc {
       }
 
       int maxCount = -1;
-      currentDoc_.delimiter_ = delimiters[0];
+      currentDoc().delimiter_ = delimiters[0];
       for (int i = 0; i < delimCount.size(); ++i)
       {
         if (delimCount[i] > maxCount)
         {
           maxCount = delimCount[i];
-          currentDoc_.delimiter_ = delimiters[i];
+          currentDoc().delimiter_ = delimiters[i];
         }
       }
     }
     else
-     currentDoc_.delimiter_ = defaultDelimiter;
+     currentDoc().delimiter_ = defaultDelimiter;
 
-    logInfo("Document delimiter ", (char)currentDoc_.delimiter_);
-    Parser p(data, currentDoc_.delimiter_);
+    Parser p(data, currentDoc().delimiter_);
 
     // Read column width
     if (IGNORE_FIRST_ROW.toBool())
@@ -296,11 +341,11 @@ namespace doc {
         for (auto const& cellText : cells)
         {
           const int width = cellText.toInt();
-          currentDoc_.columnWidth_.push_back(width > 0 ? width : DEFAULT_COLUMN_WIDTH.toInt());
+          currentDoc().columnWidth_.push_back(width > 0 ? width : DEFAULT_COLUMN_WIDTH.toInt());
         }
 
-        currentDoc_.width_ = currentDoc_.columnWidth_.size();
-        currentDoc_.height_ = 0;
+        currentDoc().width_ = currentDoc().columnWidth_.size();
+        currentDoc().height_ = 0;
       }
       else
       {
@@ -309,11 +354,11 @@ namespace doc {
           Cell & cell = getCell(Index(i, 0));
           cell.text = cells[i];
 
-          currentDoc_.columnWidth_.push_back(DEFAULT_COLUMN_WIDTH.toInt());
+          currentDoc().columnWidth_.push_back(DEFAULT_COLUMN_WIDTH.toInt());
         }
 
-        currentDoc_.width_ = cells.size();
-        currentDoc_.height_ = 1;
+        currentDoc().width_ = cells.size();
+        currentDoc().height_ = 1;
       }
     }
 
@@ -325,22 +370,22 @@ namespace doc {
 
       if (!cellText.empty())
       {
-        Cell & cell = getCell(Index(column, currentDoc_.height_));
+        Cell & cell = getCell(Index(column, currentDoc().height_));
         cell.text = cellText;
       }
 
       column++;
 
-      if (column > currentDoc_.width_)
+      if (column > currentDoc().width_)
       {
-        currentDoc_.width_ = column;
-        currentDoc_.columnWidth_.push_back(DEFAULT_COLUMN_WIDTH.toInt());
+        currentDoc().width_ = column;
+        currentDoc().columnWidth_.push_back(DEFAULT_COLUMN_WIDTH.toInt());
       }
 
       if (newLine)
       {
         column = 0;
-        currentDoc_.height_++;
+        currentDoc().height_++;
       }
     }
 
@@ -349,8 +394,6 @@ namespace doc {
 
   FUNC_1(load, "doc:load", "doc:load filename")
   {
-    logInfo(Str("Loading document: ").append(arg1));
-
     std::ifstream file(arg1.utf8().c_str());
     if (!file.is_open())
     {
@@ -375,72 +418,67 @@ namespace doc {
     if (length == 0)
       return false;
 
-    // Start by closing thr current document
-    close();
-
     const Str data(&buffer[0]);
     if (!loadDocument(data, 0))
       return false;
 
-    currentDoc_.filename_ = arg1;
-    currentDoc_.readOnly_ = false;
+    currentDoc().filename_ = arg1;
+    currentDoc().readOnly_ = false;
 
     return true;
   }
 
   bool loadRaw(std::string const& data, Str const& filename, Str::char_type delimiter)
   {
-    close();
-
     if (!loadDocument(Str(data.c_str()), delimiter))
       return false;
 
-    currentDoc_.filename_ = filename;
-    currentDoc_.readOnly_ = true;
+    currentDoc().filename_ = filename;
+    currentDoc().readOnly_ = true;
 
     return true;
   }
 
   int getColumnWidth(int column)
   {
-    assert(column < currentDoc_.width_);
-    return currentDoc_.columnWidth_[column];
+    assert(column < currentDoc().width_);
+    return currentDoc().columnWidth_[column];
   }
 
   void setColumnWidth(int column, int width)
   {
-    if (column >= currentDoc_.width_)
+    if (column >= currentDoc().width_)
       return;
 
-    if (currentDoc_.readOnly_)
+    if (currentDoc().readOnly_)
       return;
 
     takeUndoSnapshot(EditAction::ColumnWidth, true);
-    currentDoc_.columnWidth_[column] = std::max(3, width);
+    currentDoc().columnWidth_[column] = std::max(3, width);
   }
 
   int getRowCount()
   {
-    return currentDoc_.height_;
+    return currentDoc().height_;
   }
 
   int getColumnCount()
   {
-    return currentDoc_.width_;
+    return currentDoc().width_;
   }
 
   static int get_cell_index(int x, int y)
   {
-    return (y * currentDoc_.width_) + x;
+    return (y * currentDoc().width_) + x;
   }
 
   Str const& getCellText(Index const& idx)
   {
-    assert(idx.x < currentDoc_.width_);
-    assert(idx.y < currentDoc_.height_);
+    assert(idx.x < currentDoc().width_);
+    assert(idx.y < currentDoc().height_);
 
-    auto result = currentDoc_.cells_.find(idx);
-    if (result == currentDoc_.cells_.end())
+    auto result = currentDoc().cells_.find(idx);
+    if (result == currentDoc().cells_.end())
       return Str::EMPTY;
 
     return result->second.text;
@@ -448,10 +486,10 @@ namespace doc {
 
   void setCellText(Index const& idx, Str const& text)
   {
-    assert(idx.x < currentDoc_.width_);
-    assert(idx.y < currentDoc_.height_);
+    assert(idx.x < currentDoc().width_);
+    assert(idx.y < currentDoc().height_);
 
-    if (currentDoc_.readOnly_)
+    if (currentDoc().readOnly_)
       return;
 
     takeUndoSnapshot(EditAction::CellText, false);
@@ -462,45 +500,45 @@ namespace doc {
 
   void increaseColumnWidth(int column)
   {
-    assert(column < currentDoc_.width_);
+    assert(column < currentDoc().width_);
 
-    if (currentDoc_.readOnly_)
+    if (currentDoc().readOnly_)
       return;
 
     takeUndoSnapshot(EditAction::ColumnWidth, true);
 
-    currentDoc_.columnWidth_[column]++;
+    currentDoc().columnWidth_[column]++;
   }
 
   void decreaseColumnWidth(int column)
   {
-    assert(column < currentDoc_.width_);
+    assert(column < currentDoc().width_);
 
-    if (currentDoc_.readOnly_)
+    if (currentDoc().readOnly_)
       return;
 
-    if (currentDoc_.columnWidth_[column] > 3)
+    if (currentDoc().columnWidth_[column] > 3)
     {
       takeUndoSnapshot(EditAction::ColumnWidth, true);
-      currentDoc_.columnWidth_[column]--;
+      currentDoc().columnWidth_[column]--;
     }
   }
 
   void addColumn(int column)
   {
-    column = std::min(column, currentDoc_.width_ - 1);
+    column = std::min(column, currentDoc().width_ - 1);
 
-    if (currentDoc_.readOnly_)
+    if (currentDoc().readOnly_)
       return;
 
     takeUndoSnapshot(EditAction::AddColumn, true);
 
-    currentDoc_.width_++;
-    currentDoc_.columnWidth_.insert(currentDoc_.columnWidth_.begin() + column + 1, DEFAULT_COLUMN_WIDTH.toInt());
+    currentDoc().width_++;
+    currentDoc().columnWidth_.insert(currentDoc().columnWidth_.begin() + column + 1, DEFAULT_COLUMN_WIDTH.toInt());
 
     std::unordered_map<Index, Cell> newCells;
 
-    for (std::pair<Index, Cell> cell : currentDoc_.cells_)
+    for (std::pair<Index, Cell> cell : currentDoc().cells_)
     {
       if (cell.first.x > column)
         cell.first.x++;
@@ -508,23 +546,23 @@ namespace doc {
       newCells.insert(cell);
     }
 
-    currentDoc_.cells_ = std::move(newCells);
+    currentDoc().cells_ = std::move(newCells);
   }
 
   void addRow(int row)
   {
-    row = std::min(row, currentDoc_.height_ - 1);
+    row = std::min(row, currentDoc().height_ - 1);
 
-    if (currentDoc_.readOnly_)
+    if (currentDoc().readOnly_)
       return;
 
     takeUndoSnapshot(EditAction::AddRow, true);
 
-    currentDoc_.height_++;
+    currentDoc().height_++;
 
     std::unordered_map<Index, Cell> newCells;
 
-    for (std::pair<Index, Cell> cell : currentDoc_.cells_)
+    for (std::pair<Index, Cell> cell : currentDoc().cells_)
     {
       if (cell.first.y > row)
         cell.first.y++;
@@ -532,28 +570,28 @@ namespace doc {
       newCells.insert(cell);
     }
 
-    currentDoc_.cells_ = std::move(newCells);
+    currentDoc().cells_ = std::move(newCells);
   }
 
   void removeColumn(int column)
   {
     assert(column < doc::getColumnCount());
 
-    if (currentDoc_.readOnly_)
+    if (currentDoc().readOnly_)
       return;
 
     takeUndoSnapshot(EditAction::RemoveColumn, false);
 
-    currentDoc_.width_--;
+    currentDoc().width_--;
 
-    if (column == currentDoc_.columnWidth_.size() - 1)
-      currentDoc_.columnWidth_.pop_back();
+    if (column == currentDoc().columnWidth_.size() - 1)
+      currentDoc().columnWidth_.pop_back();
     else
-      currentDoc_.columnWidth_.erase(currentDoc_.columnWidth_.begin() + column);
+      currentDoc().columnWidth_.erase(currentDoc().columnWidth_.begin() + column);
 
     std::unordered_map<Index, Cell> newCells;
 
-    for (std::pair<Index, Cell> cell : currentDoc_.cells_)
+    for (std::pair<Index, Cell> cell : currentDoc().cells_)
     {
       if (cell.first.x != column)
       {
@@ -564,23 +602,23 @@ namespace doc {
       }
     }
 
-    currentDoc_.cells_ = std::move(newCells);
+    currentDoc().cells_ = std::move(newCells);
   }
 
   void removeRow(int row)
   {
     assert(row < getRowCount());
 
-    if (currentDoc_.readOnly_)
+    if (currentDoc().readOnly_)
       return;
 
     takeUndoSnapshot(EditAction::RemoveRow, false);
 
-    currentDoc_.height_--;
+    currentDoc().height_--;
 
     std::unordered_map<Index, Cell> newCells;
 
-    for (std::pair<Index, Cell> cell : currentDoc_.cells_)
+    for (std::pair<Index, Cell> cell : currentDoc().cells_)
     {
       if (cell.first.y != row)
       {
@@ -591,7 +629,7 @@ namespace doc {
       }
     }
 
-    currentDoc_.cells_ = std::move(newCells);
+    currentDoc().cells_ = std::move(newCells);
   }
 
   // -- Tcl procs --
@@ -601,9 +639,9 @@ namespace doc {
     TCL_CHECK_ARGS(1, 2, "doc:delimiter ?delimiter?");
 
     if (args.size() == 1)
-      return tcl::resultStr(Str(currentDoc_.delimiter_));
+      return tcl::resultStr(Str(currentDoc().delimiter_));
     else if (args.size() >= 2)
-      currentDoc_.delimiter_ = args[1].front();
+      currentDoc().delimiter_ = args[1].front();
 
     TCL_OK();
   }
@@ -611,7 +649,7 @@ namespace doc {
   TCL_PROC2(docFilename, "doc:filename")
   {
     TCL_CHECK_ARG(1, "doc:filename");
-    return tcl::resultStr(currentDoc_.filename_);
+    return tcl::resultStr(currentDoc().filename_);
   }
 
   TCL_PROC2(docColumWidth, "doc:columnWidth")
@@ -629,13 +667,13 @@ namespace doc {
   TCL_PROC2(docColumnCount, "doc:columnCount")
   {
     TCL_CHECK_ARG(1, "doc:columnCount");
-    return tcl::resultInt(currentDoc_.width_);
+    return tcl::resultInt(currentDoc().width_);
   }
 
   TCL_PROC2(docRowCount, "doc:rowCount")
   {
     TCL_CHECK_ARG(1, "doc:rowCount");
-    return tcl::resultInt(currentDoc_.height_);
+    return tcl::resultInt(currentDoc().height_);
   }
 
   TCL_PROC2(docAddRow, "doc:addRow")

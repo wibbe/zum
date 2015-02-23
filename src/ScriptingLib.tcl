@@ -19,11 +19,16 @@ proc wq {} {
   }
 }
 
+proc bn {} { doc:nextBuffer }
+proc bnext {} { doc:nextBuffer }
+proc bp {} { doc:prevBuffer }
+proc bprev {} { doc:prevBuffer }
 
-# -- A Simple Todo app plugin --
+
+# -- A Simple Task app plugin --
 
 # Create a new document
-proc todo:createDocument {} {
+proc task:createDocument {} {
   # Create a new empty document
   doc:createEmpty 2 2
   doc:columnWidth 0 7
@@ -35,24 +40,18 @@ proc todo:createDocument {} {
   doc:cell B1 "DESCRIPTION"
   doc:cell B2 "-----------"
 
-  todo:item
+  todo:new
 }
 
 # Add a new item
-proc todo:item {} {
+proc task:new {} {
   set row [doc:rowCount]
   doc:addRow $row
   doc:cell [index new 0 $row] "  ☐"
-  app:cursor [index new 1 $row]
-  app:edit i
+  app:edit [index new 1 $row]
 }
 
-proc todo:done {} {
-  set row [index row [app:cursor]]
-  doc:cell [index new 0 $row] "  ☑"
-}
-
-proc todo:toggle {} {
+proc task:check {} {
   set row [index row [app:cursor]]
   set text [doc:cell [index new 0 $row]]
 

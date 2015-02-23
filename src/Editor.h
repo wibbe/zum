@@ -16,9 +16,6 @@ enum class EditorMode
 
 EditorMode getEditorMode();
 
-Index getCursorPos();
-void setCursorPos(Index const& idx);
-
 Str getYankBuffer();
 void yankCurrentCell();
 
