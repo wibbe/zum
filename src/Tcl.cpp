@@ -101,15 +101,31 @@ namespace tcl {
 
   // -- BuiltInProc --
 
-  static std::vector<std::pair<const char *, Jim_CmdProc *>> & builtInProcs()
+  static std::vector<std::pair<BuiltInProc *, Jim_CmdProc *>> & builtInProcs()
   {
-    static std::vector<std::pair<const char *, Jim_CmdProc *>> procs;
+    static std::vector<std::pair<BuiltInProc *, Jim_CmdProc *>> procs;
     return procs;
   }
 
   BuiltInProc::BuiltInProc(const char * name, Jim_CmdProc * proc)
+    : name_(name)
   {
-    builtInProcs().push_back({name, proc});
+    builtInProcs().push_back({this, proc});
+  }
+
+  BuiltInProc::BuiltInProc(const char * name, const char * args, Jim_CmdProc * proc)
+    : name_(name),
+      args_(args)
+  {
+    builtInProcs().push_back({this, proc});
+  }
+
+  BuiltInProc::BuiltInProc(const char * name, const char * args, const char * desc, Jim_CmdProc * proc)
+    : name_(name),
+      args_(args),
+      desc_(desc)
+  {
+    builtInProcs().push_back({this, proc});
   }
 
   // -- Interface --
@@ -127,7 +143,7 @@ namespace tcl {
 
     // Register build in commands
     for (auto const& it : builtInProcs())
-      Jim_CreateCommand(interpreter_, it.first, it.second, nullptr, nullptr);
+      Jim_CreateCommand(interpreter_, it.first->name_, it.second, it.first, nullptr);
 
     // Register build in variables
     for (auto * var : buildInVariables())

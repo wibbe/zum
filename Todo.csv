@@ -1,0 +1,7 @@
+5;12;120
+DONE;DATE;DESCRIPTION
+[ ];2015-02-24;Generate help documentation from arg list and command descript stored in BuiltInProc
+[ ];2015-02-24;It should be possible to only show help for a single command, help ?command?
+[ ];2015-02-24;Implement a filter command that creates a new document based on a regexp that should match a specified column
+[ ];2015-02-24;Should indicate if a document has been changed since it was last saved
+[ ];2015-02-24;Should use a temporary file while editing, so we don't lose any data in a crash

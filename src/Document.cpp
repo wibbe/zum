@@ -606,7 +606,7 @@ namespace doc {
 
   // -- Tcl bindings --
 
-  TCL_FUNC(doc_createEmpty)
+  TCL_FUNC(doc_createEmpty, "columnCount rowCount", "Create a new empty document with the specified dimensions")
   {
     TCL_CHECK_ARG(3, "columnCount rowCount");
     TCL_INT_ARG(1, columnCount);
@@ -616,57 +616,57 @@ namespace doc {
     return JIM_OK;
   }
 
-  TCL_FUNC(doc_createDefaultEmpty)
+  TCL_FUNC(doc_createDefaultEmpty, "", "Create a new default created document")
   {
     createDefaultEmpty();
     return JIM_OK;
   }
 
-  TCL_FUNC(doc_closeBuffer)
+  TCL_FUNC(doc_closeBuffer, "", "Close the current buffer")
   {
     close();
     return JIM_OK;
   }
 
-  TCL_FUNC(doc_nextBuffer)
+  TCL_FUNC(doc_nextBuffer, "", "Switch to the next open buffer")
   {
     documentBuffer().push_back(currentBuffer());
     documentBuffer().pop_front();
     return JIM_OK;
   }
 
-  TCL_FUNC(doc_prevBuffer)
+  TCL_FUNC(doc_prevBuffer, "", "Switch to the previous buffer")
   {
     documentBuffer().push_front(documentBuffer().back());
     documentBuffer().pop_back();
     return JIM_OK;
   }
 
-  TCL_FUNC(doc_undo)
+  TCL_FUNC(doc_undo, "Undo the last command")
   {
     if (undo())
       return JIM_OK;
     return JIM_ERR;
   }
 
-  TCL_FUNC(doc_redo)
+  TCL_FUNC(doc_redo, "", "Redo the last undone command")
   {
     if (redo())
       return JIM_OK;
     return JIM_ERR;
   }
 
-  TCL_FUNC(doc_columnCount)
+  TCL_FUNC(doc_columnCount, "", "Returns the column count of the current document")
   {
     TCL_INT_RESULT(currentDoc().width_);
   }
 
-  TCL_FUNC(doc_rowCount)
+  TCL_FUNC(doc_rowCount, "", "Returns the row count of the current document")
   {
     TCL_INT_RESULT(currentDoc().height_);
   }
 
-  TCL_FUNC(doc_addColumn)
+  TCL_FUNC(doc_addColumn, "column", "Add a new column to the current document after the indicated column")
   {
     TCL_CHECK_ARG(2, "column");
     TCL_INT_ARG(1, column);
@@ -675,7 +675,7 @@ namespace doc {
     return JIM_OK;
   }
 
-  TCL_FUNC(doc_addRow)
+  TCL_FUNC(doc_addRow, "row", "Add a new row to the current document after the indicated row")
   {
     TCL_CHECK_ARG(2, "row");
     TCL_INT_ARG(1, row);
@@ -684,7 +684,7 @@ namespace doc {
     return JIM_OK;
   }
 
-  TCL_FUNC(doc_delimiter)
+  TCL_FUNC(doc_delimiter, "?delimiter?", "Set or return the delimiter to use in the current document")
   {
     TCL_CHECK_ARGS(1, 2, "?delimiter?");
     TCL_STRING_ARG(1, delims);
@@ -697,12 +697,12 @@ namespace doc {
     return JIM_OK;
   }
 
-  TCL_FUNC(doc_filename)
+  TCL_FUNC(doc_filename, "", "Returns the filename of the current document")
   {
     TCL_STRING_RESULT(currentDoc().filename_);
   }
 
-  TCL_FUNC(doc_columnWidth)
+  TCL_FUNC(doc_columnWidth, "column ?width?", "This function returns and optionally sets the width of the specified column.")
   {
     TCL_CHECK_ARGS(2, 3, "column ?width?");
     TCL_INT_ARG(1, column);
@@ -714,7 +714,7 @@ namespace doc {
     TCL_INT_RESULT(getColumnWidth(column));
   }
 
-  TCL_FUNC(doc_cell)
+  TCL_FUNC(doc_cell, "index ?value?", "Set or return the value of a particular cell in the current document")
   {
     TCL_CHECK_ARGS(2, 3, "index ?value?");
     TCL_STRING_ARG(1, index);

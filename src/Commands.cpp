@@ -322,15 +322,6 @@ void executeAppCommands(std::string const& commandLine)
 
 // -- Application wide commands --
 
-TCL_FUNC(e)
-{
-  TCL_CHECK_ARG(2, "filename");
-  TCL_STRING_ARG(1, filename);
-
-  doc::load(filename);
-  return JIM_OK;
-}
-
 TCL_FUNC(w)
 {
   TCL_CHECK_ARGS(1, 2, "?filename?");
@@ -355,7 +346,7 @@ TCL_FUNC(app_edit)
   return JIM_OK;
 }
 
-TCL_FUNC(app_cursor)
+TCL_FUNC(app_cursor, "?index?", "Return and optionally set the position of the cursor in the current document")
 {
   TCL_CHECK_ARGS(1, 2, "?index?");
   TCL_STRING_ARG(1, index);

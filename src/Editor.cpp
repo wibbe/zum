@@ -490,7 +490,7 @@ void drawText(int x, int y, int length, uint16_t fg, uint16_t bg, std::string co
   if (length == -1)
   {
     for (int i = 0; i < strLen; ++i)
-      tb_change_cell(x + i++, y, BUFFER[i], fg, bg);
+      tb_change_cell(x + i, y, BUFFER[i], fg, bg);
   }
   else
   {

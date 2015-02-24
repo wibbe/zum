@@ -12,9 +12,13 @@ namespace tcl {
   {
     public:
       BuiltInProc(const char * name, Jim_CmdProc * proc);
+      BuiltInProc(const char * name, const char * args, Jim_CmdProc * proc);
+      BuiltInProc(const char * name, const char * args, const char * desc, Jim_CmdProc * proc);
 
     public:
-
+      const char * name_ = nullptr;
+      const char * args_ = nullptr;
+      const char * desc_ = nullptr;
   };
 
   class Variable
@@ -65,10 +69,13 @@ namespace tcl {
 
 // -- Useful macros --
 
-#define TCL_FUNC(name) \
+#define TCL_FUNC(name, ...) \
   int tclBuiltIn__##name(Jim_Interp *, int argc, Jim_Obj * const *); \
-  namespace { const tcl::BuiltInProc _buildInProc__##name(#name, &tclBuiltIn__##name); } \
+  namespace { const tcl::BuiltInProc _buildInProc__##name(#name, ##__VA_ARGS__, &tclBuiltIn__##name); } \
   int tclBuiltIn__##name(Jim_Interp * interp, int argc, Jim_Obj * const * argv)
+
+#define TCL_ARGS(args)
+#define TCL_DESC(desc)
 
 #define TCL_CHECK_ARG(count, desc) \
   do { if (argc != count) { Jim_WrongNumArgs(interp, 1, argv, desc); return JIM_ERR; } } while (false)
@@ -87,9 +94,8 @@ namespace tcl {
 #define TCL_STRING_ARG(i, name) \
   std::string name; \
   do { \
-    int len = 0; \
-    const char * str = i < argc ? Jim_GetString(argv[i], &len) : ""; \
-    name.append(str, len); \
+    if (i < argc) \
+      name = std::string(Jim_String(argv[i])); \
   } while (false)
 
 #define TCL_INT_RESULT(value) \
