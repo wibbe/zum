@@ -3,8 +3,7 @@
 
 #include "Str.h"
 
-
 struct Cell
 {
-  Str text;
+  std::string text;
 };

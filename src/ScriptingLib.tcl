@@ -3,7 +3,7 @@
 # -- Vim bindings for the application --
 
 proc q {} {
-  app:quit
+  app_quit
 }
 
 proc n {} {
@@ -13,7 +13,7 @@ proc n {} {
 proc wq {} {
   if {[string lenght [doc_filename]] > 0} {
     doc_save [doc_filename]
-    app:quit
+    app_quit
   } else {
     puts "No document filename specified"
   }
@@ -31,7 +31,7 @@ proc bprev {} { doc_prevBuffer }
 proc task_createDocument {} {
   # Create a new empty document
   doc_createEmpty 1 3
-  doc_columnWidth 1 100
+  doc_columnWidth 0 100
 
   # Header
   doc_cell A1 "TASK"

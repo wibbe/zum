@@ -64,7 +64,7 @@ static std::vector<EditCommand> editCommands_ = {
     {'d', 'w'}, false,
     "Clear the current cell",
     [] (int) {
-      doc::setCellText(doc::cursorPos(), Str::EMPTY);
+      doc::setCellText(doc::cursorPos(), "");
     }
   },
   {
@@ -84,7 +84,7 @@ static std::vector<EditCommand> editCommands_ = {
           doc::cursorPos() = pos;
         }
         else
-          flashMessage(Str("Not allowed to delete the last column"));
+          flashMessage("Not allowed to delete the last column");
       }
     }
   },
@@ -105,7 +105,7 @@ static std::vector<EditCommand> editCommands_ = {
           doc::cursorPos() = pos;
         }
         else
-          flashMessage(Str("Not allowed to delete the last row"));
+          flashMessage("Not allowed to delete the last row");
       }
     }
   },
@@ -190,7 +190,7 @@ static std::vector<EditCommand> editCommands_ = {
     [] (int) {
       if (!doc::isReadOnly())
       {
-        Str text = doc::getCellText(doc::cursorPos());
+        std::string text = doc::getCellText(doc::cursorPos());
         text.append(getYankBuffer());
 
         doc::setCellText(doc::cursorPos(), text);
@@ -203,14 +203,11 @@ static std::vector<EditCommand> editCommands_ = {
     [] (int) {
       const Index idx = doc::cursorPos();
       const int columnWidth = doc::getColumnWidth(idx.x);
-      const Str text = doc::getCellText(idx).stripWhitespace();
+      const std::string text = str::stripWhitespace(doc::getCellText(idx));
 
       if (text.size() < columnWidth)
       {
-        const int spacing = columnWidth - text.size();
-        Str newText;
-        for (int i = 0; i < spacing; ++i)
-          newText.append(' ');
+        std::string newText(columnWidth - text.size(), ' ');
         newText.append(text);
 
         doc::setCellText(idx, newText);
@@ -223,14 +220,11 @@ static std::vector<EditCommand> editCommands_ = {
     [] (int) {
       const Index idx = doc::cursorPos();
       const int columnWidth = doc::getColumnWidth(idx.x);
-      const Str text = doc::getCellText(idx).stripWhitespace();
+      const std::string text = str::stripWhitespace(doc::getCellText(idx));
 
       if (text.size() < columnWidth)
       {
-        const int spacing = (columnWidth - text.size()) / 2;
-        Str newText;
-        for (int i = 0; i < spacing; ++i)
-          newText.append(' ');
+        std::string newText((columnWidth - text.size()) / 2, ' ');
         newText.append(text);
 
         doc::setCellText(idx, newText);
@@ -242,14 +236,10 @@ static std::vector<EditCommand> editCommands_ = {
     "Left-justify the text in the current cell",
     [] (int) {
       const Index idx = doc::cursorPos();
-      const Str text = doc::getCellText(idx).stripWhitespace();
-
-      doc::setCellText(idx, text);
+      doc::setCellText(idx, str::stripWhitespace(doc::getCellText(idx)));
     }
   },
 };
-
-extern void quitApplication();
 
 static bool getEditCommand(uint32_t key1, uint32_t key2, EditCommand ** command)
 {
@@ -319,55 +309,59 @@ void executeEditCommands()
 }
 
 static const int COMMAND_HISTORY_LENGHT = 1000;
-static std::vector<Str> commandHistory_;
+static std::vector<std::string> commandHistory_;
 
-void executeAppCommands(Str const& commandLine)
+void executeAppCommands(std::string const& commandLine)
 {
   tcl::evaluate(commandLine);
-  const Str result = tcl::result();
+
+  const std::string result = tcl::result();
   if (!result.empty())
     flashMessage(result);
 }
 
 // -- Application wide commands --
 
-TCL_PROC(e)
+TCL_FUNC(e)
 {
-  TCL_CHECK_ARG_OLD(2, "e filename");
+  TCL_CHECK_ARG(2, "filename");
+  TCL_STRING_ARG(1, filename);
 
-  doc::cursorPos() = Index(0, 0);
-  doc::load(args[1]);
-
-  TCL_OK();
+  doc::load(filename);
+  return JIM_OK;
 }
 
-TCL_PROC(w)
+TCL_FUNC(w)
 {
-  TCL_CHECK_ARG_OLDS(1, 2, "w ?filename?");
+  TCL_CHECK_ARGS(1, 2, "?filename?");
+  TCL_STRING_ARG(1, filename);
 
-  if (args.size() == 2 && !args[1].empty())
-    doc::save(args[1]);
+  if (argc == 2 && !filename.empty())
+    doc::save(filename);
   else if (!doc::getFilename().empty())
     doc::save(doc::getFilename());
 
-  TCL_OK();
+  return JIM_OK;
 }
 
-TCL_PROC(app_edit)
+TCL_FUNC(app_edit)
 {
-  TCL_CHECK_ARG_OLD(2, "app_edit index");
-  doc::cursorPos() = Index::fromStr(args[1]);
+  TCL_CHECK_ARG(2, "index");
+  TCL_STRING_ARG(1, index);
+
+  doc::cursorPos() = Index::fromStr(index);
   editCurrentCell();
 
-  TCL_OK();
+  return JIM_OK;
 }
 
-TCL_PROC(app_cursor)
+TCL_FUNC(app_cursor)
 {
-  TCL_CHECK_ARG_OLDS(1, 2, "app:cursor ?index?");
+  TCL_CHECK_ARGS(1, 2, "?index?");
+  TCL_STRING_ARG(1, index);
 
-  if (args.size() == 2)
-    doc::cursorPos() = Index::fromStr(args[1]);
+  if (argc == 2)
+    doc::cursorPos() = Index::fromStr(index);
 
-  return tcl::resultStr(doc::cursorPos().toStr());
+  TCL_STRING_RESULT(doc::cursorPos().toStr());
 }

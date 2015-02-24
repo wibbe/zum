@@ -25,6 +25,6 @@ struct EditCommand
 void pushEditCommandKey(uint32_t ch);
 void clearEditCommandSequence();
 void executeEditCommands();
-void executeAppCommands(Str const& commandLine);
+void executeAppCommands(std::string const& commandLine);
 
 std::vector<EditCommand> const& getEditCommands();

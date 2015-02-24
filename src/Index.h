@@ -4,15 +4,6 @@
 #include <functional>
 #include "Str.h"
 
-namespace tcl {
-  enum IndexHashCodes
-  {
-    kNew = 1888419793u,       // new
-    kRow = 306722537u,        // row
-    kColumn = 46931336u,      // column
-  };
-}
-
 class Index
 {
   public:
@@ -24,11 +15,11 @@ class Index
       return x == other.x && y == other.y;
     }
 
-    Str toStr() const;
+    std::string toStr() const;
 
-    static Index fromStr(Str const& str);
-    static Str rowToStr(int row);
-    static Str columnToStr(int col);
+    static Index fromStr(std::string const& str);
+    static std::string rowToStr(int row);
+    static std::string columnToStr(int col);
 
   public:
     int x = -1;

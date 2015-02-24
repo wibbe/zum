@@ -10,6 +10,44 @@
 #include <cstring>
 #include <cstdlib>
 
+
+namespace str {
+
+  static const uint32_t CONVERT_BUFFER_SIZE = 128;
+  static char convertBuffer_[CONVERT_BUFFER_SIZE];
+
+  std::string fromInt(long long int value)
+  {
+    snprintf(convertBuffer_, CONVERT_BUFFER_SIZE, "%lld", value);
+    return std::string(convertBuffer_);
+  }
+
+  std::string fromDouble(double value)
+  {
+    snprintf(convertBuffer_, CONVERT_BUFFER_SIZE, "%f", value);
+    return std::string(convertBuffer_);
+  }
+
+  std::string stripWhitespace(std::string const& str)
+  {
+    static const std::string WHITESPACES(" \t\f\v\n\r");
+
+    std::size_t front = str.find_first_not_of(WHITESPACES);
+    std::size_t back = str.find_last_not_of(WHITESPACES);
+
+    front = (front == std::string::npos ? 0 : front);
+    back = (back == std::string::npos ? str.size() : back);
+
+    return str.substr(front, back - front);
+  }
+
+  uint32_t hash(std::string const& str)
+  {
+    return murmurHash(str.c_str(), str.size(), 0);
+  }
+}
+
+
 Str Str::EMPTY;
 
 Str::Str()
@@ -18,6 +56,11 @@ Str::Str()
 Str::Str(const char * str)
 {
   set(str);
+}
+
+Str::Str(std::string const& str)
+{
+  set(str.c_str());
 }
 
 Str::Str(char_type ch, int count)
@@ -40,6 +83,11 @@ Str & Str::operator = (Str const& copy)
     data_.push_back(ch);
 
   return *this;
+}
+
+Str & Str::operator = (std::string const& copy)
+{
+  set(copy.c_str());
 }
 
 void Str::set(const char * str)
@@ -94,82 +142,6 @@ void Str::erase(uint32_t pos)
   data_.erase(data_.begin() + pos);
 }
 
-bool Str::starts_with(Str const& str) const
-{
-  if (size() < str.size())
-    return false;
-
-  for (int i = 0; i < str.size(); ++i)
-    if (data_[i] != str[i])
-      return false;
-
-  return true;
-}
-
-int Str::findChar(char_type ch) const
-{
-  for (int i = 0, len = size(); i < len; ++i)
-    if (data_[i] == ch)
-      return i;
-  return -1;
-}
-
-int Str::findStr(Str const& str, int startPos) const
-{
-  const std::string source = utf8();
-  const std::string match = str.utf8();
-  const int pos = source.find(match, startPos);
-  return pos == std::string::npos ? -1 : pos;
-}
-
-bool Str::equals(Str const& str, bool ignoreCase, int length) const
-{
-  if (length < 0 && size() != str.size())
-    return false;
-
-  if (length >= 0 && (size() < length || str.size() < length))
-    return false;
-
-  if (ignoreCase)
-  {
-    const int offset = 'A' - 'a';
-    for (int i = 0, len = (length == -1 ? size() : length); i < len; ++i)
-    {
-      char_type ch1 = data_[i];
-      char_type ch2 = str[i];
-
-      ch1 = isLowerAlpha(ch1) ? ch1 + offset : ch1;
-      ch2 = isLowerAlpha(ch2) ? ch2 + offset : ch2;
-
-      if (ch1 != ch2)
-        return false;
-    }
-
-  }
-  else
-  {
-    for (int i = 0, len = (length == -1 ? size() : length); i < len; ++i)
-      if (data_[i] != str[i])
-        return false;
-  }
-
-  return true;
-}
-
-void Str::pop_back()
-{
-  data_.pop_back();
-}
-
-void Str::pop_front(uint32_t count)
-{
-  for (int i = 0; i < (data_.size() - count); ++i)
-    data_[i] = data_[i + count];
-
-  for (; count > 0; --count)
-    data_.pop_back();
-}
-
 std::vector<Str> Str::split(char_type delimiter, bool keepDelimiter) const
 {
   std::vector<Str> result;
@@ -202,72 +174,6 @@ std::vector<Str> Str::split(char_type delimiter, bool keepDelimiter) const
   return result;
 }
 
-Str Str::toUpper() const
-{
-  const int offset = 'A' - 'a';
-
-  Str result;
-  result.data_.reserve(size());
-  for (auto ch : data_)
-  {
-    if (isLowerAlpha(ch))
-      result.data_.push_back(ch + offset);
-    else
-      result.data_.push_back(ch);
-  }
-
-  return result;
-}
-
-Str Str::toLower() const
-{
-  const int offset = 'A' - 'a';
-
-  Str result;
-  result.data_.reserve(size());
-  for (auto ch : data_)
-  {
-    if (isUpperAlpha(ch))
-      result.data_.push_back(ch - offset);
-    else
-      result.data_.push_back(ch);
-  }
-
-  return result;
-}
-
-Str Str::stripWhitespace() const
-{
-  Str str(*this);
-
-  while (!str.empty() && isWhitespace(str.front()))
-    str.pop_front();
-
-  while (!str.empty() && isWhitespace(str.back()))
-    str.pop_back();
-
-  return str;
-}
-
-Str Str::substr(int start, int length) const
-{
-  const int len = length < 0 ? data_.size() : std::min(length, (int)data_.size());
-
-  Str result;
-  result.data_.reserve(len);
-
-  for (int i = 0; i < len; ++i)
-    result.data_.push_back(data_[start + i]);
-
-  return result;
-}
-
-void Str::eatWhitespaceFront()
-{
-  while (!empty() && isWhitespace(front()))
-    pop_front();
-}
-
 std::string Str::utf8() const
 {
   std::string result;
@@ -279,84 +185,6 @@ std::string Str::utf8() const
     *it = '\0';
     result += str;
   }
-
-  return result;
-}
-
-Str Str::format(const char * fmt, ...)
-{
-  static const int LEN = 1024;
-  char buffer[LEN];
-
-  va_list argp;
-  va_start(argp, fmt);
-  vsnprintf(buffer, LEN, fmt, argp);
-  va_end(argp);
-
-  return Str(buffer);
-}
-
-uint32_t Str::hash() const
-{
-  return murmurHash(&data_[0], data_.size() * sizeof(Str::char_type), 0);
-}
-
-static const uint32_t CONVERT_BUFFER_SIZE = 128;
-static char convertBuffer_[CONVERT_BUFFER_SIZE];
-
-int Str::toInt() const
-{
-  const uint32_t len = std::min((uint32_t)data_.size(), CONVERT_BUFFER_SIZE - 1);
-
-  uint32_t i = 0;
-  while (i < len)
-  {
-    convertBuffer_[i] = data_[i];
-    ++i;
-  }
-
-  convertBuffer_[i] = '\0';
-  return std::atoi(convertBuffer_);
-}
-
-double Str::toDouble() const
-{
-  const uint32_t len = std::min((uint32_t)data_.size(), CONVERT_BUFFER_SIZE - 1);
-
-  uint32_t i = 0;
-  while (i < len)
-  {
-    convertBuffer_[i] = data_[i];
-    ++i;
-  }
-
-  convertBuffer_[i + 1] = '\0';
-  return std::atof(convertBuffer_);
-}
-
-Str Str::fromInt(long long int value)
-{
-  snprintf(convertBuffer_, CONVERT_BUFFER_SIZE, "%lld", value);
-  return Str(convertBuffer_);
-}
-
-Str Str::fromDouble(double value)
-{
-  snprintf(convertBuffer_, CONVERT_BUFFER_SIZE, "%f", value);
-  return Str(convertBuffer_);
-}
-
-uint32_t Str::hash(const char * str)
-{
-  const uint32_t len = std::strlen(str);
-  return murmurHash(str, len, 0);
-}
-
-Str Str::join(std::vector<Str> const& vec, Str::char_type delim)
-{
-  Str result;
-  for (int i = 0; i < vec.size(); ++i)
-    result.append(vec[i]).append(delim, i < (vec.size() - 1) ? 1 : 0);
 
   return result;
 }

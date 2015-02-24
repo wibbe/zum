@@ -10,6 +10,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <cmath>
 
 static const int ROW_HEADER_WIDTH = 8;
 
@@ -28,25 +29,18 @@ struct ColumnInfo
 
 EditorMode editMode_ = EditorMode::NAVIGATE;
 
-extern int application_running;
-
-#define CELL_BUFFER_LEN 1024
-static struct tb_cell cell_buffer[CELL_BUFFER_LEN];
-
 static std::vector<ColumnInfo> drawColumnInfo_;
 
 int editLinePos_ = 0;
-static Str editLine_;
-static Str yankBuffer_;
-static Str flashMessage_;
-static Str searchTerm_;
-static std::vector<Str> completionHints_;
-static std::vector<Str> completionHintLines_;
+static Str editLine_;   //< Edit line if a string of utf32
+static std::string yankBuffer_;
+static std::string flashMessage_;
+static std::string searchTerm_;
+static std::vector<std::string> completionHints_;
+static std::vector<std::string> completionHintLines_;
 
-static const tcl::Variable ALWAYS_SHOW_HEADER("app:always_show_header", "false");
+static const tcl::Variable ALWAYS_SHOW_HEADER("app_alwaysShowHeader", false);
 
-extern void parseAndExecute(Str const& command);
-extern Str completeCommand(Str const& command);
 extern void clearTimeout();
 
 static int getCommandLineHeight()
@@ -116,7 +110,7 @@ EditorMode getEditorMode()
   return editMode_;
 }
 
-Str getYankBuffer()
+std::string getYankBuffer()
 {
   return yankBuffer_;
 }
@@ -194,8 +188,8 @@ bool findNextMatch()
   {
     while (pos.x < doc::getColumnCount())
     {
-      Str const& cellText = doc::getCellText(pos);
-      if (cellText.findStr(searchTerm_) != -1)
+      std::string cellText = doc::getCellText(pos);
+      if (cellText.find(searchTerm_) != std::string::npos)
       {
         setCursorPos(pos);
         ensureCursorVisibility();
@@ -224,8 +218,8 @@ bool findPreviousMatch()
   {
     while (pos.x >= 0)
     {
-      Str const& cellText = doc::getCellText(pos);
-      if (cellText.findStr(searchTerm_) != -1)
+      std::string cellText = doc::getCellText(pos);
+      if (cellText.find(searchTerm_) != std::string::npos)
       {
         setCursorPos(pos);
         ensureCursorVisibility();
@@ -393,14 +387,14 @@ void handleEditEvent(struct tb_event * event)
       break;
 
     case TB_KEY_TAB:
-      doc::setCellText(doc::cursorPos(), editLine_);
+      doc::setCellText(doc::cursorPos(), editLine_.utf8());
       editLine_.clear();
       navigateRight();
       editMode_ = EditorMode::NAVIGATE;
       break;
 
     case TB_KEY_ENTER:
-      doc::setCellText(doc::cursorPos(), editLine_);
+      doc::setCellText(doc::cursorPos(), editLine_.utf8());
       editLine_.clear();
       navigateDown();
       editMode_ = EditorMode::NAVIGATE;
@@ -415,20 +409,14 @@ void handleCommandEvent(struct tb_event * event)
   switch (event->key)
   {
     case TB_KEY_ENTER:
-      executeAppCommands(editLine_);
+      executeAppCommands(editLine_.utf8());
       editMode_ = EditorMode::NAVIGATE;
       break;
 
     case TB_KEY_TAB:
       {
-        Str line = editLine_;
-        completeEditLine(line);
-
-        if (!line.equals(editLine_))
-        {
-          editLine_ = line;
-          editLinePos_ = editLine_.size();
-        }
+        completeEditLine(editLine_);
+        editLinePos_ = editLine_.size();
       }
       break;
 
@@ -448,7 +436,7 @@ void handleSearchEvent(struct tb_event * event)
   switch (event->key)
   {
     case TB_KEY_ENTER:
-      searchTerm_ = editLine_;
+      searchTerm_ = editLine_.utf8();
       editMode_ = EditorMode::NAVIGATE;
       findNextMatch();
       break;
@@ -482,19 +470,32 @@ void handleKeyEvent(struct tb_event * event)
   }
 }
 
-void drawText(int x, int y, int len, uint16_t fg, uint16_t bg, Str const& str)
+void drawText(int x, int y, int length, uint16_t fg, uint16_t bg, std::string const& str)
 {
-  if (len == -1)
+  static const uint32_t BUFFER_LEN = 1024;
+  static uint32_t BUFFER[BUFFER_LEN];
+
+  // Convert to uft32
+  const char * it = str.c_str();
+  uint32_t strLen = 0;
+
+  while (*it && strLen < (BUFFER_LEN - 1))
   {
-    int i = 0;
-    for (auto ch : str)
-      tb_change_cell(x + i++, y, ch, fg, bg);
+    it += tb_utf8_char_to_unicode(&BUFFER[strLen], it);
+    ++strLen;
+  }
+  BUFFER[strLen] = '\0';
+
+
+  if (length == -1)
+  {
+    for (int i = 0; i < strLen; ++i)
+      tb_change_cell(x + i++, y, BUFFER[i], fg, bg);
   }
   else
   {
-    const int size = str.size();
-    for (int i = 0; i < len; ++i)
-      tb_change_cell(x + i, y, i < size ? str[i] : ' ', fg, bg);
+    for (int i = 0; i < length; ++i)
+      tb_change_cell(x + i, y, i < strLen ? BUFFER[i] : ' ', fg, bg);
   }
 }
 
@@ -520,7 +521,7 @@ void clearFlashMessage()
   clearTimeout();
 }
 
-void flashMessage(Str const& message)
+void flashMessage(std::string const& message)
 {
   flashMessage_ = message;
   clearTimeout();
@@ -532,7 +533,12 @@ static void buildCompletionHintLines()
 
   const int width = tb_width();
 
-  Str currentLine;
+  int columnWidth = 10;
+  for (auto const& hint : completionHints_)
+    if (hint.size() >= columnWidth)
+      columnWidth = std::ceil((hint.size() + 1) / 10.0) * 10;
+
+  std::string currentLine;
   for (auto const& hint : completionHints_)
   {
     if (currentLine.size() + hint.size() > width)
@@ -543,8 +549,8 @@ static void buildCompletionHintLines()
     else
       currentLine.append(hint);
 
-    while (currentLine.size() % 20 != 0)
-      currentLine.append(' ');
+    while (currentLine.size() % columnWidth != 0)
+      currentLine.append(1, ' ');
   }
 
   if (!currentLine.empty())
@@ -556,11 +562,10 @@ void clearCompletionHints()
   completionHints_.clear();
 }
 
-void setCompletionHints(std::vector<Str> const& hints)
+void setCompletionHints(std::vector<std::string> const& hints)
 {
   completionHints_ = hints;
 }
-
 
 void drawInterface()
 {
@@ -587,10 +592,9 @@ void drawHeaders()
   for (int x = 0; x < drawColumnInfo_.size(); ++x)
   {
     const uint16_t color = (drawColumnInfo_[x].column_) == doc::cursorPos().x ? TB_REVERSE | TB_DEFAULT : TB_DEFAULT;
-
     const int before = (drawColumnInfo_[x].width_ - 1) / 2;
 
-    Str header(' ', before);
+    std::string header(before, ' ');
     header.append(Index::columnToStr(drawColumnInfo_[x].column_));
 
     drawText(drawColumnInfo_[x].x_, 0, drawColumnInfo_[x].width_, color, color, header);
@@ -608,14 +612,14 @@ void drawHeaders()
 
     if (row < doc::getRowCount())
     {
-      const Str columnNumber = Index::rowToStr(row);
+      const std::string columnNumber = Index::rowToStr(row);
 
-      Str header;
+      std::string header;
       while (header.size() < (ROW_HEADER_WIDTH - columnNumber.size() - 1))
-        header.append(' ');
+        header.append(1, ' ');
 
       header.append(columnNumber)
-            .append(' ');
+            .append(1, ' ');
 
       drawText(0, y, ROW_HEADER_WIDTH, color, color, header);
     }
@@ -640,14 +644,14 @@ void drawWorkspace()
       if (row < doc::getRowCount())
       {
         if (selected && editMode_ == EditorMode::EDIT)
-          drawText(drawColumnInfo_[x].x_, y, width, color, color, editLine_);
+          drawText(drawColumnInfo_[x].x_, y, width, color, color, editLine_.utf8());
         else
         {
-          Str cellText = doc::getCellText(Index(drawColumnInfo_[x].column_, row));
+          std::string cellText = doc::getCellText(Index(drawColumnInfo_[x].column_, row));
           if (cellText.size() >= width)
           {
             cellText = cellText.substr(0, width - 3);
-            cellText.append('.').append('.').append(' ');
+            cellText.append(2, '.').append(1, ' ');
           }
 
           drawText(drawColumnInfo_[x].x_, y, width, color, color, cellText);
@@ -659,9 +663,9 @@ void drawWorkspace()
 
 void drawCommandLine()
 {
-  Str infoLine;
-  Str commandLine;
-  Str::char_type mode;
+  std::string infoLine;
+  std::string commandLine;
+  char mode;
 
   switch (editMode_)
   {
@@ -672,49 +676,47 @@ void drawCommandLine()
 
     case EditorMode::EDIT:
       mode = 'I';
-      commandLine = editLine_;
+      commandLine = editLine_.utf8();
       break;
 
     case EditorMode::COMMAND:
       mode = ':';
-      commandLine.append(':')
-                 .append(editLine_);
+      commandLine.append(1, ':')
+                 .append(editLine_.utf8());
       break;
 
     case EditorMode::SEARCH:
       mode = '/';
-      commandLine.append('/')
-                 .append(editLine_);
+      commandLine.append(1, '/')
+                 .append(editLine_.utf8());
       break;
   }
 
   { // Costruct the info line
-    Str filename = doc::getFilename();
+    std::string filename = doc::getFilename();
     if (filename.empty())
-      filename.set("[NoName]");
+      filename = "[No Name]";
 
-    Str pos;
-    pos.append(Index::columnToStr(doc::cursorPos().x))
-       .append(Index::rowToStr(doc::cursorPos().y));
+    const std::string pos(doc::cursorPos().toStr());
 
-    Str progress = Str::fromInt((int)(((double)(doc::cursorPos().y + 1) / (double)doc::getRowCount()) * 100.0));
-    progress.append('%');
+    std::string progress = str::fromInt((int)(((double)(doc::cursorPos().y + 1) / (double)doc::getRowCount()) * 100.0)).append(1, '%');
 
     const int maxFileAreaSize = tb_width() - pos.size() - progress.size() - 5;
     if (filename.size() > maxFileAreaSize)
-      filename.pop_front(filename.size() - maxFileAreaSize);
-    while (filename.size() < maxFileAreaSize)
-      filename.append(' ');
+      filename = filename.substr(filename.size() - maxFileAreaSize);
 
-    infoLine.clear()
-            .append(filename)
-            .append(' ')
+    while (filename.size() < maxFileAreaSize)
+      filename.append(1, ' ');
+
+    infoLine.clear();
+    infoLine.append(filename)
+            .append(1, ' ')
             .append(pos)
-            .append(' ')
+            .append(1, ' ')
             .append(progress)
-            .append(' ')
-            .append(mode)
-            .append(' ');
+            .append(1, ' ')
+            .append(1, mode)
+            .append(1, ' ');
   }
 
   if (!flashMessage_.empty())

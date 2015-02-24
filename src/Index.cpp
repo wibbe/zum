@@ -4,14 +4,14 @@
 #include "Document.h"
 
 #include <cmath>
+#include <cctype>
 
-
-Str Index::rowToStr(int row)
+std::string Index::rowToStr(int row)
 {
-  return Str::fromInt(row + 1);
+  return str::fromInt(row + 1);
 }
 
-Str Index::columnToStr(int col)
+std::string Index::columnToStr(int col)
 {
   int power = 0;
   for (int i = 0; i < 10; ++i)
@@ -24,7 +24,7 @@ Str Index::columnToStr(int col)
     }
   }
 
-  Str result;
+  std::string result;
   while (power >= 0)
   {
     const int value = std::pow(26, power);
@@ -33,14 +33,14 @@ Str Index::columnToStr(int col)
       power--;
 
       if (power < 0)
-        result.append('A');
+        result.append(1, 'A');
     }
     else
     {
       const int division = col / value;
       const int remainder = col % value;
 
-      result.append('A' + division);
+      result.append(1, 'A' + division);
 
       col = remainder;
       power--;
@@ -50,12 +50,12 @@ Str Index::columnToStr(int col)
   return result;
 }
 
-Str Index::toStr() const
+std::string Index::toStr() const
 {
-  return columnToStr(x).append(rowToStr(y));
+  return columnToStr(x) + rowToStr(y);
 }
 
-Index Index::fromStr(Str const& str)
+Index Index::fromStr(std::string const& str)
 {
   Index idx(0, 0);
 
@@ -63,14 +63,14 @@ Index Index::fromStr(Str const& str)
     return idx;
 
   int i = 0;
-  while ((i < str.size()) && isUpperAlpha(str[i]))
+  while ((i < str.size()) && std::isupper(str[i]))
   {
     idx.x *= 26;
     idx.x += str[i] - 'A';
     i++;
   }
 
-  while ((i < str.size()) && isDigit(str[i]))
+  while ((i < str.size()) && std::isdigit(str[i]))
   {
     idx.y *= 10;
     idx.y += str[i] - '0';
@@ -85,39 +85,52 @@ Index Index::fromStr(Str const& str)
 
 
 namespace tcl {
-  TCL_PROC(index)
+  TCL_FUNC(index)
   {
-    TCL_CHECK_ARG_OLDS(2, 1000, "index subcommand ?argument ...?");
+    TCL_CHECK_ARGS(2, 1000, "index subcommand &argument ...?");
 
-    const uint32_t command = args[1].hash();
-    switch (command)
+    int subcommand;
+    static const char * const subcommands[] = {
+      "new", "row", "column", nullptr
+    };
+
+    enum
     {
-      case kNew:
+      CMD_NEW, CMD_ROW, CMD_COLUMN
+    };
+
+    if (Jim_GetEnum(interp, argv[1], subcommands, &subcommand, nullptr, JIM_ERRMSG | JIM_ENUM_ABBREV) != JIM_OK)
+        return JIM_ERR;
+
+    switch (subcommand)
+    {
+      case CMD_NEW:
         {
-          TCL_CHECK_ARG_OLD(4, "index new column row");
-          return resultStr(Index(args[2].toInt(), args[3].toInt()).toStr());
+          TCL_CHECK_ARG(4, "index new column row");
+          TCL_INT_ARG(2, column);
+          TCL_INT_ARG(3, row);
+          TCL_STRING_RESULT(Index(column, row).toStr());
         }
         break;
 
-      case kRow:
+      case CMD_ROW:
         {
-          TCL_CHECK_ARG_OLD(3, "index row index");
-          return resultInt(Index::fromStr(args[2]).y);
+          TCL_CHECK_ARG(3, "index row index");
+          TCL_STRING_ARG(2, index);
+          TCL_INT_RESULT(Index::fromStr(index).y);
         }
         break;
 
-      case kColumn:
+      case CMD_COLUMN:
         {
-          TCL_CHECK_ARG_OLD(3, "index column index");
-          return resultInt(Index::fromStr(args[2]).x);
+          TCL_CHECK_ARG(3, "index column index");
+          TCL_STRING_ARG(2, index);
+          TCL_INT_RESULT(Index::fromStr(index).x);
         }
-        break;
-
-      default:
         break;
     }
 
-    TCL_OK();
+    return JIM_OK;
   }
 }
 

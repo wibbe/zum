@@ -11,7 +11,7 @@
 static bool applicationRunning_ = true;
 static int timeout_ = 0;
 
-FUNC_0(quitApplication, "app:quit")
+TCL_FUNC(app_quit)
 {
   applicationRunning_ = false;
   return true;
@@ -37,7 +37,7 @@ int main(int argc, char * argv[])
 
   if (argc > 1)
   {
-    if (!doc::load(Str(argv[1])))
+    if (!doc::load(argv[1]))
       doc::createDefaultEmpty();
   }
   else

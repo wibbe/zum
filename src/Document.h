@@ -6,9 +6,9 @@
 
 namespace doc {
 
-  bool createDefaultEmpty();
-  bool createEmpty(Str const& width, Str const& height);
-  bool close();
+  void createDefaultEmpty();
+  void createEmpty(int width, int height);
+  void close();
 
   Index & cursorPos();
   Index & scroll();
@@ -23,16 +23,16 @@ namespace doc {
   bool undo();
   bool redo();
 
-  bool save(Str const& filename);
-  bool load(Str const& filename);
+  bool save(std::string const& filename);
+  bool load(std::string const& filename);
 
   // This will load a document as read-only from the supplied string.
-  bool loadRaw(std::string const& data, Str const& filename, Str::char_type delimiter = 0);
+  bool loadRaw(std::string const& data, std::string const& filename, char delimiter = 0);
 
-  Str getFilename();
+  std::string getFilename();
 
-  Str const& getCellText(Index const& idx);
-  void setCellText(Index const& idx, Str const& text);
+  std::string getCellText(Index const& idx);
+  void setCellText(Index const& idx, std::string const& text);
 
   void increaseColumnWidth(int column);
   void decreaseColumnWidth(int column);
@@ -41,11 +41,4 @@ namespace doc {
   void addRow(int row);
   void removeColumn(int column);
   void removeRow(int row);
-
-  Str rowToLabel(int row);
-  Str columnToLabel(int col);
-
-  Str toCellRef(Index const& idx);
-  Index parseCellRef(Str const& str);
-
 }

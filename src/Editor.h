@@ -16,7 +16,7 @@ enum class EditorMode
 
 EditorMode getEditorMode();
 
-Str getYankBuffer();
+std::string getYankBuffer();
 void yankCurrentCell();
 
 void navigateLeft();
@@ -35,10 +35,10 @@ void handleKeyEvent(struct tb_event * event);
 void updateCursor();
 
 void clearFlashMessage();
-void flashMessage(Str const& message);
+void flashMessage(std::string const& message);
 
 void clearCompletionHints();
-void setCompletionHints(std::vector<Str> const& hints);
+void setCompletionHints(std::vector<std::string> const& hints);
 
 void drawInterface();
 void drawHeaders();

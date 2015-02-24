@@ -25,11 +25,11 @@
 
 namespace doc {
 
-  static const tcl::Variable DELIMITERS("app:delimiters", ",;");
-  static const tcl::Variable IGNORE_FIRST_ROW("app:ignore_first_row", "true");
-  static const tcl::Variable DEFAULT_ROW_COUNT("doc_defaultRowCount", "10");
-  static const tcl::Variable DEFAULT_COLUMN_COUNT("doc_defaultColumnCount", "5");
-  static const tcl::Variable DEFAULT_COLUMN_WIDTH("doc_defaultColumnWidth", "20");
+  static const tcl::Variable DELIMITERS("app_delimiters", ",;|");
+  static const tcl::Variable IGNORE_FIRST_ROW("app_ignoreFirstRow", true);
+  static const tcl::Variable DEFAULT_ROW_COUNT("doc_defaultRowCount", 10);
+  static const tcl::Variable DEFAULT_COLUMN_COUNT("doc_defaultColumnCount", 5);
+  static const tcl::Variable DEFAULT_COLUMN_WIDTH("doc_defaultColumnWidth", 20);
 
   struct Document
   {
@@ -37,9 +37,9 @@ namespace doc {
     int height_ = 0;
     std::vector<int> columnWidth_ = {0};
     std::unordered_map<Index, Cell> cells_;
-    Str filename_;
+    std::string filename_;
     bool readOnly_ = false;
-    Str::char_type delimiter_;
+    char delimiter_;
   };
 
   enum class EditAction
@@ -102,47 +102,31 @@ namespace doc {
     return currentBuffer().scroll_;
   }
 
-  FUNC_0(nextBuffer, "doc_nextBuffer")
-  {
-    documentBuffer().push_back(currentBuffer());
-    documentBuffer().pop_front();
-  }
-
-  FUNC_0(prevBuffer, "doc_prevBuffer")
-  {
-    documentBuffer().push_front(documentBuffer().back());
-    documentBuffer().pop_back();
-  }
-
-  FUNC_0(createDefaultEmpty, "doc_createDefaultEmpty")
+  void createDefaultEmpty()
   {
     documentBuffer().push_front({});
     currentDoc().width_ = std::max(DEFAULT_COLUMN_COUNT.toInt(), 1);
     currentDoc().height_ = std::max(DEFAULT_ROW_COUNT.toInt(), 1);
-    currentDoc().columnWidth_ = std::vector<int>(currentDoc().width_, DEFAULT_COLUMN_WIDTH.toInt());
-    currentDoc().filename_ = Str("[No Name]");
+    currentDoc().columnWidth_ = std::vector<int>(currentDoc().width_, std::max(DEFAULT_COLUMN_WIDTH.toInt(), 3));
+    currentDoc().filename_ = "[No Name]";
     currentDoc().delimiter_ = ',';
     currentDoc().readOnly_ = false;
-    return true;
   }
 
-  FUNC_2(createEmpty, "doc_createEmpty", "doc_createEmpty columnCount rowCount")
+  void createEmpty(int width, int height)
   {
     createDefaultEmpty();
-    currentDoc().width_ = std::max(arg1.toInt(), 1);
-    currentDoc().height_ = std::max(arg2.toInt(), 1);
-    currentDoc().columnWidth_ = std::vector<int>(currentDoc().width_, DEFAULT_COLUMN_WIDTH.toInt());
-    return true;
+    currentDoc().width_ = std::max(width, 1);
+    currentDoc().height_ = std::max(height, 1);
+    currentDoc().columnWidth_ = std::vector<int>(currentDoc().width_, std::max(DEFAULT_COLUMN_WIDTH.toInt(), 3));
   }
 
-  FUNC_0(close, "doc_closeBuffer")
+  void close()
   {
     documentBuffer().pop_front();
 
     if (documentBuffer().empty())
       createDefaultEmpty();
-
-    return true;
   }
 
   static Cell & getCell(Index const& idx)
@@ -169,7 +153,7 @@ namespace doc {
     }
   }
 
-  FUNC_0(undo, "doc_undo")
+  bool undo()
   {
     if (!currentBuffer().undoStack_.empty())
     {
@@ -180,14 +164,13 @@ namespace doc {
       cursorPos() = state.cursor_;
 
       currentBuffer().undoStack_.pop_back();
-
       return true;
     }
 
     return false;
   }
 
-  FUNC_0(redo, "doc_redo")
+  bool redo()
   {
     if (!currentBuffer().redoStack_.empty())
     {
@@ -205,7 +188,7 @@ namespace doc {
     return false;
   }
 
-  Str getFilename()
+  std::string getFilename()
   {
     return currentDoc().filename_;
   }
@@ -215,14 +198,14 @@ namespace doc {
     return currentDoc().readOnly_;
   }
 
-  FUNC_1(save, "doc_save", "doc_save filename")
+  bool save(std::string const& filename)
   {
-    logInfo(Str("Saving document: ").append(arg1));
+    logInfo("Saving document: ", filename);
 
-    std::ofstream file(arg1.utf8().c_str());
+    std::ofstream file(filename.c_str());
     if (!file.is_open())
     {
-      flashMessage(Str("Could not save document!"));
+      flashMessage("Could not save document!");
       return false;
     }
 
@@ -241,19 +224,19 @@ namespace doc {
       }
     }
 
-    currentDoc().filename_ = arg1;
-    flashMessage(Str("Document saved!"));
+    currentDoc().filename_ = filename;
+    flashMessage("Document saved!");
     return true;
   }
 
   struct Parser
   {
-    Parser(Str const& data, Str::char_type delim)
+    Parser(std::string const& data, char delim)
       : data_(data),
         delim_(delim)
     { }
 
-    bool next(Str & value)
+    bool next(std::string & value)
     {
       value.clear();
 
@@ -261,7 +244,7 @@ namespace doc {
         return false;
 
       while (!eof() && data_[pos_] != delim_ && data_[pos_] != '\n')
-        value.append(data_[pos_++]);
+        value.append(1, data_[pos_++]);
 
       if (eof())
         return false;
@@ -272,12 +255,12 @@ namespace doc {
 
     bool eof() const { return pos_ >= data_.size(); }
 
-    Str const& data_;
-    Str::char_type delim_;
+    std::string const& data_;
+    char delim_;
     int pos_ = 0;
   };
 
-  static bool loadDocument(Str const& data, Str::char_type defaultDelimiter)
+  static bool loadDocument(std::string const& data, char defaultDelimiter)
   {
     createDefaultEmpty();
     currentDoc().width_ = 0;
@@ -287,13 +270,13 @@ namespace doc {
     // Examin document to determin delimiter type
     if (defaultDelimiter == 0)
     {
-      const Str delimiters = DELIMITERS.get();
+      const std::string delimiters = DELIMITERS.toStr();
 
       std::vector<int> delimCount(delimiters.size(), 0);
       for (auto ch : data)
       {
-        const int idx = delimiters.findChar(ch);
-        if (idx >= 0)
+        const std::size_t idx = delimiters.find_first_of(ch);
+        if (idx != std::string::npos)
           delimCount[idx]++;
       }
 
@@ -319,25 +302,25 @@ namespace doc {
       bool onlyNumbers = true;
       bool firstLine = true;
 
-      std::vector<Str> cells;
+      std::vector<std::string> cells;
 
       while (firstLine)
       {
-        Str cellText;
+        std::string cellText;
         firstLine = p.next(cellText);
 
         cells.push_back(cellText);
 
         for (auto ch : cellText)
-          onlyNumbers &= isDigit(ch);
+          onlyNumbers &= std::isdigit(ch);
       }
 
       if (onlyNumbers)
       {
         for (auto const& cellText : cells)
         {
-          const int width = cellText.toInt();
-          currentDoc().columnWidth_.push_back(width > 0 ? width : DEFAULT_COLUMN_WIDTH.toInt());
+          const int width = std::max(cellText.empty() ? DEFAULT_COLUMN_WIDTH.toInt() : std::stoi(cellText), 3);
+          currentDoc().columnWidth_.push_back(width);
         }
 
         currentDoc().width_ = currentDoc().columnWidth_.size();
@@ -361,7 +344,7 @@ namespace doc {
     int column = 0;
     while (!p.eof())
     {
-      Str cellText;
+      std::string cellText;
       const bool newLine = !p.next(cellText);
 
       if (!cellText.empty())
@@ -388,12 +371,12 @@ namespace doc {
     return true;
   }
 
-  FUNC_1(load, "doc_load", "doc_load filename")
+  bool load(std::string const& filename)
   {
-    std::ifstream file(arg1.utf8().c_str());
+    std::ifstream file(filename.c_str());
     if (!file.is_open())
     {
-      flashMessage(Str("Could not open document!"));
+      flashMessage("Could not open document!");
       return false;
     }
 
@@ -403,7 +386,7 @@ namespace doc {
     file.seekg (0, file.beg);
 
     std::vector<char> buffer;
-    buffer.reserve(length + 1);
+    buffer.resize(length + 1);
     file.read(&buffer[0], length);
     buffer[length] = '\0';
 
@@ -414,19 +397,18 @@ namespace doc {
     if (length == 0)
       return false;
 
-    const Str data(&buffer[0]);
-    if (!loadDocument(data, 0))
+    if (!loadDocument(std::string(buffer.begin(), buffer.end()), 0))
       return false;
 
-    currentDoc().filename_ = arg1;
+    currentDoc().filename_ = filename;
     currentDoc().readOnly_ = false;
 
     return true;
   }
 
-  bool loadRaw(std::string const& data, Str const& filename, Str::char_type delimiter)
+  bool loadRaw(std::string const& data, std::string const& filename, char delimiter)
   {
-    if (!loadDocument(Str(data.c_str()), delimiter))
+    if (!loadDocument(data, delimiter))
       return false;
 
     currentDoc().filename_ = filename;
@@ -463,24 +445,18 @@ namespace doc {
     return currentDoc().width_;
   }
 
-  static int get_cell_index(int x, int y)
+  std::string getCellText(Index const& idx)
   {
-    return (y * currentDoc().width_) + x;
+    if (idx.x < 0 || idx.x >= currentDoc().width_)
+      return "";
+
+    if (idx.y < 0 || idx.y >= currentDoc().height_)
+      return "";
+
+    return currentDoc().cells_[idx].text;
   }
 
-  Str const& getCellText(Index const& idx)
-  {
-    assert(idx.x < currentDoc().width_);
-    assert(idx.y < currentDoc().height_);
-
-    auto result = currentDoc().cells_.find(idx);
-    if (result == currentDoc().cells_.end())
-      return Str::EMPTY;
-
-    return result->second.text;
-  }
-
-  void setCellText(Index const& idx, Str const& text)
+  void setCellText(Index const& idx, std::string const& text)
   {
     assert(idx.x < currentDoc().width_);
     assert(idx.y < currentDoc().height_);
@@ -628,76 +604,57 @@ namespace doc {
     currentDoc().cells_ = std::move(newCells);
   }
 
-  // -- Tcl procs --
+  // -- Tcl bindings --
 
-  TCL_PROC2(docDelimiter, "doc_delimiter")
+  TCL_FUNC(doc_createEmpty)
   {
-    TCL_CHECK_ARG_OLDS(1, 2, "doc:delimiter ?delimiter?");
+    TCL_CHECK_ARG(3, "columnCount rowCount");
+    TCL_INT_ARG(1, columnCount);
+    TCL_INT_ARG(2, rowCount);
 
-    if (args.size() == 1)
-      return tcl::resultStr(Str(currentDoc().delimiter_));
-    else if (args.size() >= 2)
-      currentDoc().delimiter_ = args[1].front();
-
-    TCL_OK();
+    createEmpty(columnCount, rowCount);
+    return JIM_OK;
   }
 
-  TCL_PROC(doc_filename)
+  TCL_FUNC(doc_createDefaultEmpty)
   {
-    TCL_CHECK_ARG_OLD(1, "doc:filename");
-    return tcl::resultStr(currentDoc().filename_);
+    createDefaultEmpty();
+    return JIM_OK;
   }
 
-  TCL_PROC(doc_columnWidth)
+  TCL_FUNC(doc_closeBuffer)
   {
-    TCL_CHECK_ARG_OLDS(2, 3, "doc:columnWidth column ?width?");
-
-    const int column = args[1].toInt();
-
-    if (args.size() == 3)
-      setColumnWidth(column, args[2].toInt());
-
-    return tcl::resultInt(getColumnWidth(column));
+    close();
+    return JIM_OK;
   }
 
-  TCL_PROC(doc_columnCount)
+  TCL_FUNC(doc_nextBuffer)
   {
-    TCL_CHECK_ARG_OLD(1, "doc:columnCount");
-    return tcl::resultInt(currentDoc().width_);
+    documentBuffer().push_back(currentBuffer());
+    documentBuffer().pop_front();
+    return JIM_OK;
   }
 
-  TCL_PROC(doc_rowCount)
+  TCL_FUNC(doc_prevBuffer)
   {
-    TCL_CHECK_ARG_OLD(1, "doc:rowCount");
-    return tcl::resultInt(currentDoc().height_);
+    documentBuffer().push_front(documentBuffer().back());
+    documentBuffer().pop_back();
+    return JIM_OK;
   }
 
-  TCL_PROC(doc_addRow)
+  TCL_FUNC(doc_undo)
   {
-    TCL_CHECK_ARG_OLD(2, "doc:addRow row");
-    addRow(args[1].toInt());
-    TCL_OK();
+    if (undo())
+      return JIM_OK;
+    return JIM_ERR;
   }
 
-  TCL_PROC(doc_addColumn)
+  TCL_FUNC(doc_redo)
   {
-    TCL_CHECK_ARG_OLD(2, "doc:addColumn column");
-    addColumn(args[1].toInt());
-    TCL_OK();
+    if (redo())
+      return JIM_OK;
+    return JIM_ERR;
   }
-
-  TCL_PROC(doc_cell)
-  {
-    TCL_CHECK_ARG_OLDS(2, 3, "doc:cell index ?value?");
-    const Index idx = Index::fromStr(args[1]);
-
-    if (args.size() == 3)
-      setCellText(idx, args[2]);
-
-    return tcl::resultStr(getCellText(idx));
-  }
-
-  // New Tcl bindings
 
   TCL_FUNC(doc_columnCount)
   {
@@ -711,8 +668,8 @@ namespace doc {
 
   TCL_FUNC(doc_addColumn)
   {
-    TCL_CHECK_ARG(1, "column");
-    TCL_INT_ARG(0, column);
+    TCL_CHECK_ARG(2, "column");
+    TCL_INT_ARG(1, column);
 
     addColumn(column);
     return JIM_OK;
@@ -720,10 +677,55 @@ namespace doc {
 
   TCL_FUNC(doc_addRow)
   {
-    TCL_CHECK_ARG(1, "row");
-    TCL_INT_ARG(0, row);
+    TCL_CHECK_ARG(2, "row");
+    TCL_INT_ARG(1, row);
 
     addRow(row);
     return JIM_OK;
   }
+
+  TCL_FUNC(doc_delimiter)
+  {
+    TCL_CHECK_ARGS(1, 2, "?delimiter?");
+    TCL_STRING_ARG(1, delims);
+
+    if (argc == 1)
+      TCL_STRING_RESULT(std::string(1, currentDoc().delimiter_));
+    else if (argc == 2)
+      currentDoc().delimiter_ = delims.empty() ? ',' : delims.front();
+
+    return JIM_OK;
+  }
+
+  TCL_FUNC(doc_filename)
+  {
+    TCL_STRING_RESULT(currentDoc().filename_);
+  }
+
+  TCL_FUNC(doc_columnWidth)
+  {
+    TCL_CHECK_ARGS(2, 3, "column ?width?");
+    TCL_INT_ARG(1, column);
+    TCL_INT_ARG(2, width);
+
+    if (argc == 3)
+      setColumnWidth(column, width);
+
+    TCL_INT_RESULT(getColumnWidth(column));
+  }
+
+  TCL_FUNC(doc_cell)
+  {
+    TCL_CHECK_ARGS(2, 3, "index ?value?");
+    TCL_STRING_ARG(1, index);
+    TCL_STRING_ARG(2, value);
+
+    const Index idx = Index::fromStr(index);
+
+    if (argc == 3)
+      setCellText(idx, value);
+
+    TCL_STRING_RESULT(getCellText(idx));
+  }
+
 }

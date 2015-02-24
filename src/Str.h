@@ -6,6 +6,15 @@
 
 // TODO: Change the usage of this class to std::u32string instead with char32_t and strings defined wiht U"string"
 
+namespace str {
+  std::string fromInt(long long int value);
+  std::string fromDouble(double value);
+
+  uint32_t hash(std::string const& str);
+
+  std::string stripWhitespace(std::string const& str);
+}
+
 class Str
 {
   public:
@@ -19,10 +28,12 @@ class Str
     Str();
     explicit Str(char_type ch, int count = 1);
     explicit Str(const char * str);
+    Str(std::string const& str);
     Str(Str const& str);
     Str(Str && str);
 
     Str & operator = (Str const& copy);
+    Str & operator = (std::string const& copy);
     char_type operator [] (uint32_t idx) const { return data_[idx]; }
 
     void set(const char * str);
@@ -38,48 +49,17 @@ class Str
     void insert(uint32_t pos, char_type ch);
     void erase(uint32_t pos);
 
-    bool starts_with(Str const& str) const;
-    bool equals(Str const& str, bool ignoreCase = false, int length = -1) const;
-
     int size() const { return data_.size(); }
     bool empty() const { return data_.size() == 0; }
 
     std::vector<Str> split(char_type delimiter, bool keepDelimiter = false) const;
-
-    int findChar(char_type ch) const;
-    int findStr(Str const& str, int startPos = 0) const;
 
     iterator begin() { return data_.begin(); }
     iterator end() { return data_.end(); }
     const_iterator begin() const { return data_.begin(); }
     const_iterator end() const { return data_.end(); }
 
-    void pop_back();
-    void pop_front(uint32_t count = 1);
-
-    Str toUpper() const;
-    Str toLower() const;
-
-    Str stripWhitespace() const;
-    void eatWhitespaceFront();
-
-    Str substr(int start, int length) const;
-
-    int toInt() const;
-    double toDouble() const;
-
-    uint32_t hash() const;
-
     std::string utf8() const;
-
-    static Str format(const char * fmt, ...);
-
-    static Str fromInt(long long int value);
-    static Str fromDouble(double value);
-
-    static uint32_t hash(const char * str);
-
-    static Str join(std::vector<Str> const& vec, Str::char_type delim);
 
   private:
     std::vector<char_type> data_;

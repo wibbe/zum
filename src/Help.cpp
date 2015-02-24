@@ -52,7 +52,7 @@ The commands listed below can be used in the command mode.
 NAME                  DESCRIPTION
 )RAW";
 
-TCL_PROC(help)
+TCL_FUNC(help)
 {
   std::string help(helpStrHeader_);
   help += helpStrNavCmd_;
@@ -72,6 +72,6 @@ TCL_PROC(help)
     help += "\n";
   }
 
-  doc::loadRaw(help, Str("[Help]"), ';');
-  TCL_OK();
+  doc::loadRaw(help, "[Help]", ';');
+  return JIM_OK;
 }
