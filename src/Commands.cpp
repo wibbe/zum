@@ -333,7 +333,7 @@ void executeAppCommands(Str const& commandLine)
 
 TCL_PROC(e)
 {
-  TCL_CHECK_ARG(2, "e filename");
+  TCL_CHECK_ARG_OLD(2, "e filename");
 
   doc::cursorPos() = Index(0, 0);
   doc::load(args[1]);
@@ -343,7 +343,7 @@ TCL_PROC(e)
 
 TCL_PROC(w)
 {
-  TCL_CHECK_ARGS(1, 2, "w ?filename?");
+  TCL_CHECK_ARG_OLDS(1, 2, "w ?filename?");
 
   if (args.size() == 2 && !args[1].empty())
     doc::save(args[1]);
@@ -355,7 +355,7 @@ TCL_PROC(w)
 
 TCL_PROC(app_edit)
 {
-  TCL_CHECK_ARG(2, "app_edit index");
+  TCL_CHECK_ARG_OLD(2, "app_edit index");
   doc::cursorPos() = Index::fromStr(args[1]);
   editCurrentCell();
 
@@ -364,8 +364,7 @@ TCL_PROC(app_edit)
 
 TCL_PROC(app_cursor)
 {
-  TCL_DESC("Set or the the cursor in the application");
-  TCL_CHECK_ARGS(1, 2, "app_cursor ?index?");
+  TCL_CHECK_ARG_OLDS(1, 2, "app:cursor ?index?");
 
   if (args.size() == 2)
     doc::cursorPos() = Index::fromStr(args[1]);
