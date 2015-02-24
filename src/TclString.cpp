@@ -54,7 +54,7 @@ namespace tcl {
 
       case kFirst:
         {
-          TCL_CHECK_ARGS(4, 5, "string first needleString haystackString ?startIndex?");
+          TCL_CHECK_ARG_OLDS(4, 5, "string first needleString haystackString ?startIndex?");
 
           int start = 0;
           if (args.size() == 5)

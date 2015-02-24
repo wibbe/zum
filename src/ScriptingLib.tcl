@@ -52,11 +52,10 @@ proc task_check {} {
   set row [index row [app_cursor]]
   set text [doc_cell [index new 0 $row]]
   set pos [string first "☐" $text]
-  
+
   if {[string first "☐" $text]} {
     doc_cell [index new 0 $row] "  ☑"
   } else {
     doc_cell [index new 0 $row] "  ☐"
   }
-
 }

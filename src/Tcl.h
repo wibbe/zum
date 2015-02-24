@@ -3,6 +3,7 @@
 
 #include <vector>
 #include "Str.h"
+#include "jim.h"
 
 namespace tcl {
 
@@ -118,7 +119,7 @@ namespace tcl {
 
 #define TCL_FUNC(name) \
   int tclBuiltIn__##name(Jim_Interp *, int argc, Jim_Obj * const *); \
-  namespace { const tcl::BuiltInProc __dummy##name(#name, &tclBuiltIn__##name); } \
+  namespace { const tcl::BuiltInProc _buildInProc__##name(#name, &tclBuiltIn__##name); } \
   int tclBuiltIn__##name(Jim_Interp * interp, int argc, Jim_Obj * const * argv)
 
 #define TCL_CHECK_ARG(count, desc) \

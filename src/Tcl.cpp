@@ -10,7 +10,14 @@
 #include <functional>
 #include <map>
 
+extern "C" {
+  int Jim_clockInit(Jim_Interp * interp);
+  int Jim_regexpInit(Jim_Interp * interp);
+}
+
 namespace tcl {
+
+  static Jim_Interp * interpreter_ = nullptr;
 
   // -- Externs
 
@@ -504,6 +511,11 @@ namespace tcl {
     interpreter_ = Jim_CreateInterp();
     Jim_RegisterCoreCommands(interpreter_);
 
+    // Register extensions
+    ::Jim_clockInit(interpreter_);
+    ::Jim_regexpInit(interpreter_);
+
+    // Register build-int commans
     for (auto const& it : builtInProcs())
       Jim_CreateCommand(interpreter_, it.first, it.second, nullptr, nullptr);
 
@@ -524,6 +536,9 @@ namespace tcl {
     for (auto & info : procedures())
       if (!info.proc_->native())
         delete info.proc_;
+
+    Jim_FreeInterp(interpreter_);
+    interpreter_ = nullptr;
   }
 
   std::vector<Str> findMatches(Str const& name)
