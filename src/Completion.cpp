@@ -8,7 +8,19 @@ void completeEditLine(Str & editLine)
 {
   const std::vector<Str> parts = editLine.split(' ', true);
 
-  const std::string word = parts.empty() ? std::string("") : parts.back().utf8();
+  std::string word = parts.empty() ? std::string("") : parts.back().utf8();
+  std::string removedPart = "";
+
+  switch (word.front())
+  {
+    case '$':
+    case '[':
+      removedPart.append(1, word.front());
+      word.erase(0, 1);
+      break;
+  }
+
+
   const std::vector<std::string> hints = tcl::findMatches(word);
 
   if (hints.empty())
@@ -25,7 +37,7 @@ void completeEditLine(Str & editLine)
       for (int i = 0; i < (parts.size() - 1); ++i)
         editLine.append(parts[i]);
 
-      editLine.append(Str(hints.front())).append(' ');
+      editLine.append(Str(removedPart + hints.front())).append(' ');
     }
     else
     {
@@ -55,7 +67,7 @@ void completeEditLine(Str & editLine)
         for (int i = 0; i < (parts.size() - 1); ++i)
           editLine.append(parts[i]);
 
-        editLine.append(Str(hints.front().substr(0, len)));
+        editLine.append(Str(removedPart + hints.front().substr(0, len)));
       }
 
       setCompletionHints(hints);
