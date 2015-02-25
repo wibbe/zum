@@ -4,8 +4,6 @@
 #include <vector>
 #include <string>
 
-// TODO: Change the usage of this class to std::u32string instead with char32_t and strings defined wiht U"string"
-
 namespace str {
   std::string fromInt(long long int value);
   std::string fromDouble(double value);

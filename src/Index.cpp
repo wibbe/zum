@@ -50,6 +50,31 @@ std::string Index::columnToStr(int col)
   return result;
 }
 
+int Index::strToColumn(std::string const& str)
+{
+  if (str.empty())
+    return 0;
+
+  if (std::isdigit(str.front()))
+  {
+    return std::stoi(str);
+  }
+  else
+  {
+    int column = 0;
+    int i = 0;
+
+    while ((i < str.size()) && std::isupper(str[i]))
+    {
+      column *= 26;
+      column += str[i] - 'A';
+      i++;
+    }
+
+    return column;
+  }
+}
+
 std::string Index::toStr() const
 {
   return columnToStr(x) + rowToStr(y);
@@ -85,9 +110,9 @@ Index Index::fromStr(std::string const& str)
 
 
 namespace tcl {
-  TCL_FUNC(index)
+  TCL_FUNC(index, "subcommand ?argument ...?")
   {
-    TCL_CHECK_ARGS(2, 1000, "index subcommand &argument ...?");
+    TCL_CHECK_ARGS(2, 1000);
 
     int subcommand;
     static const char * const subcommands[] = {
@@ -106,7 +131,7 @@ namespace tcl {
     {
       case CMD_NEW:
         {
-          TCL_CHECK_ARG(4, "index new column row");
+          TCL_CHECK_ARG_DESC(4, "new column row");
           TCL_INT_ARG(2, column);
           TCL_INT_ARG(3, row);
           TCL_STRING_RESULT(Index(column, row).toStr());
@@ -115,7 +140,7 @@ namespace tcl {
 
       case CMD_ROW:
         {
-          TCL_CHECK_ARG(3, "index row index");
+          TCL_CHECK_ARG_DESC(3, "row index");
           TCL_STRING_ARG(2, index);
           TCL_INT_RESULT(Index::fromStr(index).y);
         }
@@ -123,7 +148,7 @@ namespace tcl {
 
       case CMD_COLUMN:
         {
-          TCL_CHECK_ARG(3, "index column index");
+          TCL_CHECK_ARG_DESC(3, "column index");
           TCL_STRING_ARG(2, index);
           TCL_INT_RESULT(Index::fromStr(index).x);
         }

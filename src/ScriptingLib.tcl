@@ -1,36 +1,46 @@
 
-
 # -- Vim bindings for the application --
 
 proc q {} {
-  app_quit
+  quit
 }
 
 proc n {} {
-  doc_createDefaultEmpty
+  createDefaultEmpty
 }
 
 proc e {filename} {
   if {[string length $filename] > 0} {
-    doc_load $filename
+    load $filename
   } else {
     puts "No filename specified"
   }
 }
 
+proc w {args} {
+  if {[string length $args] > 0} {
+    set filename $args
+  } else {
+    set filename [filename]
+  }
+
+  save $filename
+  puts "Document saved!"
+}
+
 proc wq {} {
-  if {[string lenght [doc_filename]] > 0} {
-    doc_save [doc_filename]
-    app_quit
+  if {[string length [filename]] > 0} {
+    save [filename]
+    quit
   } else {
     puts "No document filename specified"
   }
 }
 
-proc bn {} { doc_nextBuffer }
-proc bnext {} { doc_nextBuffer }
-proc bp {} { doc_prevBuffer }
-proc bprev {} { doc_prevBuffer }
+proc bn {} { nextBuffer }
+proc bnext {} { nextBuffer }
+proc bp {} { prevBuffer }
+proc bprev {} { prevBuffer }
 
 
 # -- A Simple Task app plugin --
@@ -38,41 +48,41 @@ proc bprev {} { doc_prevBuffer }
 # Create a new document
 proc task_createDocument {} {
   # Create a new empty document
-  doc_createEmpty 3 1
-  doc_columnWidth 0 5
-  doc_columnWidth 1 12
-  doc_columnWidth 2 100
+  createEmpty 3 1
+  columnWidth A 5
+  columnWidth B 12
+  columnWidth C 100
 
-  # Header
-  doc_cell A1 "DONE"
-  doc_cell B1 "DATE"
-  doc_cell C1 "DESCRIPTION"
+  # Headers
+  cell A1 ""
+  cell B1 "Date"
+  cell C1 "Description"
 
   task_new Fill the task list
 }
 
 # Add a new item
 proc task_new args {
-  set row [doc_rowCount]
-  doc_addRow 0
+  set row [rowCount]
+  addRow 0
 
-  doc_cell A2 "\[ \]"
-  doc_cell B2 [clock format [clock seconds] -format "%Y-%m-%d"]
+  cell A2 "\[ \]"
+  cell B2 [clock format [clock seconds] -format "%Y-%m-%d"]
 
   if {[llength $args] > 0} {
-    doc_cell C2 [join $args]
+    cell C2 [join $args]
   }
 
-  app_cursor C2
+  cursor C2
 }
 
 proc task_done {} {
-  set row [index row [app_cursor]]
-  set text [doc_cell [index new 0 $row]]
+  set row [index row [cursor]]
+  set text [cell [index new 0 $row]]
 
   if {[string equal "\[ \]" $text]} {
-    doc_cell [index new 0 $row] "\[X\]"
+    cell [index new 0 $row] "\[X\]"
   } else {
-    doc_cell [index new 0 $row] "\[ \]"
+    cell [index new 0 $row] "\[ \]"
   }
 }

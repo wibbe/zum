@@ -18,8 +18,11 @@ class Index
     std::string toStr() const;
 
     static Index fromStr(std::string const& str);
+
     static std::string rowToStr(int row);
     static std::string columnToStr(int col);
+
+    static int strToColumn(std::string const& str);
 
   public:
     int x = -1;

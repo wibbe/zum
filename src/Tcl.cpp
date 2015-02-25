@@ -181,7 +181,11 @@ namespace tcl {
 
   bool evaluate(std::string const& code)
   {
-    return Jim_EvalGlobal(interpreter_, code.c_str()) == JIM_OK;
+    const bool ok = Jim_EvalGlobal(interpreter_, code.c_str()) == JIM_OK;
+    if (!ok)
+      logError(result());
+
+    return ok;
   }
 
   std::string result()
@@ -225,9 +229,9 @@ namespace tcl {
     return result;
   }
 
-  TCL_FUNC(puts)
+  TCL_FUNC(puts, "string ?string ...?")
   {
-    TCL_CHECK_ARGS(2, 1000, "string ?string ...?");
+    TCL_CHECK_ARGS(2, 1000);
 
     std::string log;
     for (uint32_t i = 1; i < argc; ++i)

@@ -75,16 +75,18 @@ namespace doc {
     std::vector<UndoState> redoStack_;
   };
 
-  static std::list<Buffer> & documentBuffer()
+  static std::vector<Buffer> & documentBuffers()
   {
-    static std::list<Buffer> buffer;
+    static std::vector<Buffer> buffer;
     return buffer;
   }
 
+  static int currentBufferIndex_ = 0;
+
   static Buffer & currentBuffer()
   {
-    assert(!documentBuffer().empty());
-    return documentBuffer().front();
+    assert(!documentBuffers().empty());
+    return documentBuffers().at(currentBufferIndex_);
   }
 
   static Document & currentDoc()
@@ -102,9 +104,38 @@ namespace doc {
     return currentBuffer().scroll_;
   }
 
+  void nextBuffer()
+  {
+    currentBufferIndex_++;
+    if (currentBufferIndex_ >= documentBuffers().size())
+      currentBufferIndex_ = 0;
+  }
+
+  void previousBuffer()
+  {
+    if (currentBufferIndex_ == 0)
+      currentBufferIndex_ = documentBuffers().size() - 1;
+    else
+      currentBufferIndex_--;
+  }
+
+  void jumpToBuffer(int buffer)
+  {
+    if (buffer < 0 || buffer >= documentBuffers().size())
+      return;
+    currentBufferIndex_ = buffer;
+  }
+
+  int currentBufferIndex()
+  {
+    return currentBufferIndex_;
+  }
+
   void createDefaultEmpty()
   {
-    documentBuffer().push_front({});
+    documentBuffers().push_back({});
+    jumpToBuffer(documentBuffers().size() - 1);
+
     currentDoc().width_ = std::max(DEFAULT_COLUMN_COUNT.toInt(), 1);
     currentDoc().height_ = std::max(DEFAULT_ROW_COUNT.toInt(), 1);
     currentDoc().columnWidth_ = std::vector<int>(currentDoc().width_, std::max(DEFAULT_COLUMN_WIDTH.toInt(), 3));
@@ -123,10 +154,12 @@ namespace doc {
 
   void close()
   {
-    documentBuffer().pop_front();
+    documentBuffers().erase(documentBuffers().begin() + currentBufferIndex_);
 
-    if (documentBuffer().empty())
+    if (documentBuffers().empty())
       createDefaultEmpty();
+    else
+      currentBufferIndex_ = std::max(0, std::min((int)documentBuffers().size(), currentBufferIndex()));
   }
 
   static Cell & getCell(Index const& idx)
@@ -220,12 +253,21 @@ namespace doc {
       for (int x = 0; x < currentDoc().width_; ++x)
       {
         Str const& cell = getCellText(Index(x, y));
-        file << cell.utf8() << (x < (currentDoc().width_ - 1) ? (char)currentDoc().delimiter_ : '\n');
+        file << cell.utf8();
+
+        if (x < (currentDoc().width_ - 1))
+        {
+          file << currentDoc().delimiter_;
+        }
+        else
+        {
+          if (y < (currentDoc().height_ - 1))
+            file << std::endl;
+        }
       }
     }
 
     currentDoc().filename_ = filename;
-    flashMessage("Document saved!");
     return true;
   }
 
@@ -419,13 +461,15 @@ namespace doc {
 
   int getColumnWidth(int column)
   {
-    assert(column < currentDoc().width_);
+    if (column < 0 || column >= currentDoc().width_)
+      return -1;
+
     return currentDoc().columnWidth_[column];
   }
 
   void setColumnWidth(int column, int width)
   {
-    if (column >= currentDoc().width_)
+    if (column < 0 || column >= currentDoc().width_)
       return;
 
     if (currentDoc().readOnly_)
@@ -447,10 +491,7 @@ namespace doc {
 
   std::string getCellText(Index const& idx)
   {
-    if (idx.x < 0 || idx.x >= currentDoc().width_)
-      return "";
-
-    if (idx.y < 0 || idx.y >= currentDoc().height_)
+    if (idx.x < 0 || idx.x >= currentDoc().width_ || idx.y < 0 || idx.y >= currentDoc().height_)
       return "";
 
     return currentDoc().cells_[idx].text;
@@ -458,8 +499,8 @@ namespace doc {
 
   void setCellText(Index const& idx, std::string const& text)
   {
-    assert(idx.x < currentDoc().width_);
-    assert(idx.y < currentDoc().height_);
+    if (idx.x < 0 || idx.x >= currentDoc().width_ || idx.y < 0 || idx.y >= currentDoc().height_)
+      return;
 
     if (currentDoc().readOnly_)
       return;
@@ -472,7 +513,8 @@ namespace doc {
 
   void increaseColumnWidth(int column)
   {
-    assert(column < currentDoc().width_);
+    if (column < 0 || column >= currentDoc().width_)
+      return;
 
     if (currentDoc().readOnly_)
       return;
@@ -484,7 +526,8 @@ namespace doc {
 
   void decreaseColumnWidth(int column)
   {
-    assert(column < currentDoc().width_);
+    if (column < 0 || column >= currentDoc().width_)
+      return;
 
     if (currentDoc().readOnly_)
       return;
@@ -547,7 +590,8 @@ namespace doc {
 
   void removeColumn(int column)
   {
-    assert(column < doc::getColumnCount());
+    if (column < 0 || column >= getColumnCount())
+      return;
 
     if (currentDoc().readOnly_)
       return;
@@ -579,7 +623,8 @@ namespace doc {
 
   void removeRow(int row)
   {
-    assert(row < getRowCount());
+    if (row < 0 || row >= getRowCount())
+      return;
 
     if (currentDoc().readOnly_)
       return;
@@ -606,9 +651,9 @@ namespace doc {
 
   // -- Tcl bindings --
 
-  TCL_FUNC(doc_createEmpty, "columnCount rowCount", "Create a new empty document with the specified dimensions")
+  TCL_FUNC(createEmpty, "columnCount rowCount", "Create a new empty document with the specified dimensions")
   {
-    TCL_CHECK_ARG(3, "columnCount rowCount");
+    TCL_CHECK_ARG(3);
     TCL_INT_ARG(1, columnCount);
     TCL_INT_ARG(2, rowCount);
 
@@ -616,77 +661,104 @@ namespace doc {
     return JIM_OK;
   }
 
-  TCL_FUNC(doc_createDefaultEmpty, "", "Create a new default created document")
+  TCL_FUNC(createDefaultEmpty, "", "Create a new default created document")
   {
     createDefaultEmpty();
     return JIM_OK;
   }
 
-  TCL_FUNC(doc_closeBuffer, "", "Close the current buffer")
+  TCL_FUNC(closeBuffer, "", "Close the current buffer")
   {
     close();
     return JIM_OK;
   }
 
-  TCL_FUNC(doc_nextBuffer, "", "Switch to the next open buffer")
+  TCL_FUNC(load, "filename", "Open a new document")
   {
-    documentBuffer().push_back(currentBuffer());
-    documentBuffer().pop_front();
+    TCL_CHECK_ARG(2);
+    TCL_STRING_ARG(1, filename);
+
+    const bool loaded = load(filename);
+    TCL_INT_RESULT(loaded ? 1 : 0);
+  }
+
+  TCL_FUNC(save, "filename", "Save the current document")
+  {
+    TCL_CHECK_ARG(2);
+    TCL_STRING_ARG(1, filename);
+
+    const bool saved = save(filename);
+    TCL_INT_RESULT(saved ? 1 : 0);
+  }
+
+  TCL_FUNC(nextBuffer, "", "Switch to the next open buffer")
+  {
+    nextBuffer();
     return JIM_OK;
   }
 
-  TCL_FUNC(doc_prevBuffer, "", "Switch to the previous buffer")
+  TCL_FUNC(prevBuffer, "", "Switch to the previous buffer")
   {
-    documentBuffer().push_front(documentBuffer().back());
-    documentBuffer().pop_back();
+    previousBuffer();
     return JIM_OK;
   }
 
-  TCL_FUNC(doc_undo, "Undo the last command")
+  TCL_FUNC(currentBuffer, "?buffer?", "Returns the current buffer and optionally jumps to a specified buffer")
+  {
+    TCL_CHECK_ARGS(1, 2);
+    TCL_INT_ARG(1, buffer);
+
+    if (argc == 2)
+      jumpToBuffer(buffer);
+
+    TCL_INT_RESULT(currentBufferIndex());
+  }
+
+  TCL_FUNC(undo, "Undo the last command")
   {
     if (undo())
       return JIM_OK;
     return JIM_ERR;
   }
 
-  TCL_FUNC(doc_redo, "", "Redo the last undone command")
+  TCL_FUNC(redo, "", "Redo the last undone command")
   {
     if (redo())
       return JIM_OK;
     return JIM_ERR;
   }
 
-  TCL_FUNC(doc_columnCount, "", "Returns the column count of the current document")
+  TCL_FUNC(columnCount, "", "Returns the column count of the current document")
   {
     TCL_INT_RESULT(currentDoc().width_);
   }
 
-  TCL_FUNC(doc_rowCount, "", "Returns the row count of the current document")
+  TCL_FUNC(rowCount, "", "Returns the row count of the current document")
   {
     TCL_INT_RESULT(currentDoc().height_);
   }
 
-  TCL_FUNC(doc_addColumn, "column", "Add a new column to the current document after the indicated column")
+  TCL_FUNC(addColumn, "column", "Add a new column to the current document after the indicated column")
   {
-    TCL_CHECK_ARG(2, "column");
+    TCL_CHECK_ARG(2);
     TCL_INT_ARG(1, column);
 
     addColumn(column);
     return JIM_OK;
   }
 
-  TCL_FUNC(doc_addRow, "row", "Add a new row to the current document after the indicated row")
+  TCL_FUNC(addRow, "row", "Add a new row to the current document after the indicated row")
   {
-    TCL_CHECK_ARG(2, "row");
+    TCL_CHECK_ARG(2);
     TCL_INT_ARG(1, row);
 
     addRow(row);
     return JIM_OK;
   }
 
-  TCL_FUNC(doc_delimiter, "?delimiter?", "Set or return the delimiter to use in the current document")
+  TCL_FUNC(delimiter, "?delimiter?", "Set or return the delimiter to use in the current document")
   {
-    TCL_CHECK_ARGS(1, 2, "?delimiter?");
+    TCL_CHECK_ARGS(1, 2);
     TCL_STRING_ARG(1, delims);
 
     if (argc == 1)
@@ -697,16 +769,18 @@ namespace doc {
     return JIM_OK;
   }
 
-  TCL_FUNC(doc_filename, "", "Returns the filename of the current document")
+  TCL_FUNC(filename, "", "Returns the filename of the current document")
   {
     TCL_STRING_RESULT(currentDoc().filename_);
   }
 
-  TCL_FUNC(doc_columnWidth, "column ?width?", "This function returns and optionally sets the width of the specified column.")
+  TCL_FUNC(columnWidth, "column ?width?", "This function returns and optionally sets the width of the specified column.")
   {
-    TCL_CHECK_ARGS(2, 3, "column ?width?");
-    TCL_INT_ARG(1, column);
+    TCL_CHECK_ARGS(2, 3);
+    TCL_STRING_ARG(1, columnStr);
     TCL_INT_ARG(2, width);
+
+    const int column = Index::strToColumn(columnStr);
 
     if (argc == 3)
       setColumnWidth(column, width);
@@ -714,9 +788,9 @@ namespace doc {
     TCL_INT_RESULT(getColumnWidth(column));
   }
 
-  TCL_FUNC(doc_cell, "index ?value?", "Set or return the value of a particular cell in the current document")
+  TCL_FUNC(cell, "index ?value?", "Set or return the value of a particular cell in the current document")
   {
-    TCL_CHECK_ARGS(2, 3, "index ?value?");
+    TCL_CHECK_ARGS(2, 3);
     TCL_STRING_ARG(1, index);
     TCL_STRING_ARG(2, value);
 
@@ -725,7 +799,170 @@ namespace doc {
     if (argc == 3)
       setCellText(idx, value);
 
-    TCL_STRING_RESULT(getCellText(idx));
+    TCL_STRING_UTF8_RESULT(getCellText(idx));
+  }
+
+  enum class FilterOp
+  {
+    Equal,
+    NotEqual,
+    Match,
+    NoMatch,
+    Greater,
+    LessThan
+  };
+
+  TCL_FUNC(filter, "?-noHeader? column operator value ?column operation value ...?")
+  {
+    TCL_CHECK_ARGS(4, 1000);
+
+    bool copyHeader = true;
+    if (std::string(Jim_String(argv[1])) == "-noHeader")
+      copyHeader = false;
+
+    if (!copyHeader && argc < 5)
+      return JIM_ERR;
+
+    int column = 0;
+    FilterOp op = FilterOp::Match;
+    std::vector<std::tuple<int, FilterOp, std::string>> matches;
+
+    for (int field = 0, i = copyHeader ? 1 : 2; i < argc; ++field, ++i)
+    {
+      const std::string value(Jim_String(argv[i]));
+
+      switch (field)
+      {
+        case 0:
+          {
+            column = Index::strToColumn(value);
+            if (column < 0 || column >= getColumnCount())
+            {
+              logError("filter column ", column, " out of range");
+              return JIM_ERR;
+            }
+          }
+          break;
+
+        case 1:
+          {
+            if (value == "-equal")
+              op = FilterOp::Equal;
+            else if (value == "-nequal")
+              op = FilterOp::NotEqual;
+            else if (value == "-match")
+              op = FilterOp::Match;
+            else if (value == "-nomatch")
+              op = FilterOp::NoMatch;
+            else if (value == "-gt")
+              op = FilterOp::Greater;
+            else if (value == "-lt")
+              op = FilterOp::LessThan;
+            else
+            {
+              logError("unknown filter operation '", value, "'");
+              return JIM_ERR;
+            }
+          }
+          break;
+
+        case 2:
+          {
+            matches.push_back(std::make_tuple(column, op, value));
+            field = 0;
+          }
+          break;
+      }
+    }
+
+    Document & doc = currentDoc();
+    Buffer buffer;
+
+    buffer.doc_.width_ = doc.width_;
+    buffer.doc_.columnWidth_ = doc.columnWidth_;
+    buffer.doc_.delimiter_ = doc.delimiter_;
+    buffer.doc_.filename_ = "[No Name]";
+    buffer.doc_.readOnly_ = false;
+
+    if (copyHeader)
+    {
+      for (int i = 0; i < doc.width_; ++i)
+        buffer.doc_.cells_[Index(i, 0)] = doc.cells_[Index(i, 0)];
+    }
+
+    int row = copyHeader ? 1 : 0;
+    for (int y = copyHeader ? 1 : 0; y < doc.height_; ++y)
+    {
+      bool include = true;
+
+      for (auto const& it : matches)
+      {
+        int column;
+        FilterOp op;
+        std::string value;
+        std::tie(column, op, value) = it;
+
+        const std::string text = getCellText(Index(column, y));
+        if (text.empty() || value.empty())
+        {
+          include = false;
+          break;
+        }
+
+        switch (op)
+        {
+          case FilterOp::Equal:
+            include &= text == value;
+            break;
+
+          case FilterOp::NotEqual:
+            include &= text != value;
+            break;
+
+          case FilterOp::Match:
+            include &= text.find(value) != std::string::npos;
+            break;
+
+          case FilterOp::NoMatch:
+            include &= text.find(value) == std::string::npos;
+            break;
+
+          case FilterOp::Greater:
+            {
+              try {
+                include &= std::stod(text) > std::stod(value);
+              } catch (std::exception e) {
+                logError("could not make comparison ", text, " > ", value);
+                return JIM_ERR;
+              }
+            }
+            break;
+
+          case FilterOp::LessThan:
+              try {
+                include &= std::stod(text) < std::stod(value);
+              } catch (std::exception e) {
+                logError("could not make comparison ", text, " < ", value);
+                return JIM_ERR;
+              }
+            break;
+        }
+      }
+
+      if (include)
+      {
+        for (int i = 0; i < doc.width_; ++i)
+          buffer.doc_.cells_[Index(i, row)] = doc.cells_[Index(i, y)];
+        ++row;
+      }
+    }
+
+    buffer.doc_.height_ = row;
+
+    documentBuffers().push_back(buffer);
+    jumpToBuffer(documentBuffers().size() - 1);
+
+    return JIM_OK;
   }
 
 }

@@ -8,6 +8,7 @@ void clearLog();
 
 void _logValue(FILE * file, char value);
 void _logValue(FILE * file, int value);
+void _logValue(FILE * file, long value);
 void _logValue(FILE * file, long long int value);
 void _logValue(FILE * file, float value);
 void _logValue(FILE * file, const char * value);

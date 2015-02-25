@@ -11,7 +11,7 @@
 static bool applicationRunning_ = true;
 static int timeout_ = 0;
 
-TCL_FUNC(app_quit, "", "Quit the application")
+TCL_FUNC(quit, "", "Quit the application")
 {
   applicationRunning_ = false;
   return true;

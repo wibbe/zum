@@ -74,13 +74,16 @@ namespace tcl {
   namespace { const tcl::BuiltInProc _buildInProc__##name(#name, ##__VA_ARGS__, &tclBuiltIn__##name); } \
   int tclBuiltIn__##name(Jim_Interp * interp, int argc, Jim_Obj * const * argv)
 
-#define TCL_ARGS(args)
-#define TCL_DESC(desc)
+#define TCL_CHECK_ARG(count) \
+  do { if (argc != count) { Jim_WrongNumArgs(interp, 1, argv, static_cast<tcl::BuiltInProc *>(Jim_CmdPrivData(interp))->args_); return JIM_ERR; } } while (false)
 
-#define TCL_CHECK_ARG(count, desc) \
+#define TCL_CHECK_ARG_DESC(count, desc) \
   do { if (argc != count) { Jim_WrongNumArgs(interp, 1, argv, desc); return JIM_ERR; } } while (false)
 
-#define TCL_CHECK_ARGS(min, max, desc) \
+#define TCL_CHECK_ARGS(min, max) \
+  do { if (argc < min || argc > max) { Jim_WrongNumArgs(interp, 1, argv, static_cast<tcl::BuiltInProc *>(Jim_CmdPrivData(interp))->args_); return JIM_ERR; } } while (false)
+
+#define TCL_CHECK_ARGS_DESC(min, max, desc) \
   do { if (argc < min || argc > max) { Jim_WrongNumArgs(interp, 1, argv, desc); return JIM_ERR; } } while (false)
 
 #define TCL_INT_ARG(i, name) \

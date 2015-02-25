@@ -1,10 +1,29 @@
 
 #include "Tokenizer.h"
 
-Tokenizer::Tokenizer(Str const& stream)
+#include <cctype>
+
+inline bool isOperator(char ch)
+{
+  switch (ch)
+  {
+    case '-':
+    case '+':
+    case '*':
+    case '/':
+    case '%':
+    case ':':
+      return true;
+
+    default:
+      return false;
+  }
+}
+
+Tokenizer::Tokenizer(std::string const& stream)
   : stream_(stream),
-    pos_(0),
-    value_()
+    value_(),
+    pos_(0)
 { }
 
 Token Tokenizer::next()
@@ -15,14 +34,14 @@ Token Tokenizer::next()
   if (eof())
     return Token::EndOfFile;
 
-  if (isDigit(current()))
+  if (std::isdigit(current()))
   {
     return parseNumber();
   }
-  else if (current() == '-' && isDigit(peak()))
+  else if (current() == '-' && std::isdigit(peak()))
   {
     // Eat the '-'' and then parse the number
-    value_.append('-');
+    value_.append(1, '-');
     return parseNumber();
   }
   else if (current() == '(')
@@ -35,61 +54,61 @@ Token Tokenizer::next()
     step();
     return Token::RightParenthesis;
   }
-  else if (isOperator(current()) && (isWhitespace(peak()) || isAlpha(peak()) || isDigit(peak())))
+  else if (isOperator(current()) && (std::isspace(peak()) || std::isalpha(peak()) || std::isdigit(peak())))
   {
-    value_.append(current());
+    value_.append(1, current());
     step();
 
     return Token::Operator;
   }
-  else if (isAlpha(current()))
+  else if (std::isalpha(current()))
   {
     return parseIdentifier();
   }
 
   // If we get here, we have encountered an error
-  value_.append(Str("Parse error - unknown character: "))
-        .append(current());
+  value_.append("Parse error - unknown character: ")
+        .append(1, current());
 
   return Token::Error;
 }
 
 void Tokenizer::eatWhitespace()
 {
-  while (!eof() && isWhitespace(current()))
+  while (!eof() && std::isspace(current()))
     step();
 }
 
 Token Tokenizer::parseNumber()
 {
-  value_.append(current());
+  value_.append(1, current());
   step();
 
-  while (!eof() && isDigit(current()))
+  while (!eof() && std::isdigit(current()))
   {
-    value_.append(current());
+    value_.append(1, current());
     step();
   }
 
   if (current() == '.')
   {
-    if (!isDigit(peak()))
+    if (!std::isdigit(peak()))
     {
-      const Str number = value_;
-      value_.set("Parse error - expected digit but got ");
-      value_.append(peak())
-            .append(Str(" in number "))
+      const std::string number = value_;
+      value_ = "Parse error - expected digit but got ";
+      value_.append(1, peak())
+            .append(" in number ")
             .append(number);
       Token::Error;
     }
     else
     {
-      value_.append(current());
+      value_.append(1, current());
       step();
 
-      while (!eof() && isDigit(current()))
+      while (!eof() && std::isdigit(current()))
       {
-        value_.append(current());
+        value_.append(1, current());
         step();
       }
     }
@@ -100,13 +119,13 @@ Token Tokenizer::parseNumber()
 
 Token Tokenizer::parseIdentifier()
 {
-  if (isUpperAlpha(current()))
+  if (std::isupper(current()))
     if (parseCell())
       return Token::Cell;
 
-  while (!eof() && (isAlpha(current()) || isDigit(current()) || current() == '_'))
+  while (!eof() && (std::isalpha(current()) || std::isdigit(current()) || current() == '_'))
   {
-    value_.append(current());
+    value_.append(1, current());
     step();
   }
 
@@ -115,17 +134,17 @@ Token Tokenizer::parseIdentifier()
 
 bool Tokenizer::parseCell()
 {
-  while (!eof() && isUpperAlpha(current()))
+  while (!eof() && std::isupper(current()))
   {
-    value_.append(current());
+    value_.append(1, current());
     step();
   }
 
-  if (!eof() && isDigit(current()))
+  if (!eof() && std::isdigit(current()))
   {
-    while (!eof() && isDigit(current()))
+    while (!eof() && std::isdigit(current()))
     {
-      value_.append(current());
+      value_.append(1, current());
       step();
     }
 

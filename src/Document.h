@@ -10,6 +10,11 @@ namespace doc {
   void createEmpty(int width, int height);
   void close();
 
+  void nextBuffer();
+  void previousBuffer();
+  void jumpToBuffer(int buffer);
+  int currentBufferIndex();
+
   Index & cursorPos();
   Index & scroll();
 

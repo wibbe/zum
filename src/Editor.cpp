@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <cmath>
+#include <regex>
 
 static const int ROW_HEADER_WIDTH = 8;
 
@@ -188,8 +189,8 @@ bool findNextMatch()
   {
     while (pos.x < doc::getColumnCount())
     {
-      std::string cellText = doc::getCellText(pos);
-      if (cellText.find(searchTerm_) != std::string::npos)
+      const std::string text = doc::getCellText(pos);
+      if (text.find(searchTerm_) != std::string::npos)
       {
         setCursorPos(pos);
         ensureCursorVisibility();
@@ -218,8 +219,8 @@ bool findPreviousMatch()
   {
     while (pos.x >= 0)
     {
-      std::string cellText = doc::getCellText(pos);
-      if (cellText.find(searchTerm_) != std::string::npos)
+      const std::string text = doc::getCellText(pos);
+      if (text.find(searchTerm_) != std::string::npos)
       {
         setCursorPos(pos);
         ensureCursorVisibility();

@@ -32,6 +32,12 @@ void _logValue(FILE * file, int value)
   fprintf(file, "%d", value);
 }
 
+void _logValue(FILE * file, long value)
+{
+  fprintf(file, "%ld", value);
+}
+
+
 void _logValue(FILE * file, long long int value)
 {
   fprintf(file, "%lld", value);

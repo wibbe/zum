@@ -1,57 +1,35 @@
 
 #pragma once
 
-#include "Types.h"
-#include "Str.h"
+#include "Index.h"
 
-#include <memory>
+#include <string>
 
-
-class Expr
+enum class ExprType
 {
-  public:
-
-    virtual ~Expr()
-    { }
-
-    virtual Str toLua() const = 0;
-    virtual Str toText() const = 0;
-
+  Constant,
+  Operator,
+  Function,
+  Cell
 };
 
-typedef std::unique_ptr<Expr> ExprPtr;
-
-class Constant : public Expr
+struct Expr
 {
-  public:
-    Constant(Str const& value);
+  Expr() { }
+  Expr(double value) : type_(ExprType::Constant), constant_(value) { }
+  Expr(uint32_t id, ExprType type) : type_(type), id_(id) { }
+  Expr(Index const& idx) : type_(ExprType::Cell), index_(idx) { }
 
-    Str toLua() const override;
-    Str toText() const override;
+  ExprType type_ = ExprType::Constant;
 
-  private:
-    Str value_;
+  union {
+    double constant_;
+    uint32_t id_;
+  };
+
+  Index index_;
 };
 
-class IndexRef : public Expr
-{
-
-};
-
-class Operator : public Expr
-{
-  public:
-    Operator(ExprPtr leftSide, ExprPtr rightSide, Str::char_type op);
-
-    Str toLua() const override;
-    Str toText() const override;
-
-  private:
-    ExprPtr leftSide_;
-    ExprPtr rightSide_;
-    Str::char_type op_;
-};
-
-bool parseExpression(Str const& source, std::vector<Expr> & expr);
+std::vector<Expr> parseExpression(std::string const& source);
 
 double evaluate(std::vector<Expr> const& expr);

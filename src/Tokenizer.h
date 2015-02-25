@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "Str.h"
+#include <string>
 
 enum class Token
 {
@@ -19,10 +19,10 @@ enum class Token
 class Tokenizer
 {
   public:
-    Tokenizer(Str const& str);
+    Tokenizer(std::string const& str);
 
     Token next();
-    Str const& value() const { return value_; }
+    std::string const& value() const { return value_; }
 
   private:
     void eatWhitespace();
@@ -30,8 +30,8 @@ class Tokenizer
     Token parseIdentifier();
     bool parseCell();
 
-    Str::char_type current() const { return stream_[pos_]; }
-    Str::char_type peak() const { return pos_ < (stream_.size() - 1) ? stream_[pos_ + 1] : 0; }
+    char current() const { return stream_[pos_]; }
+    char peak() const { return pos_ < (stream_.size() - 1) ? stream_[pos_ + 1] : 0; }
     bool eof() const { return pos_ >= stream_.size(); }
 
     bool step()
@@ -41,7 +41,7 @@ class Tokenizer
     }
 
   private:
-    Str stream_;
+    std::string stream_;
+    std::string value_;
     uint32_t pos_;
-    Str value_;
 };

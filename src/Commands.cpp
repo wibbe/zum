@@ -320,24 +320,9 @@ void executeAppCommands(std::string const& commandLine)
     flashMessage(result);
 }
 
-// -- Application wide commands --
-
-TCL_FUNC(w)
+TCL_FUNC(edit, "index")
 {
-  TCL_CHECK_ARGS(1, 2, "?filename?");
-  TCL_STRING_ARG(1, filename);
-
-  if (argc == 2 && !filename.empty())
-    doc::save(filename);
-  else if (!doc::getFilename().empty())
-    doc::save(doc::getFilename());
-
-  return JIM_OK;
-}
-
-TCL_FUNC(app_edit)
-{
-  TCL_CHECK_ARG(2, "index");
+  TCL_CHECK_ARG(2);
   TCL_STRING_ARG(1, index);
 
   doc::cursorPos() = Index::fromStr(index);
@@ -346,9 +331,9 @@ TCL_FUNC(app_edit)
   return JIM_OK;
 }
 
-TCL_FUNC(app_cursor, "?index?", "Return and optionally set the position of the cursor in the current document")
+TCL_FUNC(cursor, "?index?", "Return and optionally set the position of the cursor in the current document")
 {
-  TCL_CHECK_ARGS(1, 2, "?index?");
+  TCL_CHECK_ARGS(1, 2);
   TCL_STRING_ARG(1, index);
 
   if (argc == 2)
