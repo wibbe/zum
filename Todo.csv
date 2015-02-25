@@ -1,5 +1,6 @@
 5;12;120
 ;Date;Description
+[ ];2015-02-25;Upgrade Termbox to the newest version and add mouse select support
 [X];2015-02-25;We get a trailing newline in documents we save
 [ ];2015-02-25;Implement a sort command that can be run on a specific column
 [ ];2015-02-24;Generate help documentation from arg list and command descript stored in BuiltInProc
