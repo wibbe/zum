@@ -134,6 +134,7 @@ std::vector<Expr> parseExpression(std::string const& source)
   std::vector<Expr> output;
 
   std::vector<std::tuple<Token, std::string>> operatorStack;
+  operatorStack.reserve(10);
 
   Tokenizer tokenizer(source);
 
@@ -495,7 +496,7 @@ double evaluate(std::vector<Expr> const& expression)
 }
 
 
-TCL_FUNC(calculate, "string ?string ...?")
+TCL_FUNC(calculate, "string ?string ...?", "Evaluates the given expression in the same way a cell that starts with = is evaluated")
 {
   TCL_CHECK_ARGS(2, 1000);
 
