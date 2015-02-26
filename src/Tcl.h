@@ -105,6 +105,10 @@ namespace tcl {
   Jim_SetResultInt(interp, value); \
   return JIM_OK
 
+#define TCL_DOUBLE_RESULT(value) \
+  Jim_SetResult(interp, Jim_NewDoubleObj(interp, value)); \
+  return JIM_OK
+
 #define TCL_STRING_UTF8_RESULT(value) \
   do { \
     const std::string result = (value); \

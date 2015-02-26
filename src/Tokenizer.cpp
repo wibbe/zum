@@ -11,7 +11,6 @@ inline bool isOperator(char ch)
     case '+':
     case '*':
     case '/':
-    case '%':
     case ':':
       return true;
 
@@ -54,6 +53,11 @@ Token Tokenizer::next()
     step();
     return Token::RightParenthesis;
   }
+  else if (current() == ',')
+  {
+    step();
+    return Token::Comma;
+  }
   else if (isOperator(current()) && (std::isspace(peak()) || std::isalpha(peak()) || std::isdigit(peak())))
   {
     value_.append(1, current());
@@ -67,7 +71,7 @@ Token Tokenizer::next()
   }
 
   // If we get here, we have encountered an error
-  value_.append("Parse error - unknown character: ")
+  value_.append("unknown character: ")
         .append(1, current());
 
   return Token::Error;
@@ -95,7 +99,7 @@ Token Tokenizer::parseNumber()
     if (!std::isdigit(peak()))
     {
       const std::string number = value_;
-      value_ = "Parse error - expected digit but got ";
+      value_ = "expected digit but got ";
       value_.append(1, peak())
             .append(" in number ")
             .append(number);

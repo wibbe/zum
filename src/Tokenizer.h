@@ -24,6 +24,8 @@ class Tokenizer
     Token next();
     std::string const& value() const { return value_; }
 
+    bool eof() const { return pos_ >= stream_.size(); }
+
   private:
     void eatWhitespace();
     Token parseNumber();
@@ -32,7 +34,6 @@ class Tokenizer
 
     char current() const { return stream_[pos_]; }
     char peak() const { return pos_ < (stream_.size() - 1) ? stream_[pos_ + 1] : 0; }
-    bool eof() const { return pos_ >= stream_.size(); }
 
     bool step()
     {

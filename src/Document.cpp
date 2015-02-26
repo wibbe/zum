@@ -497,6 +497,20 @@ namespace doc {
     return currentDoc().cells_[idx].text;
   }
 
+  double getCellValue(Index const& idx)
+  {
+    if (idx.x < 0 || idx.x >= currentDoc().width_ || idx.y < 0 || idx.y >= currentDoc().height_)
+      return 0.0;
+
+    double value = 0.0;
+    try {
+      value = std::stod(currentDoc().cells_[idx].text);
+    } catch (std::exception) {
+    }
+
+    return value;
+  }
+
   void setCellText(Index const& idx, std::string const& text)
   {
     if (idx.x < 0 || idx.x >= currentDoc().width_ || idx.y < 0 || idx.y >= currentDoc().height_)
@@ -812,7 +826,7 @@ namespace doc {
     LessThan
   };
 
-  TCL_FUNC(filter, "?-noHeader? column operator value ?column operation value ...?")
+  TCL_FUNC(filter, "?-noHeader? column operation value ?column operation value ...?")
   {
     TCL_CHECK_ARGS(4, 1000);
 

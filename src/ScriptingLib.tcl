@@ -24,8 +24,11 @@ proc w {args} {
     set filename [filename]
   }
 
-  save $filename
-  puts "Document saved!"
+  if {[save $filename]} {
+    puts "Document saved!"
+  } else {
+    puts "Could not save document"
+  }
 }
 
 proc wq {} {

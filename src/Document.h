@@ -37,6 +37,8 @@ namespace doc {
   std::string getFilename();
 
   std::string getCellText(Index const& idx);
+  double getCellValue(Index const& idx);
+
   void setCellText(Index const& idx, std::string const& text);
 
   void increaseColumnWidth(int column);

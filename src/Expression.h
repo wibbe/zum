@@ -5,22 +5,25 @@
 
 #include <string>
 
-enum class ExprType
-{
-  Constant,
-  Operator,
-  Function,
-  Cell
-};
-
 struct Expr
 {
-  Expr() { }
-  Expr(double value) : type_(ExprType::Constant), constant_(value) { }
-  Expr(uint32_t id, ExprType type) : type_(type), id_(id) { }
-  Expr(Index const& idx) : type_(ExprType::Cell), index_(idx) { }
+  enum Type
+  {
+    Constant,
+    Operator,
+    Function,
+    Cell
+  };
 
-  ExprType type_ = ExprType::Constant;
+  Expr() { }
+  Expr(double value) : type_(Type::Constant), constant_(value) { }
+  Expr(Type type, uint32_t id) : type_(type), id_(id) { }
+  Expr(Index const& idx) : type_(Type::Cell), index_(idx) { }
+
+  std::string toStr() const;
+  double toDouble() const;
+
+  Type type_ = Type::Constant;
 
   union {
     double constant_;
