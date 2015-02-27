@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "Types.h"
+#include "Cell.h"
 #include "Index.h"
 
 namespace doc {
@@ -36,7 +36,10 @@ namespace doc {
 
   std::string getFilename();
 
+  void evaluateDocument();
+
   std::string getCellText(Index const& idx);
+  std::string getCellDisplayText(Index const& idx);
   double getCellValue(Index const& idx);
 
   void setCellText(Index const& idx, std::string const& text);

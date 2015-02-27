@@ -48,6 +48,11 @@ void _logValue(FILE * file, float value)
   fprintf(file, "%f", value);
 }
 
+void _logValue(FILE * file, double value)
+{
+  fprintf(file, "%f", value);
+}
+
 void _logValue(FILE * file, const char * value)
 {
   fprintf(file, "%s", value);

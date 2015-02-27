@@ -648,7 +648,7 @@ void drawWorkspace()
           drawText(drawColumnInfo_[x].x_, y, width, color, color, editLine_.utf8());
         else
         {
-          std::string cellText = doc::getCellText(Index(drawColumnInfo_[x].column_, row));
+          std::string cellText = doc::getCellDisplayText(Index(drawColumnInfo_[x].column_, row));
           if (cellText.size() >= width)
           {
             cellText = cellText.substr(0, width - 3);

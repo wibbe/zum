@@ -11,9 +11,17 @@
 
 enum class Function
 {
+  // Functions
   Sum,
   Min,
-  Max
+  Max,
+
+  // Operations
+  Range,
+  Multiply,
+  Divide,
+  Add,
+  Subtract
 };
 
 enum class Operator
@@ -25,6 +33,33 @@ enum class Operator
   Subtract
 };
 
+struct FuncDef
+{
+  FuncDef(int precedence, Function id, ExprCallback * func)
+    : precedence_(precedence),
+      id_((uint32_t)id),
+      func_(func)
+  { }
+
+  int precedence_ = -1;
+  uint32_t id_;
+  ExprCallback * func_= nullptr;
+};
+
+
+static const std::unordered_map<std::string, FuncDef> FunctionDefinitions_ = {
+  { ":", FuncDef(5, Function::Range, nullptr) },
+  { "*", FuncDef(4, Function::Multiply, nullptr) },
+  { "/", FuncDef(3, Function::Divide, nullptr) },
+  { "+", FuncDef(1, Function::Add, nullptr) },
+  { "-", FuncDef(1, Function::Subtract, nullptr) },
+
+  { "SUM", FuncDef(-1, Function::Sum, nullptr) },
+  { "MIN", FuncDef(-1, Function::Min, nullptr) },
+  { "MAX", FuncDef(-1, Function::Max, nullptr) },
+};
+
+
 static const std::unordered_map<std::string, std::tuple<uint32_t, Operator>> operatorTable_ = {
   { ":",  std::make_tuple(5, Operator::Range) },
   { "*",  std::make_tuple(4, Operator::Multiply) },
@@ -34,8 +69,11 @@ static const std::unordered_map<std::string, std::tuple<uint32_t, Operator>> ope
 };
 
 static const std::unordered_map<std::string, Function> functionTable_ = {
+  { "sum", Function::Sum },
   { "SUM", Function::Sum },
+  { "min", Function::Min },
   { "MIN", Function::Min },
+  { "max", Function::Max },
   { "MAX", Function::Max }
 };
 
@@ -327,8 +365,6 @@ std::vector<Expr> parseExpression(std::string const& source)
     }
   }
 
-  printExpr(output);
-
   return output;
 }
 
@@ -509,6 +545,8 @@ TCL_FUNC(calculate, "string ?string ...?", "Evaluates the given expression in th
   if (expr.empty())
     return JIM_ERR;
 
+  doc::evaluateDocument();
   const double result = evaluate(expr);
+
   TCL_DOUBLE_RESULT(result);
 }

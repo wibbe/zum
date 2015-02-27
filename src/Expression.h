@@ -5,6 +5,9 @@
 
 #include <string>
 
+struct Expr;
+typedef bool ExprCallback(std::vector<Expr> & valueStack);
+
 struct Expr
 {
   enum Type
@@ -28,6 +31,7 @@ struct Expr
   union {
     double constant_;
     uint32_t id_;
+    ExprCallback * func_;
   };
 
   Index index_;

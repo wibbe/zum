@@ -22,7 +22,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src
 set(SOURCE
     src/Zum.cpp
     src/Str.cpp
-    src/Types.cpp
+    src/Cell.cpp
     src/Editor.cpp
     src/Document.cpp
     src/Commands.cpp

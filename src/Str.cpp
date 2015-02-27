@@ -9,23 +9,23 @@
 #include <cmath>
 #include <cstring>
 #include <cstdlib>
-
+#include <sstream>
+#include <ios>
 
 namespace str {
 
-  static const uint32_t CONVERT_BUFFER_SIZE = 128;
-  static char convertBuffer_[CONVERT_BUFFER_SIZE];
-
   std::string fromInt(long long int value)
   {
-    snprintf(convertBuffer_, CONVERT_BUFFER_SIZE, "%lld", value);
-    return std::string(convertBuffer_);
+    std::stringstream ss;
+    ss << value;
+    return ss.str();
   }
 
   std::string fromDouble(double value)
   {
-    snprintf(convertBuffer_, CONVERT_BUFFER_SIZE, "%f", value);
-    return std::string(convertBuffer_);
+    std::stringstream ss;
+    ss << value;
+    return ss.str();
   }
 
   std::string stripWhitespace(std::string const& str)

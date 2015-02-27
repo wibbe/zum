@@ -1,7 +1,7 @@
 
 #include "Document.h"
 #include "Str.h"
-#include "Types.h"
+#include "Cell.h"
 #include "Editor.h"
 #include "Log.h"
 
@@ -19,6 +19,8 @@
 #include <fstream>
 #include <sstream>
 #include <unordered_map>
+#include <unordered_set>
+#include <algorithm>
 #include <cmath>
 
 #include "Tcl.h"
@@ -302,6 +304,15 @@ namespace doc {
     int pos_ = 0;
   };
 
+  static void setText(Index const& idx, std::string const& text)
+  {
+    Cell & cell = getCell(idx);
+    cell.text = text;
+
+    if (cell.text.front() == '=')
+      cell.expression = parseExpression(cell.text.substr(1));
+  }
+
   static bool loadDocument(std::string const& data, char defaultDelimiter)
   {
     createDefaultEmpty();
@@ -372,8 +383,7 @@ namespace doc {
       {
         for (uint32_t i = 0; i < cells.size(); ++i)
         {
-          Cell & cell = getCell(Index(i, 0));
-          cell.text = cells[i];
+          setText(Index(i, 0), cells[i]);
 
           currentDoc().columnWidth_.push_back(DEFAULT_COLUMN_WIDTH.toInt());
         }
@@ -390,10 +400,7 @@ namespace doc {
       const bool newLine = !p.next(cellText);
 
       if (!cellText.empty())
-      {
-        Cell & cell = getCell(Index(column, currentDoc().height_));
-        cell.text = cellText;
-      }
+        setText(Index(column, currentDoc().height_), cellText);
 
       column++;
 
@@ -410,6 +417,7 @@ namespace doc {
       }
     }
 
+    evaluateDocument();
     return true;
   }
 
@@ -489,6 +497,72 @@ namespace doc {
     return currentDoc().width_;
   }
 
+  void evaluateDocument()
+  {
+    logInfo("Evaluating document...");
+
+    std::unordered_map<Index, std::unordered_set<Index>> cellDeps;
+    std::vector<Index> toEvaluate;
+
+    Document & doc = currentDoc();
+
+    for (auto & it : doc.cells_)
+    {
+      const Index idx = it.first;
+      Cell & cell = it.second;
+
+      if (cell.text.front() == '=')
+      {
+        if (cell.expression.empty())
+        {
+          cell.display = "#ERROR";
+          cell.value = 0.0;
+        }
+        else
+        {
+          toEvaluate.push_back(idx);
+          std::unordered_set<Index> & deps = cellDeps[idx];
+
+          // Get dependencies for this cell
+          for (auto const& expr : cell.expression)
+          {
+            if (expr.type_ == Expr::Cell)
+              deps.insert(expr.index_);
+          }
+        }
+      }
+      else
+      {
+        cell.display = cell.text;
+        cell.value = 0.0;
+
+        try {
+          cell.value = std::stod(cell.text);
+        } catch (std::exception) {
+        }
+      }
+    }
+
+    // Sort the cells that needs to be evaluated
+    std::sort(begin(toEvaluate), end(toEvaluate),
+              [&cellDeps] (Index const& a, Index const& b) -> bool
+              {
+                std::unordered_set<Index> & deps = cellDeps[b];
+                return deps.count(a) == 1;
+              });
+
+    // Evaluate the cells
+    for (auto const& idx : toEvaluate)
+    {
+      Cell & cell = doc.cells_[idx];
+
+      cell.value = evaluate(cell.expression);
+      cell.display = str::fromDouble(cell.value);
+
+      logInfo("Evaluating cell(", idx.x, ", ", idx.y, ") ", cell.value);
+    }
+  }
+
   std::string getCellText(Index const& idx)
   {
     if (idx.x < 0 || idx.x >= currentDoc().width_ || idx.y < 0 || idx.y >= currentDoc().height_)
@@ -497,18 +571,24 @@ namespace doc {
     return currentDoc().cells_[idx].text;
   }
 
+  std::string getCellDisplayText(Index const& idx)
+  {
+    if (idx.x < 0 || idx.x >= currentDoc().width_ || idx.y < 0 || idx.y >= currentDoc().height_)
+      return "";
+
+    Cell const& cell = currentDoc().cells_[idx];
+
+    if (cell.display.empty())
+      return cell.text;
+    return cell.display;
+  }
+
   double getCellValue(Index const& idx)
   {
     if (idx.x < 0 || idx.x >= currentDoc().width_ || idx.y < 0 || idx.y >= currentDoc().height_)
       return 0.0;
 
-    double value = 0.0;
-    try {
-      value = std::stod(currentDoc().cells_[idx].text);
-    } catch (std::exception) {
-    }
-
-    return value;
+    return currentDoc().cells_[idx].value;
   }
 
   void setCellText(Index const& idx, std::string const& text)
@@ -520,9 +600,8 @@ namespace doc {
       return;
 
     takeUndoSnapshot(EditAction::CellText, false);
-
-    Cell & cell = getCell(idx);
-    cell.text = text;
+    setText(idx, text);
+    evaluateDocument();
   }
 
   void increaseColumnWidth(int column)

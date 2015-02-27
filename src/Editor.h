@@ -3,7 +3,7 @@
 #define EDITOR_H
 
 #include "termbox.h"
-#include "Types.h"
+#include "Cell.h"
 #include "Index.h"
 
 enum class EditorMode
