@@ -254,8 +254,7 @@ namespace doc {
     {
       for (int x = 0; x < currentDoc().width_; ++x)
       {
-        Str const& cell = getCellText(Index(x, y));
-        file << cell.utf8();
+        file << getCellText(Index(x, y));
 
         if (x < (currentDoc().width_ - 1))
         {
@@ -309,8 +308,15 @@ namespace doc {
     Cell & cell = getCell(idx);
     cell.text = text;
 
-    if (cell.text.front() == '=')
+    if (text.front() == '=')
+    {
+      cell.hasExpression = true;
       cell.expression = parseExpression(cell.text.substr(1));
+    }
+    else
+    {
+      cell.hasExpression = false;
+    }
   }
 
   static bool loadDocument(std::string const& data, char defaultDelimiter)
@@ -511,7 +517,7 @@ namespace doc {
       const Index idx = it.first;
       Cell & cell = it.second;
 
-      if (cell.text.front() == '=')
+      if (cell.hasExpression)
       {
         if (cell.expression.empty())
         {
@@ -563,12 +569,21 @@ namespace doc {
     }
   }
 
+  static std::string getText(Cell const& cell)
+  {
+    if (cell.hasExpression && !cell.expression.empty())
+      return "=" + exprToString(cell.expression);
+
+    return cell.text;
+  }
+
   std::string getCellText(Index const& idx)
   {
     if (idx.x < 0 || idx.x >= currentDoc().width_ || idx.y < 0 || idx.y >= currentDoc().height_)
       return "";
 
-    return currentDoc().cells_[idx].text;
+    Cell const& cell = currentDoc().cells_[idx];
+    return getText(cell);
   }
 
   std::string getCellDisplayText(Index const& idx)
@@ -579,7 +594,7 @@ namespace doc {
     Cell const& cell = currentDoc().cells_[idx];
 
     if (cell.display.empty())
-      return cell.text;
+      return getText(cell);
     return cell.display;
   }
 
@@ -995,7 +1010,7 @@ namespace doc {
         std::string value;
         std::tie(column, op, value) = it;
 
-        const std::string text = getCellText(Index(column, y));
+        const std::string text = getCellDisplayText(Index(column, y));
         if (text.empty() || value.empty())
         {
           include = false;

@@ -24,8 +24,8 @@ Zum has three basic modes of operation:
               switches to cell edit mode. While in this mode it's possible
               to edit the text in the selected cell.
 
-* Command Mode - The application has a build-in interpreter inspired by Tcl,
-                 that is activated by pressing ':' while in navigation mode.
+* Command Mode - The application has a build-in Tcl interpreter, that is activated
+                 by pressing ':' while in navigation mode.
                  From the command mode it's possible to create, save and load
                  document, and issue a number of different commands to the
                  application.

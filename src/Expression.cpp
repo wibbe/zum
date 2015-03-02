@@ -7,37 +7,115 @@
 #include "Tcl.h"
 
 #include <unordered_map>
+#include <cmath>
 
 #include "ExpressionFunctions.h"
 
+struct FuncDef;
+
 typedef bool EvalFunction(std::vector<Expr> & valueStack);
+typedef bool StrFunction(FuncDef const* func, std::vector<std::tuple<int, std::string>> & args);
+
+bool opToString(FuncDef const* func, std::vector<std::tuple<int, std::string>> & args);
+bool funcToString(FuncDef const* func, std::vector<std::tuple<int, std::string>> & args);
 
 struct FuncDef
 {
-  FuncDef(int precedence, const char * name, EvalFunction * func)
+  FuncDef(int precedence, int argCount, const char * name, EvalFunction * evalFunc)
     : precedence_(precedence),
+      argCount_(argCount),
       name_(name),
-      func_(func)
+      evalFunc_(evalFunc),
+      strFunc_(precedence == -1 ? funcToString : opToString)
   { }
 
   int precedence_ = -1;
+  int argCount_ = 0;
   const char * name_;
-  EvalFunction * func_= nullptr;
+  EvalFunction * evalFunc_= nullptr;
+  StrFunction * strFunc_ = nullptr;
 };
+
 
 static const std::unordered_map<std::string, FuncDef> functionDefinitions_ = {
-  { "*", FuncDef(4, "*", opMultiply) },
-  { "/", FuncDef(3, "/", opDivide) },
-  { "+", FuncDef(1, "+", opAdd) },
-  { "-", FuncDef(1, "-", opSubtract) },
+  { "*", FuncDef(4, 2, "*", opMultiply) },
+  { "/", FuncDef(3, 2, "/", opDivide) },
+  { "+", FuncDef(1, 2, "+", opAdd) },
+  { "-", FuncDef(1, 2, "-", opSubtract) },
 
-  { "SUM", FuncDef(-1, "SUM", funcSum) },
-  { "MIN", FuncDef(-1, "MIN", funcMin) },
-  { "MAX", FuncDef(-1, "MAX", funcMax) },
-  { "ABS", FuncDef(-1, "ABS", funcAbs) },
-  { "COS", FuncDef(-1, "COS", funcCos) },
-  { "SIN", FuncDef(-1, "SIN", funcSin) },
+  { "SUM", FuncDef(-1, 1, "SUM", funcSum) },
+  { "MIN", FuncDef(-1, 1, "MIN", funcMin) },
+  { "MAX", FuncDef(-1, 1, "MAX", funcMax) },
+  { "ABS", FuncDef(-1, 1, "ABS", funcAbs) },
+  { "COS", FuncDef(-1, 1, "COS", funcCos) },
+  { "SIN", FuncDef(-1, 1, "SIN", funcSin) },
 };
+
+static const int MAX_PRECEDENCE = 99999;
+
+bool opToString(FuncDef const* func, std::vector<std::tuple<int, std::string>> & args)
+{
+  if (func->argCount_ != 2 || args.size() < 2)
+    return false;
+
+  int aPrecedence, bPrecedence;
+  std::string aValue, bValue;
+  std::tie(bPrecedence, bValue) = args.back();
+  args.pop_back();
+
+  std::tie(aPrecedence, aValue) = args.back();
+  args.pop_back();
+
+  if (aPrecedence < func->precedence_)
+    aValue = "(" + aValue + ")";
+
+  if (bPrecedence < func->precedence_)
+    bValue = "(" + bValue + ")";
+
+  args.push_back(std::make_tuple(func->precedence_, aValue + " " + func->name_ + " " + bValue));
+  return true;
+}
+
+bool funcToString(FuncDef const* func, std::vector<std::tuple<int, std::string>> & args)
+{
+  if (args.size() < func->argCount_)
+    return false;
+
+  std::string result = func->name_ + std::string("(");
+
+  for (int i = 0; i < func->argCount_; ++i)
+  {
+    result += std::get<1>(args.back());
+    args.pop_back();
+
+    if (i < (func->argCount_ - 1))
+      result += ", ";
+  }
+
+  result += ")";
+  args.push_back(std::make_tuple(MAX_PRECEDENCE, result));
+
+  return true;
+}
+
+std::string exprToString(std::vector<Expr> const& expression)
+{
+  std::vector<std::tuple<int, std::string>> result;
+
+  for (auto const& expr : expression)
+  {
+    if (expr.type_ == Expr::Function)
+    {
+      expr.func_->strFunc_(expr.func_, result);
+    }
+    else
+    {
+      result.push_back(std::make_tuple(MAX_PRECEDENCE, expr.toStr()));
+    }
+  }
+
+  return std::get<1>(result.front());
+}
 
 std::string Expr::toStr() const
 {
@@ -47,7 +125,7 @@ std::string Expr::toStr() const
       return str::fromDouble(constant_);
 
     case Expr::Function:
-      return "Function()";
+      return func_->name_;
 
     case Expr::Cell:
       return startIndex_.toStr();
@@ -72,17 +150,9 @@ double Expr::toDouble() const
   }
 }
 
-static std::string stringExpr(std::vector<Expr> const& output)
-{
-  std::string result;
-  for (auto const& expr : output)
-    result += expr.toStr() + " ";
-  return result;
-}
-
 static void printExpr(std::vector<Expr> const& output)
 {
-  const std::string result = "Output: " + stringExpr(output);
+  const std::string result = "Output: " + exprToString(output);
 
   logInfo(result);
   flashMessage(result);
@@ -317,7 +387,7 @@ double evaluate(std::vector<Expr> const& expression)
 
       case Expr::Function:
         {
-          if (!expr.func_->func_(valueStack))
+          if (!expr.func_->evalFunc_(valueStack))
             return 0.0;
         }
         break;
@@ -326,7 +396,7 @@ double evaluate(std::vector<Expr> const& expression)
 
   if (valueStack.size() != 1)
   {
-    logError("error while calculating expression '", stringExpr(expression));
+    logError("error while calculating expression '", exprToString(expression));
     return 0.0;
   }
 

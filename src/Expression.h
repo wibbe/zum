@@ -37,6 +37,7 @@ struct Expr
   Index endIndex_;
 };
 
-std::vector<Expr> parseExpression(std::string const& source);
 
+std::vector<Expr> parseExpression(std::string const& source);
 double evaluate(std::vector<Expr> const& expr);
+std::string exprToString(std::vector<Expr> const& expr);
