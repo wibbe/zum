@@ -5,23 +5,23 @@
 
 #include <string>
 
-struct Expr;
-typedef bool ExprCallback(std::vector<Expr> & valueStack);
+struct FuncDef;
 
 struct Expr
 {
   enum Type
   {
     Constant,
-    Operator,
+    Cell,
+    Range,
     Function,
-    Cell
   };
 
   Expr() { }
   Expr(double value) : type_(Type::Constant), constant_(value) { }
-  Expr(Type type, uint32_t id) : type_(type), id_(id) { }
-  Expr(Index const& idx) : type_(Type::Cell), index_(idx) { }
+  Expr(const FuncDef * func) : type_(Function), func_(func) { }
+  Expr(Index const& idx) : type_(Type::Cell), startIndex_(idx) { }
+  Expr(Index const& start, Index const& end) : type_(Range), startIndex_(start), endIndex_(end) { }
 
   std::string toStr() const;
   double toDouble() const;
@@ -30,11 +30,11 @@ struct Expr
 
   union {
     double constant_;
-    uint32_t id_;
-    ExprCallback * func_;
+    const FuncDef * func_;
   };
 
-  Index index_;
+  Index startIndex_;
+  Index endIndex_;
 };
 
 std::vector<Expr> parseExpression(std::string const& source);

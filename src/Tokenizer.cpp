@@ -11,7 +11,6 @@ inline bool isOperator(char ch)
     case '+':
     case '*':
     case '/':
-    case ':':
       return true;
 
     default:
@@ -125,7 +124,25 @@ Token Tokenizer::parseIdentifier()
 {
   if (std::isupper(current()))
     if (parseCell())
+    {
+      if (current() == ':' && std::isupper(peak()))
+      {
+        value_.append(1, current());
+        step();
+
+        if (parseCell())
+        {
+          return Token::Range;
+        }
+        else
+        {
+          value_ = "expected range";
+          return Token::Error;
+        }
+      }
+
       return Token::Cell;
+    }
 
   while (!eof() && (std::isalpha(current()) || std::isdigit(current()) || current() == '_'))
   {

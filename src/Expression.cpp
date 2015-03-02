@@ -7,76 +7,37 @@
 #include "Tcl.h"
 
 #include <unordered_map>
-#include <stack>
 
-enum class Function
-{
-  // Functions
-  Sum,
-  Min,
-  Max,
+#include "ExpressionFunctions.h"
 
-  // Operations
-  Range,
-  Multiply,
-  Divide,
-  Add,
-  Subtract
-};
-
-enum class Operator
-{
-  Range,
-  Multiply,
-  Divide,
-  Add,
-  Subtract
-};
+typedef bool EvalFunction(std::vector<Expr> & valueStack);
 
 struct FuncDef
 {
-  FuncDef(int precedence, Function id, ExprCallback * func)
+  FuncDef(int precedence, const char * name, EvalFunction * func)
     : precedence_(precedence),
-      id_((uint32_t)id),
+      name_(name),
       func_(func)
   { }
 
   int precedence_ = -1;
-  uint32_t id_;
-  ExprCallback * func_= nullptr;
+  const char * name_;
+  EvalFunction * func_= nullptr;
 };
 
+static const std::unordered_map<std::string, FuncDef> functionDefinitions_ = {
+  { "*", FuncDef(4, "*", opMultiply) },
+  { "/", FuncDef(3, "/", opDivide) },
+  { "+", FuncDef(1, "+", opAdd) },
+  { "-", FuncDef(1, "-", opSubtract) },
 
-static const std::unordered_map<std::string, FuncDef> FunctionDefinitions_ = {
-  { ":", FuncDef(5, Function::Range, nullptr) },
-  { "*", FuncDef(4, Function::Multiply, nullptr) },
-  { "/", FuncDef(3, Function::Divide, nullptr) },
-  { "+", FuncDef(1, Function::Add, nullptr) },
-  { "-", FuncDef(1, Function::Subtract, nullptr) },
-
-  { "SUM", FuncDef(-1, Function::Sum, nullptr) },
-  { "MIN", FuncDef(-1, Function::Min, nullptr) },
-  { "MAX", FuncDef(-1, Function::Max, nullptr) },
+  { "SUM", FuncDef(-1, "SUM", funcSum) },
+  { "MIN", FuncDef(-1, "MIN", funcMin) },
+  { "MAX", FuncDef(-1, "MAX", funcMax) },
+  { "ABS", FuncDef(-1, "ABS", funcAbs) },
+  { "COS", FuncDef(-1, "COS", funcCos) },
+  { "SIN", FuncDef(-1, "SIN", funcSin) },
 };
-
-
-static const std::unordered_map<std::string, std::tuple<uint32_t, Operator>> operatorTable_ = {
-  { ":",  std::make_tuple(5, Operator::Range) },
-  { "*",  std::make_tuple(4, Operator::Multiply) },
-  { "/",  std::make_tuple(3, Operator::Divide) },
-  { "+",  std::make_tuple(1, Operator::Add) },
-  { "-",  std::make_tuple(1, Operator::Subtract) }
-};
-
-static const std::unordered_map<std::string, Function> functionTable_ = {
-  { "sum", Function::Sum },
-  { "SUM", Function::Sum },
-  { "min", Function::Min },
-  { "MIN", Function::Min },
-  { "max", Function::Max },
-  { "MAX", Function::Max }
-};
-
 
 std::string Expr::toStr() const
 {
@@ -85,14 +46,14 @@ std::string Expr::toStr() const
     case Expr::Constant:
       return str::fromDouble(constant_);
 
-    case Expr::Operator:
-      return "Operator(" + str::fromInt(id_) + ")";
-
     case Expr::Function:
-      return "Function(" + str::fromInt(id_) + ")";
+      return "Function()";
 
     case Expr::Cell:
-      return index_.toStr();
+      return startIndex_.toStr();
+
+    case Expr::Range:
+      return startIndex_.toStr() + ":" + endIndex_.toStr();
   }
 }
 
@@ -104,7 +65,7 @@ double Expr::toDouble() const
       return constant_;
 
     case Expr::Cell:
-      return doc::getCellValue(index_);
+      return doc::getCellValue(startIndex_);
 
     default:
       return 0.0;
@@ -126,46 +87,6 @@ static void printExpr(std::vector<Expr> const& output)
   logInfo(result);
   flashMessage(result);
 }
-
-static std::string tokenName(Token token)
-{
-  switch (token)
-  {
-    case Token::Number:
-      return "Number";
-
-    case Token::Cell:
-      return "Cell";
-
-    case Token::Operator:
-      return "Operator";
-
-    case Token::Identifier:
-      return "Identifier";
-
-    case Token::LeftParenthesis:
-      return "LeftParenthesis";
-
-    case Token::RightParenthesis:
-      return "RightParenthesis";
-
-    case Token::Comma:
-      return "Comma";
-  }
-
-  return "Unknown";
-}
-
-static void printStack(std::vector<std::tuple<Token, std::string>> const& stack)
-{
-  std::string result = "Stack: ";
-  for (auto const& value : stack)
-    result += tokenName(std::get<0>(value)) + "(" + std::get<1>(value) + ") ";
-
-  logInfo(result);
-  flashMessage(result);
-}
-
 
 std::vector<Expr> parseExpression(std::string const& source)
 {
@@ -191,9 +112,25 @@ std::vector<Expr> parseExpression(std::string const& source)
         output.push_back(Expr(Index::fromStr(tokenizer.value())));
         break;
 
+      case Token::Range:
+        {
+          const std::size_t pos = tokenizer.value().find_first_of(":");
+          if (pos == std::string::npos)
+          {
+            logError("error in expression '", source, "' - malformated range '", tokenizer.value(), "'");
+            return {};
+          }
+
+          const std::string start = tokenizer.value().substr(0, pos);
+          const std::string end = tokenizer.value().substr(pos + 1);
+
+          output.push_back(Expr(Index::fromStr(start), Index::fromStr(end)));
+        }
+        break;
+
       case Token::Operator:
         {
-          const int tokenPrecedence = std::get<0>(operatorTable_.at(tokenizer.value()));
+          FuncDef const& tokenDef = functionDefinitions_.at(tokenizer.value());
 
           while (!operatorStack.empty())
           {
@@ -204,13 +141,11 @@ std::vector<Expr> parseExpression(std::string const& source)
             if (opToken != Token::Operator)
               break;
 
-            int stackPrecedence;
-            Operator stackOperator;
-            std::tie(stackPrecedence, stackOperator) = operatorTable_.at(opValue);
+            FuncDef const& stackDef = functionDefinitions_.at(opValue);
 
-            if (tokenPrecedence <= stackPrecedence)
+            if (tokenDef.precedence_ <= stackDef.precedence_)
             {
-              output.push_back(Expr(Expr::Operator, (uint32_t)stackOperator));
+              output.push_back(Expr(&stackDef));
               operatorStack.pop_back();
             }
             else
@@ -223,7 +158,7 @@ std::vector<Expr> parseExpression(std::string const& source)
 
       case Token::Identifier:
         {
-          if (functionTable_.count(tokenizer.value()) == 1)
+          if (functionDefinitions_.count(tokenizer.value()) == 1)
           {
             operatorStack.push_back(std::make_tuple(Token::Identifier, tokenizer.value()));
           }
@@ -262,7 +197,8 @@ std::vector<Expr> parseExpression(std::string const& source)
               return {};
             }
 
-            output.push_back(Expr(Expr::Operator, (uint32_t)std::get<1>(operatorTable_.at(opValue))));
+            FuncDef const& stackDef = functionDefinitions_.at(opValue);
+            output.push_back(Expr(&stackDef));
           }
 
           if (!hasLeftParenthesis)
@@ -279,7 +215,9 @@ std::vector<Expr> parseExpression(std::string const& source)
 
             if (opToken == Token::Identifier)
             {
-              output.push_back(Expr(Expr::Function, (uint32_t)functionTable_.at(opValue)));
+              FuncDef const& stackDef = functionDefinitions_.at(opValue);
+              output.push_back(Expr(&stackDef));
+
               operatorStack.pop_back();
             }
           }
@@ -307,11 +245,8 @@ std::vector<Expr> parseExpression(std::string const& source)
             switch (opToken)
             {
               case Token::Operator:
-                output.push_back(Expr(Expr::Operator, (uint32_t)std::get<1>(operatorTable_.at(opValue))));
-                break;
-
               case Token::Identifier:
-                output.push_back(Expr(Expr::Function, (uint32_t)functionTable_.at(opValue)));
+                output.push_back(Expr(&functionDefinitions_.at(opValue)));
                 break;
 
               default:
@@ -348,11 +283,8 @@ std::vector<Expr> parseExpression(std::string const& source)
     switch (opToken)
     {
       case Token::Operator:
-        output.push_back(Expr(Expr::Operator, (uint32_t)std::get<1>(operatorTable_.at(opValue))));
-        break;
-
       case Token::Identifier:
-        output.push_back(Expr(Expr::Function, (uint32_t)functionTable_.at(opValue)));
+        output.push_back(Expr(&functionDefinitions_.at(opValue)));
         break;
 
       case Token::LeftParenthesis:
@@ -368,127 +300,10 @@ std::vector<Expr> parseExpression(std::string const& source)
   return output;
 }
 
-Expr popExpr(std::vector<Expr> & valueStack)
-{
-  Expr expr = valueStack.back();
-  valueStack.pop_back();
-  return expr;
-}
-
-bool execOperator(std::vector<Expr> & valueStack, Operator op)
-{
-  const double b = popExpr(valueStack).toDouble();
-  const double a = popExpr(valueStack).toDouble();
-
-  switch (op)
-  {
-    case Operator::Multiply:
-      valueStack.push_back(a * b);
-      break;
-
-    case Operator::Divide:
-      valueStack.push_back(a / b);
-      break;
-
-    case Operator::Add:
-      valueStack.push_back(a + b);
-      break;
-
-    case Operator::Subtract:
-      valueStack.push_back(a - b);
-      break;
-
-    default:
-      return false;
-  }
-
-  return true;
-}
-
-bool execFunction(std::vector<Expr> & valueStack, Function func)
-{
-  switch (func)
-  {
-    case Function::Sum:
-      {
-        if (valueStack.size() < 3)
-        {
-          logError("wrong number of arguments to SUM(range)");
-          return false;
-        }
-
-        const Expr rangeOp = popExpr(valueStack);
-        if (rangeOp.type_ != Expr::Operator || rangeOp.id_ != (uint32_t)Operator::Range)
-        {
-          logError("sum function expected range argument");
-          return false;
-        }
-
-        const Expr endExpr = popExpr(valueStack);
-        const Expr startExpr = popExpr(valueStack);
-
-        if (startExpr.type_ != Expr::Cell || endExpr.type_ != Expr::Cell)
-        {
-          logError("invalid range, two cell references expected");
-          return false;
-        }
-
-        Index const& startIdx = startExpr.index_;
-        Index const& endIdx = endExpr.index_;
-
-        if (startIdx.x > endIdx.x || startIdx.y > endIdx.y)
-        {
-          logError("invalid range, row and column in start index ", startIdx.toStr(), " must be less than end index ", endIdx.toStr());
-          return false;
-        }
-
-        double sum = 0.0;
-        for (int y = startIdx.y; y <= endIdx.y; ++y)
-          for (int x = startIdx.x; x <= endIdx.x; ++x)
-            sum += doc::getCellValue(Index(x, y));
-
-        valueStack.push_back(sum);
-      }
-      break;
-
-    case Function::Min:
-      {
-        if (valueStack.size() < 2)
-        {
-          logError("wrong number of arguments to MIN(a, b)");
-          return false;
-        }
-
-        const double b = popExpr(valueStack).toDouble();
-        const double a = popExpr(valueStack).toDouble();
-
-        valueStack.push_back(std::min(a, b));
-      }
-      break;
-
-    case Function::Max:
-      {
-        if (valueStack.size() < 2)
-        {
-          logError("wrong number of arguments to MAX(a, b)");
-          return false;
-        }
-
-        const double b = popExpr(valueStack).toDouble();
-        const double a = popExpr(valueStack).toDouble();
-
-        valueStack.push_back(std::max(a, b));
-      }
-      break;
-  }
-
-  return true;
-}
-
 double evaluate(std::vector<Expr> const& expression)
 {
   std::vector<Expr> valueStack;
-  valueStack.reserve(expression.size());
+  valueStack.reserve(expression.size() / 2);
 
   for (auto const& expr : expression)
   {
@@ -496,26 +311,13 @@ double evaluate(std::vector<Expr> const& expression)
     {
       case Expr::Constant:
       case Expr::Cell:
+      case Expr::Range:
         valueStack.push_back(expr);
-        break;
-
-      case Expr::Operator:
-        {
-          if (expr.id_ == (uint32_t)Operator::Range)
-          {
-            valueStack.push_back(expr);
-          }
-          else
-          {
-            if (!execOperator(valueStack, (Operator)expr.id_))
-              return 0.0f;
-          }
-        }
         break;
 
       case Expr::Function:
         {
-          if (!execFunction(valueStack, (Function)expr.id_))
+          if (!expr.func_->func_(valueStack))
             return 0.0;
         }
         break;

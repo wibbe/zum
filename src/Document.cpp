@@ -527,7 +527,7 @@ namespace doc {
           for (auto const& expr : cell.expression)
           {
             if (expr.type_ == Expr::Cell)
-              deps.insert(expr.index_);
+              deps.insert(expr.startIndex_);
           }
         }
       }
