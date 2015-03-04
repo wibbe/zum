@@ -133,6 +133,11 @@ namespace doc {
     return currentBufferIndex_;
   }
 
+  int getOpenBufferCount()
+  {
+    return documentBuffers().size();
+  }
+
   void createDefaultEmpty()
   {
     documentBuffers().push_back({});

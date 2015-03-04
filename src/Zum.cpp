@@ -37,10 +37,11 @@ int main(int argc, char * argv[])
 
   if (argc > 1)
   {
-    if (!doc::load(argv[1]))
-      doc::createDefaultEmpty();
+    for (int i = 1; i < argc; ++i)
+      doc::load(argv[i]);
   }
-  else
+
+  if (doc::getOpenBufferCount() == 0)
     doc::createDefaultEmpty();
 
   updateCursor();

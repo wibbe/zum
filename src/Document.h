@@ -14,6 +14,7 @@ namespace doc {
   void previousBuffer();
   void jumpToBuffer(int buffer);
   int currentBufferIndex();
+  int getOpenBufferCount();
 
   Index & cursorPos();
   Index & scroll();
