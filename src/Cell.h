@@ -6,8 +6,8 @@
 
 struct Cell
 {
-  std::string text = "";
-  std::string display = "";
+  std::string text;
+  std::string display;
   double value = 0.0;
   bool hasExpression = false;
   std::vector<Expr> expression;

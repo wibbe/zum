@@ -88,6 +88,7 @@ Str & Str::operator = (Str const& copy)
 Str & Str::operator = (std::string const& copy)
 {
   set(copy.c_str());
+  return *this;
 }
 
 void Str::set(const char * str)
