@@ -332,7 +332,12 @@ namespace doc {
       const std::string delimiters = DELIMITERS.toStr();
 
       std::vector<int> delimCount(delimiters.size(), 0);
-      for (auto ch : data)
+      std::stringstream ss(data);
+
+      std::string firstLine;
+      std::getline(ss, firstLine);
+
+      for (auto ch : firstLine)
       {
         const std::size_t idx = delimiters.find_first_of(ch);
         if (idx != std::string::npos)
@@ -371,7 +376,7 @@ namespace doc {
         cells.push_back(cellText);
 
         for (auto ch : cellText)
-          onlyNumbers &= std::isdigit(ch);
+          onlyNumbers &= std::isdigit(ch) != 0;
       }
 
       if (onlyNumbers)
