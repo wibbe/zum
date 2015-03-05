@@ -174,6 +174,14 @@ namespace doc {
     return currentDoc().cells_[idx];
   }
 
+  static std::string getText(Cell const& cell)
+  {
+    if (cell.hasExpression && !cell.expression.empty())
+      return "=" + exprToString(cell.expression);
+
+    return cell.text;
+  }
+
   static void takeUndoSnapshot(EditAction action, bool canMerge)
   {
     bool createNew = true;
@@ -259,7 +267,9 @@ namespace doc {
     {
       for (int x = 0; x < currentDoc().width_; ++x)
       {
-        file << getCellText(Index(x, y));
+        Cell const& cell = getCell(Index(x, y));
+
+        file << getText(cell) << formatToStr(cell.format);
 
         if (x < (currentDoc().width_ - 1))
         {
@@ -543,7 +553,18 @@ namespace doc {
           for (auto const& expr : cell.expression)
           {
             if (expr.type_ == Expr::Cell)
+            {
               deps.insert(expr.startIndex_);
+            }
+            else if (expr.type_ == Expr::Range)
+            {
+              const Index startIdx = expr.startIndex_;
+              const Index endIdx = expr.endIndex_;
+
+              for (int y = startIdx.y; y <= endIdx.y; ++y)
+                for (int x = startIdx.x; x <= endIdx.x; ++x)
+                  deps.insert(Index(x, y));
+            }
           }
         }
       }
@@ -564,7 +585,7 @@ namespace doc {
               [&cellDeps] (Index const& a, Index const& b) -> bool
               {
                 std::unordered_set<Index> & deps = cellDeps[b];
-                return deps.count(a) == 1;
+                return deps.count(a) > 0;
               });
 
     // Evaluate the cells
@@ -575,16 +596,16 @@ namespace doc {
       cell.value = evaluate(cell.expression);
       cell.display = str::fromDouble(cell.value);
 
-      logInfo("Evaluating cell(", idx.x, ", ", idx.y, ") ", cell.value);
+      std::unordered_set<Index> & deps = cellDeps[idx];
+
+      FILE * f = _logBegin();
+
+      _logValue(f, "Evaluating cell(", idx.toStr(), ") ", cell.value, " - ", cell.text, " deps: ");
+      for (auto cell : deps)
+        _logValue(f, cell.toStr(), ", ");
+
+      _logEnd(f);
     }
-  }
-
-  static std::string getText(Cell const& cell)
-  {
-    if (cell.hasExpression && !cell.expression.empty())
-      return "=" + exprToString(cell.expression);
-
-    return cell.text;
   }
 
   std::string getCellText(Index const& idx)
@@ -616,6 +637,15 @@ namespace doc {
     return currentDoc().cells_[idx].value;
   }
 
+  uint32_t getCellFormat(Index const& idx)
+  {
+    if (idx.x < 0 || idx.x >= currentDoc().width_ || idx.y < 0 || idx.y >= currentDoc().height_)
+      return 0;
+
+    Cell const& cell = currentDoc().cells_[idx];
+    return cell.format;
+  }
+
   void setCellText(Index const& idx, std::string const& text)
   {
     if (idx.x < 0 || idx.x >= currentDoc().width_ || idx.y < 0 || idx.y >= currentDoc().height_)
@@ -627,6 +657,20 @@ namespace doc {
     takeUndoSnapshot(EditAction::CellText, false);
     setText(idx, text);
     evaluateDocument();
+  }
+
+  void setCellFormat(Index const& idx, uint32_t format)
+  {
+    if (idx.x < 0 || idx.x >= currentDoc().width_ || idx.y < 0 || idx.y >= currentDoc().height_)
+      return;
+
+    if (currentDoc().readOnly_)
+      return;
+
+    takeUndoSnapshot(EditAction::CellText, false);
+
+    Cell & cell = currentDoc().cells_[idx];
+    cell.format = format;
   }
 
   void increaseColumnWidth(int column)

@@ -41,9 +41,11 @@ namespace doc {
 
   std::string getCellText(Index const& idx);
   std::string getCellDisplayText(Index const& idx);
+  uint32_t getCellFormat(Index const& idx);
   double getCellValue(Index const& idx);
 
   void setCellText(Index const& idx, std::string const& text);
+  void setCellFormat(Index const& idx, uint32_t format);
 
   void increaseColumnWidth(int column);
   void decreaseColumnWidth(int column);

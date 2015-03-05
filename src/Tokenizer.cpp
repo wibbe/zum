@@ -68,6 +68,8 @@ Token Tokenizer::next()
   {
     return parseIdentifier();
   }
+  else if (current() == '\0')
+    return Token::EndOfFile;
 
   // If we get here, we have encountered an error
   value_.append("unknown character: ")
@@ -102,7 +104,7 @@ Token Tokenizer::parseNumber()
       value_.append(1, peak())
             .append(" in number ")
             .append(number);
-      Token::Error;
+      return Token::Error;
     }
     else
     {
