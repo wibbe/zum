@@ -5,9 +5,9 @@
 #include "Expression.h"
 
 static const uint32_t ALIGN_MASK   = 0x0000000F;
-static const uint32_t ALIGN_LEFT   = 0x00000001;
-static const uint32_t ALIGN_RIGHT  = 0x00000002;
-static const uint32_t ALIGN_CENTER = 0x00000003;
+static const uint32_t ALIGN_LEFT   = 0x00000000;
+static const uint32_t ALIGN_RIGHT  = 0x00000001;
+static const uint32_t ALIGN_CENTER = 0x00000002;
 
 std::tuple<uint32_t, std::string> parseFormatAndValue(std::string const& str);
 std::string formatToStr(uint32_t format);

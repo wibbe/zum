@@ -202,16 +202,9 @@ static std::vector<EditCommand> editCommands_ = {
     "Right-justify the text in the current cell",
     [] (int) {
       const Index idx = doc::cursorPos();
-      const int columnWidth = doc::getColumnWidth(idx.x);
-      const std::string text = str::stripWhitespace(doc::getCellText(idx));
-
-      if (text.size() < columnWidth)
-      {
-        std::string newText(columnWidth - text.size(), ' ');
-        newText.append(text);
-
-        doc::setCellText(idx, newText);
-      }
+      const uint32_t oldFormat = doc::getCellFormat(idx);
+      const uint32_t newFormat = (oldFormat & ~ALIGN_MASK) | ALIGN_RIGHT;
+      doc::setCellFormat(idx, newFormat);
     }
   },
   {
@@ -219,16 +212,9 @@ static std::vector<EditCommand> editCommands_ = {
     "Center-justify the text in the current cell",
     [] (int) {
       const Index idx = doc::cursorPos();
-      const int columnWidth = doc::getColumnWidth(idx.x);
-      const std::string text = str::stripWhitespace(doc::getCellText(idx));
-
-      if (text.size() < columnWidth)
-      {
-        std::string newText((columnWidth - text.size()) / 2, ' ');
-        newText.append(text);
-
-        doc::setCellText(idx, newText);
-      }
+      const uint32_t oldFormat = doc::getCellFormat(idx);
+      const uint32_t newFormat = (oldFormat & ~ALIGN_MASK) | ALIGN_CENTER;
+      doc::setCellFormat(idx, newFormat);
     }
   },
   {
@@ -236,7 +222,9 @@ static std::vector<EditCommand> editCommands_ = {
     "Left-justify the text in the current cell",
     [] (int) {
       const Index idx = doc::cursorPos();
-      doc::setCellText(idx, str::stripWhitespace(doc::getCellText(idx)));
+      const uint32_t oldFormat = doc::getCellFormat(idx);
+      const uint32_t newFormat = (oldFormat & ~ALIGN_MASK) | ALIGN_LEFT;
+      doc::setCellFormat(idx, newFormat);
     }
   },
 };

@@ -318,12 +318,22 @@ namespace doc {
     int pos_ = 0;
   };
 
-  static void setText(Index const& idx, std::string const& text)
+  static void setText(Index const& idx, std::string const& text, bool forceFormat = false)
   {
     Cell & cell = getCell(idx);
-    cell.text = text;
 
-    if (text.front() == '=')
+    if (forceFormat)
+    {
+      std::tie(cell.format, cell.text) = parseFormatAndValue(text);
+    }
+    else
+    {
+      uint32_t format;
+      std::tie(format, cell.text) = parseFormatAndValue(text);
+    }
+
+
+    if (cell.text.front() == '=')
     {
       cell.hasExpression = true;
       cell.expression = parseExpression(cell.text.substr(1));
@@ -409,7 +419,7 @@ namespace doc {
       {
         for (uint32_t i = 0; i < cells.size(); ++i)
         {
-          setText(Index(i, 0), cells[i]);
+          setText(Index(i, 0), cells[i], true);
 
           currentDoc().columnWidth_.push_back(DEFAULT_COLUMN_WIDTH.toInt());
         }
@@ -426,7 +436,7 @@ namespace doc {
       const bool newLine = !p.next(cellText);
 
       if (!cellText.empty())
-        setText(Index(column, currentDoc().height_), cellText);
+        setText(Index(column, currentDoc().height_), cellText, true);
 
       column++;
 
@@ -523,10 +533,37 @@ namespace doc {
     return currentDoc().width_;
   }
 
+  static void collectDependencies(Cell const& cell, Index const& idx, std::unordered_set<Index> & deps)
+  {
+    if (!cell.hasExpression)
+      return;
+
+    for (auto const& expr : cell.expression)
+    {
+      if (expr.type_ == Expr::Cell)
+      {
+        const auto result = deps.insert(expr.startIndex_);
+        if (result.second)
+          collectDependencies(getCell(expr.startIndex_), expr.startIndex_, deps);
+      }
+      else if (expr.type_ == Expr::Range)
+      {
+        const Index startIdx = expr.startIndex_;
+        const Index endIdx = expr.endIndex_;
+
+        for (int y = startIdx.y; y <= endIdx.y; ++y)
+          for (int x = startIdx.x; x <= endIdx.x; ++x)
+          {
+            const auto result = deps.insert(Index(x, y));
+            if (result.second)
+              collectDependencies(getCell(Index(x, y)), Index(x, y), deps);
+          }
+      }
+    }
+  }
+
   void evaluateDocument()
   {
-    logInfo("Evaluating document...");
-
     std::unordered_map<Index, std::unordered_set<Index>> cellDeps;
     std::vector<Index> toEvaluate;
 
@@ -549,23 +586,7 @@ namespace doc {
           toEvaluate.push_back(idx);
           std::unordered_set<Index> & deps = cellDeps[idx];
 
-          // Get dependencies for this cell
-          for (auto const& expr : cell.expression)
-          {
-            if (expr.type_ == Expr::Cell)
-            {
-              deps.insert(expr.startIndex_);
-            }
-            else if (expr.type_ == Expr::Range)
-            {
-              const Index startIdx = expr.startIndex_;
-              const Index endIdx = expr.endIndex_;
-
-              for (int y = startIdx.y; y <= endIdx.y; ++y)
-                for (int x = startIdx.x; x <= endIdx.x; ++x)
-                  deps.insert(Index(x, y));
-            }
-          }
+          collectDependencies(cell, idx, deps);
         }
       }
       else
@@ -579,7 +600,13 @@ namespace doc {
         }
       }
     }
-
+/*
+    FILE * f = _logBegin();
+    _logValue(f, "Start order: ");
+    for (auto const& idx : toEvaluate)
+      _logValue(f, idx.toStr(), " ");
+    _logEnd(f);
+*/
     // Sort the cells that needs to be evaluated
     std::sort(begin(toEvaluate), end(toEvaluate),
               [&cellDeps] (Index const& a, Index const& b) -> bool
@@ -587,7 +614,13 @@ namespace doc {
                 std::unordered_set<Index> & deps = cellDeps[b];
                 return deps.count(a) > 0;
               });
-
+/*
+    f = _logBegin();
+    _logValue(f, "Final order: ");
+    for (auto const& idx : toEvaluate)
+      _logValue(f, idx.toStr(), " ");
+    _logEnd(f);
+*/
     // Evaluate the cells
     for (auto const& idx : toEvaluate)
     {

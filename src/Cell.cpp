@@ -1,7 +1,7 @@
 
 #include "Cell.h"
 
-static const std::string START = "#ZUM{";
+static const std::string START = "#{";
 static const std::string END = "}";
 
 std::tuple<uint32_t, std::string> parseFormatAndValue(std::string const& str)

@@ -471,7 +471,7 @@ void handleKeyEvent(struct tb_event * event)
   }
 }
 
-void drawText(int x, int y, int length, uint16_t fg, uint16_t bg, std::string const& str)
+void drawText(int x, int y, int length, uint16_t fg, uint16_t bg, std::string const& str, uint32_t format = 0)
 {
   static const uint32_t BUFFER_LEN = 1024;
   static uint32_t BUFFER[BUFFER_LEN];
@@ -495,8 +495,30 @@ void drawText(int x, int y, int length, uint16_t fg, uint16_t bg, std::string co
   }
   else
   {
+    int start = 0;
+
+    switch (format & ALIGN_MASK)
+    {
+      case ALIGN_LEFT:
+        start = 0;
+        break;
+
+      case ALIGN_CENTER:
+        start = (length / 2) - (strLen / 2);
+        break;
+
+      case ALIGN_RIGHT:
+        start = length - strLen;
+        break;
+    }
+
     for (int i = 0; i < length; ++i)
-      tb_change_cell(x + i, y, i < strLen ? BUFFER[i] : ' ', fg, bg);
+    {
+      const int charIdx = i - start;
+      const uint32_t ch = charIdx < 0 || charIdx >= strLen ? ' ' : BUFFER[charIdx];
+
+      tb_change_cell(x + i, y, ch, fg, bg);
+    }
   }
 }
 
@@ -593,12 +615,7 @@ void drawHeaders()
   for (int x = 0; x < drawColumnInfo_.size(); ++x)
   {
     const uint16_t color = (drawColumnInfo_[x].column_) == doc::cursorPos().x ? TB_REVERSE | TB_DEFAULT : TB_DEFAULT;
-    const int before = (drawColumnInfo_[x].width_ - 1) / 2;
-
-    std::string header(before, ' ');
-    header.append(Index::columnToStr(drawColumnInfo_[x].column_));
-
-    drawText(drawColumnInfo_[x].x_, 0, drawColumnInfo_[x].width_, color, color, header);
+    drawText(drawColumnInfo_[x].x_, 0, drawColumnInfo_[x].width_, color, color, Index::columnToStr(drawColumnInfo_[x].column_), ALIGN_CENTER);
   }
 
   // Draw row header
@@ -649,13 +666,15 @@ void drawWorkspace()
         else
         {
           std::string cellText = doc::getCellDisplayText(Index(drawColumnInfo_[x].column_, row));
+          const uint32_t format = doc::getCellFormat(Index(drawColumnInfo_[x].column_, row));
+
           if (cellText.size() >= width)
           {
             cellText = cellText.substr(0, width - 3);
             cellText.append(2, '.').append(1, ' ');
           }
 
-          drawText(drawColumnInfo_[x].x_, y, width, color, color, cellText);
+          drawText(drawColumnInfo_[x].x_, y, width, color, color, cellText, format);
         }
       }
     }
