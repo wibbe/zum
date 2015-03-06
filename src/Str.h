@@ -8,9 +8,9 @@ namespace str {
   std::string fromInt(long long int value);
   std::string fromDouble(double value);
 
-  uint32_t hash(std::string const& str);
-
   std::string stripWhitespace(std::string const& str);
+  uint32_t hash(std::string const& str);
+  uint32_t toUTF32(std::string const& in, uint32_t * out, uint32_t outLen);
 }
 
 class Str

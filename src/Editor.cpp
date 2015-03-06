@@ -343,6 +343,10 @@ void handleNavigateEvent(struct tb_event * event)
       navigatePageDown();
       break;
 
+    case TB_KEY_SPACE:
+      pushEditCommandKey(' ');
+      break;
+
     default:
       {
         switch (event->ch)
@@ -475,17 +479,7 @@ void drawText(int x, int y, int length, uint16_t fg, uint16_t bg, std::string co
 {
   static const uint32_t BUFFER_LEN = 1024;
   static uint32_t BUFFER[BUFFER_LEN];
-
-  // Convert to uft32
-  const char * it = str.c_str();
-  uint32_t strLen = 0;
-
-  while (*it && strLen < (BUFFER_LEN - 1))
-  {
-    it += tb_utf8_char_to_unicode(&BUFFER[strLen], it);
-    ++strLen;
-  }
-  BUFFER[strLen] = '\0';
+  const uint32_t strLen = str::toUTF32(str, BUFFER, BUFFER_LEN);
 
 
   if (length == -1)
@@ -512,12 +506,22 @@ void drawText(int x, int y, int length, uint16_t fg, uint16_t bg, std::string co
         break;
     }
 
+
     for (int i = 0; i < length; ++i)
     {
       const int charIdx = i - start;
       const uint32_t ch = charIdx < 0 || charIdx >= strLen ? ' ' : BUFFER[charIdx];
 
-      tb_change_cell(x + i, y, ch, fg, bg);
+      uint32_t style = fg;
+      if (charIdx >= 0 && charIdx < strLen)
+      {
+        if (format & FONT_BOLD)
+          style |= TB_BOLD;
+        if (format & FONT_UNDERLINE)
+          style |= TB_UNDERLINE;
+      }
+
+      tb_change_cell(x + i, y, ch, style, bg);
     }
   }
 }

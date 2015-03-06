@@ -198,7 +198,7 @@ static std::vector<EditCommand> editCommands_ = {
     }
   },
   {
-    {'t', 'r'}, false,
+    {'f', 'r'}, false,
     "Right-justify the text in the current cell",
     [] (int) {
       const Index idx = doc::cursorPos();
@@ -208,7 +208,7 @@ static std::vector<EditCommand> editCommands_ = {
     }
   },
   {
-    {'t', 'c'}, false,
+    {'f', 'c'}, false,
     "Center-justify the text in the current cell",
     [] (int) {
       const Index idx = doc::cursorPos();
@@ -218,12 +218,42 @@ static std::vector<EditCommand> editCommands_ = {
     }
   },
   {
-    {'t', 'l'}, false,
+    {'f', 'l'}, false,
     "Left-justify the text in the current cell",
     [] (int) {
       const Index idx = doc::cursorPos();
       const uint32_t oldFormat = doc::getCellFormat(idx);
       const uint32_t newFormat = (oldFormat & ~ALIGN_MASK) | ALIGN_LEFT;
+      doc::setCellFormat(idx, newFormat);
+    }
+  },
+  {
+    {'f', 'n'}, false,
+    "Normal font in the current cell",
+    [] (int) {
+      const Index idx = doc::cursorPos();
+      const uint32_t oldFormat = doc::getCellFormat(idx);
+      const uint32_t newFormat = oldFormat & ~FONT_MASK;
+      doc::setCellFormat(idx, newFormat);
+    }
+  },
+  {
+    {'f', 'b'}, false,
+    "Bold font in the current cell",
+    [] (int) {
+      const Index idx = doc::cursorPos();
+      const uint32_t oldFormat = doc::getCellFormat(idx);
+      const uint32_t newFormat = oldFormat ^ FONT_BOLD;
+      doc::setCellFormat(idx, newFormat);
+    }
+  },
+  {
+    {'f', 'u'}, false,
+    "Underline the font in the current cell",
+    [] (int) {
+      const Index idx = doc::cursorPos();
+      const uint32_t oldFormat = doc::getCellFormat(idx);
+      const uint32_t newFormat = oldFormat ^ FONT_UNDERLINE;
       doc::setCellFormat(idx, newFormat);
     }
   },
@@ -328,4 +358,42 @@ TCL_FUNC(cursor, "?index?", "Return and optionally set the position of the curso
     doc::cursorPos() = Index::fromStr(index);
 
   TCL_STRING_RESULT(doc::cursorPos().toStr());
+}
+
+TCL_FUNC(bind, "keysequence command ?description?", "Bind a command to a specific keyboard sequence")
+{
+  TCL_CHECK_ARGS(3, 4);
+  TCL_STRING_ARG(1, keySequence);
+  TCL_STRING_ARG(2, commandStr);
+  TCL_STRING_ARG(3, description);
+
+  static const uint32_t BUFFER_LEN = 2;
+  static uint32_t buffer[BUFFER_LEN];
+  const uint32_t len = str::toUTF32(keySequence, buffer, BUFFER_LEN);
+
+  if (len > 2)
+  {
+    logError("error in keysequence '", keySequence, "', maximum length is 2");
+    return JIM_ERR;
+  }
+
+  EditCommand * command = nullptr;
+  if (getEditCommand(buffer[0], buffer[1], &command))
+  {
+    logInfo("Rebinding key-sequence '", keySequence, "' to ", commandStr);
+
+    command->manualRepeat = false;
+    command->description = description;
+    command->command = [commandStr] (int) { tcl::evaluate(commandStr); };
+  }
+  else
+  {
+    editCommands_.push_back({
+      buffer[0], buffer[1], false,
+      description,
+      [commandStr] (int) { tcl::evaluate(commandStr); }
+    });
+  }
+
+  return JIM_OK;
 }

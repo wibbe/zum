@@ -89,3 +89,5 @@ proc task_done {} {
     cell [index new 0 $row] "\[ \]"
   }
 }
+
+bind " " task_done "Toggle the done status of a task"

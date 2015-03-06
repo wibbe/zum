@@ -45,6 +45,22 @@ namespace str {
   {
     return murmurHash(str.c_str(), str.size(), 0);
   }
+
+  uint32_t toUTF32(std::string const& in, uint32_t * out, uint32_t outLen)
+  {
+    // Convert to uft32
+    const char * it = in.c_str();
+    uint32_t strLen = 0;
+
+    while (*it && strLen < (outLen - 1))
+    {
+      it += tb_utf8_char_to_unicode(&out[strLen], it);
+      ++strLen;
+    }
+    out[strLen] = '\0';
+
+    return strLen;
+  }
 }
 
 

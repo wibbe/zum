@@ -18,7 +18,7 @@ struct EditCommand
 {
   uint32_t key[2];
   bool manualRepeat;
-  const char * description;
+  std::string description;
   std::function<void (int)> command;
 };
 
