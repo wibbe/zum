@@ -1,5 +1,6 @@
 5;12;120
 ;Date#{16};Description#{16}
+[ ];2014-06-01;File ending should determin what mode the editor enters. For example one mode for files ending with .todo and another for .csv
 [ ];2015-03-06;Cells starting with a : should be evaluated with Tcl before returning a value
 [ ];2015-03-06;Adding and removing columns and rows should update cell and range indices in all expressions
 [X];2015-03-06;Should be able to define edit commands directly from Tcl
