@@ -1,5 +1,6 @@
 5;12;120
 ;Date#{16};Description#{16}
+[ ];2015-06-10;Rework the application to work more as a database than a spradsheet application
 [ ];2015-04-09;Every document should have a built-in mode that controls what kind of commands that are available
 [ ];2015-03-06;Cells starting with a : should be evaluated with Tcl before returning a value
 [ ];2015-03-06;Adding and removing columns and rows should update cell and range indices in all expressions
