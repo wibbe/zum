@@ -43,12 +43,14 @@ static const std::unordered_map<std::string, FuncDef> functionDefinitions_ = {
   { "+", FuncDef(1, 2, "+", opAdd) },
   { "-", FuncDef(1, 2, "-", opSubtract) },
 
-  { "SUM", FuncDef(-1, 1, "SUM", funcSum) },
-  { "MIN", FuncDef(-1, 1, "MIN", funcMin) },
-  { "MAX", FuncDef(-1, 1, "MAX", funcMax) },
-  { "ABS", FuncDef(-1, 1, "ABS", funcAbs) },
-  { "COS", FuncDef(-1, 1, "COS", funcCos) },
-  { "SIN", FuncDef(-1, 1, "SIN", funcSin) },
+  { "SUM",    FuncDef(-1, 1, "SUM",   funcSum) },
+  { "MIN",    FuncDef(-1, 1, "MIN",   funcMin) },
+  { "MAX",    FuncDef(-1, 1, "MAX",   funcMax) },
+  { "ABS",    FuncDef(-1, 1, "ABS",   funcAbs) },
+  { "COS",    FuncDef(-1, 1, "COS",   funcCos) },
+  { "SIN",    FuncDef(-1, 1, "SIN",   funcSin) },
+  { "FLOOR",  FuncDef(-1, 1, "FLOOR", funcFloor) },
+  { "CEIL",   FuncDef(-1, 1, "CEIL",  funcCeil) },
 };
 
 static const int MAX_PRECEDENCE = 99999;

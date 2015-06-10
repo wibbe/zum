@@ -116,3 +116,19 @@ static bool funcSin(std::vector<Expr> & valueStack)
 
   RESULT(std::sin(value));
 }
+
+static bool funcFloor(std::vector<Expr> & valueStack)
+{
+  CHECK_ARG(1, "FLOOR(value)");
+  const double value = popExpr(valueStack).toDouble();
+
+  RESULT(std::floor(value));
+}
+
+static bool funcCeil(std::vector<Expr> & valueStack)
+{
+  CHECK_ARG(1, "CEIL(value)");
+  const double value = popExpr(valueStack).toDouble();
+
+  RESULT(std::ceil(value));
+}
