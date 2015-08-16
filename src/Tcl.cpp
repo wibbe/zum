@@ -4,6 +4,8 @@
 #include "Editor.h"
 #include "Log.h"
 
+#include "bx/bx.h"
+
 #include <iostream>
 #include <fstream>
 #include <algorithm>
@@ -149,7 +151,7 @@ namespace tcl {
     for (auto * var : buildInVariables())
       Jim_SetGlobalVariableStr(interpreter_, var->name(), var->defaultValue());
 
-    Jim_EvalSource(interpreter_, __FILE__, __LINE__, std::string((char *)&ScriptingLib_tcl[0], ScriptingLib_tcl_len).c_str());
+    Jim_EvalSource(interpreter_, __FILE__, __LINE__, std::string((char *)&ScriptingLib[0], BX_COUNTOF(ScriptingLib)).c_str());
 
     logInfo("Loading ~/.zumrc");
     // Try to load the config file

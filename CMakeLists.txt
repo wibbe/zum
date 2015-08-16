@@ -17,9 +17,29 @@ endif()
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src
                     ${CMAKE_CURRENT_BINARY_DIR}
                     ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/termbox
+                    ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/bx/include
                     ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/jimtcl)
 
-set(SOURCE
+# Compiler compability
+if (UNIX)
+  if (APPLE)
+    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/bx/include/compat/osx)
+  else()
+  endif()
+elseif(WIN32)
+  if(MINGW)
+    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/bx/include/compat/mingw)
+  elseif(MSVC)
+    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/bx/include/compat/msvc)
+  endif()
+endif()
+
+set(BIN2C_SOURCE
+    src/3rdparty/bx/bin2c/bin2c.cpp
+)
+
+
+set(ZUM_SOURCE
     src/Zum.cpp
     src/Str.cpp
     src/Cell.cpp
@@ -47,10 +67,12 @@ set(SOURCE
     ${CMAKE_CURRENT_BINARY_DIR}/ScriptingLib.tcl.h
 )
 
-add_custom_command(OUTPUT ScriptingLib.tcl.h COMMAND xxd -i ScriptingLib.tcl > "${CMAKE_CURRENT_BINARY_DIR}/ScriptingLib.tcl.h"
+add_custom_command(OUTPUT ScriptingLib.tcl.h COMMAND "${CMAKE_CURRENT_BINARY_DIR}/bin2c" -f ScriptingLib.tcl -o "${CMAKE_CURRENT_BINARY_DIR}/ScriptingLib.tcl.h" -n ScriptingLib
                    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src"
-                   DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/ScriptingLib.tcl")
+                   DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/ScriptingLib.tcl" bin2c)
 
-add_executable(zum ${SOURCE})
+add_executable(bin2c ${BIN2C_SOURCE})
+target_link_libraries(bin2c)
+
+add_executable(zum ${ZUM_SOURCE})
 target_link_libraries(zum)
-
