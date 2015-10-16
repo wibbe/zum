@@ -14,6 +14,8 @@
 #include <cassert>
 #include <map>
 
+#include "bx/os.h"
+
 extern "C" {
   int Jim_clockInit(Jim_Interp * interp);
   int Jim_regexpInit(Jim_Interp * interp);
@@ -132,7 +134,7 @@ namespace tcl {
 
   // -- Interface --
 
-  static const std::string CONFIG_FILE = "/.zumrc";
+  static const std::string CONFIG_FILE = "zum.conf";
 
   void initialize()
   {
@@ -153,13 +155,22 @@ namespace tcl {
 
     Jim_EvalSource(interpreter_, __FILE__, __LINE__, std::string((char *)&ScriptingLib[0], BX_COUNTOF(ScriptingLib)).c_str());
 
-    logInfo("Loading ~/.zumrc");
+
+    std::string configFile = "";
+#if BX_PLATFORM_LINUX || BX_PLATFORM_OSX
     // Try to load the config file
     char * home = getenv("HOME");
     if (home)
-      Jim_EvalFileGlobal(interpreter_, (std::string(home) + CONFIG_FILE).c_str());
+      configFile = std::string(home) + "/." + CONFIG_FILE;
     else
-      Jim_EvalFileGlobal(interpreter_, ("~" + CONFIG_FILE).c_str());
+      configFile = "~/." + CONFIG_FILE;
+#else
+    char pwd[1024];
+    configFile = std::string(bx::pwd(pwd, 1024)) + "/" + CONFIG_FILE;
+#endif
+
+    logInfo("Loading config file: ", configFile);
+    Jim_EvalFileGlobal(interpreter_, configFile.c_str());
 
 /*
     evaluate(Str(std::string((char *)&ScriptingLib_tcl[0], ScriptingLib_tcl_len).c_str()));

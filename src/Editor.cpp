@@ -54,16 +54,16 @@ void updateCursor()
   switch (editMode_)
   {
     case EditorMode::NAVIGATE:
-      tb_set_cursor(-1, -1);
+      view::hideCursor();
       break;
 
     case EditorMode::EDIT:
-      tb_set_cursor(editLinePos_, tb_height() - 1);
+      view::setCursor(editLinePos_, view::height() - 1);
       break;
 
     case EditorMode::COMMAND:
     case EditorMode::SEARCH:
-      tb_set_cursor(editLinePos_ + 1, tb_height() - 1);
+      view::setCursor(editLinePos_ + 1, view::height() - 1);
       break;
   }
 }
@@ -82,7 +82,7 @@ static void ensureCursorVisibility()
   {
     width += doc::getColumnWidth(i);
 
-    while (width >= tb_width())
+    while (width >= view::width())
     {
       scroll = true;
       width -= doc::getColumnWidth(doc::scroll().x);
@@ -90,7 +90,7 @@ static void ensureCursorVisibility()
     }
   }
 
-  while ((doc::cursorPos().y - doc::scroll().y) >= (tb_height() - 3))
+  while ((doc::cursorPos().y - doc::scroll().y) >= (view::height() - 3))
     doc::scroll().y++;
 }
 
@@ -155,8 +155,8 @@ void navigateDown()
 
 void navigatePageUp()
 {
-  doc::cursorPos().y -= tb_height() - getCommandLineHeight() - 1;
-  doc::scroll().y -= tb_height() - getCommandLineHeight() - 1;
+  doc::cursorPos().y -= view::height() - getCommandLineHeight() - 1;
+  doc::scroll().y -= view::height() - getCommandLineHeight() - 1;
 
   if (doc::cursorPos().y < 0)
   {
@@ -169,8 +169,8 @@ void navigatePageUp()
 
 void navigatePageDown()
 {
-  doc::cursorPos().y += tb_height() - getCommandLineHeight() - 1;
-  doc::scroll().y += tb_height() - getCommandLineHeight() - 1;
+  doc::cursorPos().y += view::height() - getCommandLineHeight() - 1;
+  doc::scroll().y += view::height() - getCommandLineHeight() - 1;
   if (doc::cursorPos().y > (doc::getRowCount() - 1))
     doc::cursorPos().y = doc::getRowCount() - 1;
 
@@ -248,35 +248,34 @@ void editCurrentCell()
   }
 }
 
-void handleTextInput(struct tb_event * event)
+void handleTextInput(view::Event * event)
 {
   switch (event->key)
   {
-    case TB_KEY_ARROW_LEFT:
+    case view::KEY_ARROW_LEFT:
       if (editLinePos_ > 0)
         editLinePos_--;
       break;
 
-    case TB_KEY_ARROW_RIGHT:
+    case view::KEY_ARROW_RIGHT:
       if (editLinePos_ < editLine_.size())
         editLinePos_++;
       break;
 
-    case TB_KEY_HOME:
+    case view::KEY_HOME:
       editLinePos_ = 0;
       break;
 
-    case TB_KEY_END:
+    case view::KEY_END:
       editLinePos_ = editLine_.size();
       break;
 
-    case TB_KEY_SPACE:
+    case view::KEY_SPACE:
       editLine_.insert(editLinePos_, ' ');
       editLinePos_++;
       break;
 
-    case TB_KEY_BACKSPACE:
-    case TB_KEY_BACKSPACE2:
+    case view::KEY_BACKSPACE:
       if (editLinePos_ > 0)
       {
         editLine_.erase(editLinePos_ - 1);
@@ -284,7 +283,7 @@ void handleTextInput(struct tb_event * event)
       }
       break;
 
-    case TB_KEY_DELETE:
+    case view::KEY_DELETE:
       {
         editLine_.erase(editLinePos_);
         const int len = editLine_.size();
@@ -305,45 +304,45 @@ void handleTextInput(struct tb_event * event)
   }
 }
 
-void handleNavigateEvent(struct tb_event * event)
+void handleNavigateEvent(view::Event * event)
 {
   switch (event->key)
   {
-    case TB_KEY_ARROW_LEFT:
+    case view::KEY_ARROW_LEFT:
       pushEditCommandKey('h');
       break;
 
-    case TB_KEY_ARROW_RIGHT:
+    case view::KEY_ARROW_RIGHT:
       pushEditCommandKey('l');
       break;
 
-    case TB_KEY_ARROW_UP:
+    case view::KEY_ARROW_UP:
       pushEditCommandKey('k');
       break;
 
-    case TB_KEY_ARROW_DOWN:
+    case view::KEY_ARROW_DOWN:
       pushEditCommandKey('j');
       break;
 
-    case TB_KEY_CTRL_R:
-      pushEditCommandKey('U');
-      break;
+    //case view::KEY_CTRL_R:
+    //  pushEditCommandKey('U');
+    //  break;
 
-    case TB_KEY_ESC:
+    case view::KEY_ESC:
       clearEditCommandSequence();
       break;
 
-    case TB_KEY_PGUP:
-    case TB_KEY_CTRL_B:
+    case view::KEY_PGUP:
+    //case view::KEY_CTRL_B:
       navigatePageUp();
       break;
 
-    case TB_KEY_PGDN:
-    case TB_KEY_CTRL_F:
+    case view::KEY_PGDN:
+    //case view::KEY_CTRL_F:
       navigatePageDown();
       break;
 
-    case TB_KEY_SPACE:
+    case view::KEY_SPACE:
       pushEditCommandKey(' ');
       break;
 
@@ -381,24 +380,24 @@ void handleNavigateEvent(struct tb_event * event)
   }
 }
 
-void handleEditEvent(struct tb_event * event)
+void handleEditEvent(view::Event * event)
 {
   handleTextInput(event);
 
   switch (event->key)
   {
-    case TB_KEY_ESC:
+    case view::KEY_ESC:
       editMode_ = EditorMode::NAVIGATE;
       break;
 
-    case TB_KEY_TAB:
+    case view::KEY_TAB:
       doc::setCellText(doc::cursorPos(), editLine_.utf8());
       editLine_.clear();
       navigateRight();
       editMode_ = EditorMode::NAVIGATE;
       break;
 
-    case TB_KEY_ENTER:
+    case view::KEY_ENTER:
       doc::setCellText(doc::cursorPos(), editLine_.utf8());
       editLine_.clear();
       navigateDown();
@@ -407,25 +406,25 @@ void handleEditEvent(struct tb_event * event)
   }
 }
 
-void handleCommandEvent(struct tb_event * event)
+void handleCommandEvent(view::Event * event)
 {
   handleTextInput(event);
 
   switch (event->key)
   {
-    case TB_KEY_ENTER:
+    case view::KEY_ENTER:
       executeAppCommands(editLine_.utf8());
       editMode_ = EditorMode::NAVIGATE;
       break;
 
-    case TB_KEY_TAB:
+    case view::KEY_TAB:
       {
         completeEditLine(editLine_);
         editLinePos_ = editLine_.size();
       }
       break;
 
-    case TB_KEY_ESC:
+    case view::KEY_ESC:
       if (completionHints_.empty())
         editMode_ = EditorMode::NAVIGATE;
       else
@@ -434,26 +433,26 @@ void handleCommandEvent(struct tb_event * event)
   }
 }
 
-void handleSearchEvent(struct tb_event * event)
+void handleSearchEvent(view::Event * event)
 {
   handleTextInput(event);
 
   switch (event->key)
   {
-    case TB_KEY_ENTER:
+    case view::KEY_ENTER:
       searchTerm_ = editLine_.utf8();
       editMode_ = EditorMode::NAVIGATE;
       findNextMatch();
       break;
 
-    case TB_KEY_ESC:
+    case view::KEY_ESC:
       searchTerm_.clear();
       editMode_ = EditorMode::NAVIGATE;
       break;
   }
 }
 
-void handleKeyEvent(struct tb_event * event)
+void handleKeyEvent(view::Event * event)
 {
   switch (editMode_)
   {
@@ -485,7 +484,7 @@ void drawText(int x, int y, int length, uint16_t fg, uint16_t bg, std::string co
   if (length == -1)
   {
     for (int i = 0; i < strLen; ++i)
-      tb_change_cell(x + i, y, BUFFER[i], fg, bg);
+      view::changeCell(x + i, y, BUFFER[i], fg, bg);
   }
   else
   {
@@ -516,12 +515,12 @@ void drawText(int x, int y, int length, uint16_t fg, uint16_t bg, std::string co
       if (charIdx >= 0 && charIdx < strLen)
       {
         if (format & FONT_BOLD)
-          style |= TB_BOLD;
+          style |= view::COLOR_BOLD;
         if (format & FONT_UNDERLINE)
-          style |= TB_UNDERLINE;
+          style |= view::COLOR_UNDERLINE;
       }
 
-      tb_change_cell(x + i, y, ch, style, bg);
+      view::changeCell(x + i, y, ch, style, bg);
     }
   }
 }
@@ -537,7 +536,7 @@ void calculateColumDrawWidths()
     drawColumnInfo_.emplace_back(i, x, width);
 
     x += width;
-    if (x >= tb_width())
+    if (x >= view::width())
       break;
   }
 }
@@ -558,7 +557,7 @@ static void buildCompletionHintLines()
 {
   completionHintLines_.clear();
 
-  const int width = tb_width();
+  const int width = view::width();
 
   int columnWidth = 10;
   for (auto const& hint : completionHints_)
@@ -599,8 +598,8 @@ void drawInterface()
   calculateColumDrawWidths();
   buildCompletionHintLines();
 
-  tb_set_clear_attributes(TB_DEFAULT, TB_DEFAULT);
-  tb_clear();
+  view::setClearAttributes(view::COLOR_DEFAULT, view::COLOR_DEFAULT);
+  view::clear();
 
   if (doc::getColumnCount() > 0 && doc::getRowCount() > 0)
   {
@@ -609,8 +608,7 @@ void drawInterface()
   }
 
   drawCommandLine();
-
-  tb_present();
+  view::present();
 }
 
 void drawHeaders()
@@ -618,16 +616,16 @@ void drawHeaders()
   // Draw column header
   for (int x = 0; x < drawColumnInfo_.size(); ++x)
   {
-    const uint16_t color = (drawColumnInfo_[x].column_) == doc::cursorPos().x ? TB_REVERSE | TB_DEFAULT : TB_DEFAULT;
+    const uint16_t color = (drawColumnInfo_[x].column_) == doc::cursorPos().x ? view::COLOR_REVERSE | view::COLOR_DEFAULT : view::COLOR_DEFAULT;
     drawText(drawColumnInfo_[x].x_, 0, drawColumnInfo_[x].width_, color, color, Index::columnToStr(drawColumnInfo_[x].column_), ALIGN_CENTER);
   }
 
   // Draw row header
-  const int y_end = doc::getRowCount() < (tb_height() - 2) ? doc::getRowCount() : tb_height() - 2;
-  for (int y = 1; y < tb_height() - getCommandLineHeight(); ++y)
+  const int y_end = doc::getRowCount() < (view::height() - 2) ? doc::getRowCount() : view::height() - 2;
+  for (int y = 1; y < view::height() - getCommandLineHeight(); ++y)
   {
     int row = y + doc::scroll().y - 1;
-    const uint16_t color = row == doc::cursorPos().y ? TB_REVERSE | TB_DEFAULT : TB_DEFAULT;
+    const uint16_t color = row == doc::cursorPos().y ? view::COLOR_REVERSE | view::COLOR_DEFAULT : view::COLOR_DEFAULT;
 
     if (y == 1 && ALWAYS_SHOW_HEADER.toBool())
       row = 0;
@@ -650,13 +648,13 @@ void drawHeaders()
 
 void drawWorkspace()
 {
-  for (int y = 1; y < tb_height() - getCommandLineHeight(); ++y)
+  for (int y = 1; y < view::height() - getCommandLineHeight(); ++y)
   {
     for (int x = 0; x < drawColumnInfo_.size(); ++x)
     {
       int row = y + doc::scroll().y - 1;
       const int selected = drawColumnInfo_[x].column_ == doc::cursorPos().x && row == doc::cursorPos().y;
-      const uint16_t color = selected ? TB_REVERSE | TB_DEFAULT : TB_DEFAULT;
+      const uint16_t color = selected ? view::COLOR_REVERSE | view::COLOR_DEFAULT : view::COLOR_DEFAULT;
 
       if (y == 1 && ALWAYS_SHOW_HEADER.toBool())
         row = 0;
@@ -725,7 +723,7 @@ void drawCommandLine()
 
     std::string progress = str::fromInt((int)(((double)(doc::cursorPos().y + 1) / (double)doc::getRowCount()) * 100.0)).append(1, '%');
 
-    const int maxFileAreaSize = tb_width() - pos.size() - progress.size() - 5;
+    const int maxFileAreaSize = view::width() - pos.size() - progress.size() - 5;
     if (filename.size() > maxFileAreaSize)
       filename = filename.substr(filename.size() - maxFileAreaSize);
 
@@ -747,8 +745,8 @@ void drawCommandLine()
     commandLine = flashMessage_;
 
   for (int i = 0; i < completionHintLines_.size(); ++i)
-    drawText(0, tb_height() - 1 - completionHintLines_.size() + i, tb_width(), TB_DEFAULT, TB_DEFAULT, completionHintLines_[i]);
+    drawText(0, view::height() - 1 - completionHintLines_.size() + i, view::width(), view::COLOR_DEFAULT, view::COLOR_DEFAULT, completionHintLines_[i]);
 
-  drawText(0, tb_height() - completionHintLines_.size() - 2, tb_width(), TB_REVERSE | TB_DEFAULT, TB_REVERSE | TB_DEFAULT, infoLine);
-  drawText(0, tb_height() - 1, tb_width(), TB_DEFAULT, TB_DEFAULT, commandLine);
+  drawText(0, view::height() - completionHintLines_.size() - 2, view::width(), view::COLOR_REVERSE | view::COLOR_DEFAULT, view::COLOR_REVERSE | view::COLOR_DEFAULT, infoLine);
+  drawText(0, view::height() - 1, view::width(), view::COLOR_DEFAULT, view::COLOR_DEFAULT, commandLine);
 }

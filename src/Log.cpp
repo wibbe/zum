@@ -1,11 +1,13 @@
 
 #include "Log.h"
+#include "bx/platform.h"
 
 #include <cstdlib>
 #include <cstdio>
 
 static std::string logFile()
 {
+#if BX_PLATFORM_LINUX || BX_PLATFORM_OSX
   static const std::string LOG_FILE = "/.zumlog";
   const char * home = getenv("HOME");
 
@@ -13,6 +15,9 @@ static std::string logFile()
     return std::string(home) + LOG_FILE;
   else
     return "~" + LOG_FILE;
+#else
+  return "log.txt";
+#endif
 }
 
 void clearLog()

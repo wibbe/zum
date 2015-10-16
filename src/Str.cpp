@@ -54,7 +54,9 @@ namespace str {
 
     while (*it && strLen < (outLen - 1))
     {
-      it += tb_utf8_char_to_unicode(&out[strLen], it);
+      //it += tb_utf8_char_to_unicode(&out[strLen], it);
+      out[strLen] = *it;
+      ++it;
       ++strLen;
     }
     out[strLen] = '\0';
@@ -114,9 +116,10 @@ void Str::set(const char * str)
 
   while (*it)
   {
-    char_type ch;
-    it += tb_utf8_char_to_unicode(&ch, it);
-    data_.push_back(ch);
+    data_.push_back(*it);
+    //char_type ch;
+    //it += tb_utf8_char_to_unicode(&ch, it);
+    //data_.push_back(ch);
   }
 }
 
@@ -197,10 +200,11 @@ std::string Str::utf8() const
 
   for (auto const& ch : data_)
   {
-    char str[7];
-    char * it = str + tb_utf8_unicode_to_char(str, ch);
-    *it = '\0';
-    result += str;
+    //char str[7];
+    //char * it = str + tb_utf8_unicode_to_char(str, ch);
+    //*it = '\0';
+    //result += str;
+    result += (char)ch;
   }
 
   return result;

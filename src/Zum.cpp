@@ -7,6 +7,7 @@
 #include "Commands.h"
 #include "Tcl.h"
 #include "Log.h"
+#include "View.h"
 
 static bool applicationRunning_ = true;
 static int timeout_ = 0;
@@ -26,14 +27,15 @@ int main(int argc, char * argv[])
 {
   clearLog();
 
-  int result = tb_init();
-  if (result)
+  logInfo("Initializing Tcl...");
+  tcl::initialize();
+
+  logInfo("Initializing view...");
+  if (!view::init(80, 25, "Zum"))
   {
-    logError("Faild to initialize Termbox with error code", result);
+    logError("Faild to initialize the view");
     return 1;
   }
-
-  tcl::initialize();
 
   if (argc > 1)
   {
@@ -47,19 +49,25 @@ int main(int argc, char * argv[])
   updateCursor();
   drawInterface();
 
-  struct tb_event event;
+  view::Event event;
+
+  logInfo("Application running...");
 
   while (applicationRunning_)
   {
-    if (tb_peek_event(&event, 100) > 0)
+    if (view::peekEvent(&event, 100))
     {
       switch (event.type)
       {
-        case TB_EVENT_KEY:
-          handleKeyEvent(&event);
+        case view::EVENT_KEY:
+          //handleKeyEvent(&event);
           break;
 
-        case TB_EVENT_RESIZE:
+        case view::EVENT_RESIZE:
+          break;
+
+        case view::EVENT_QUIT:
+          applicationRunning_ = false;
           break;
 
         default:
@@ -84,6 +92,7 @@ int main(int argc, char * argv[])
   }
 
   tcl::shutdown();
-  tb_shutdown();
+  view::shutdown();
+
   return 0;
 }

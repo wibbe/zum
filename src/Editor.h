@@ -2,9 +2,9 @@
 #ifndef EDITOR_H
 #define EDITOR_H
 
-#include "termbox.h"
 #include "Cell.h"
 #include "Index.h"
+#include "View.h"
 
 enum class EditorMode
 {
@@ -31,7 +31,7 @@ bool findPreviousMatch();
 
 void editCurrentCell();
 
-void handleKeyEvent(struct tb_event * event);
+void handleKeyEvent(view::Event * event);
 void updateCursor();
 
 void clearFlashMessage();
