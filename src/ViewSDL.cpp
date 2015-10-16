@@ -167,6 +167,8 @@ namespace view {
 
           if (cell.fg & COLOR_REVERSE)
             SDL_SetSurfaceColorMod(glyph.surface, 0, 0, 0);
+          else
+            SDL_SetSurfaceColorMod(glyph.surface, 255, 255, 255);
 
           SDL_BlitSurface(glyph.surface, nullptr, screen, &rect);
         }
@@ -178,31 +180,86 @@ namespace view {
       xPos = 0;
       yPos += _fontLineHeight;
     }
-/*
-    while (*msg)
-    {
-      Glyph & g = _glyphCache[*msg];
-
-      SDL_Rect rect;
-      rect.x = x;
-      rect.y = y;
-      rect.w = _fontAdvance;
-      rect.h = _fontLineHeight;
-      SDL_FillRect(screen, &rect, SDL_MapRGB(screen->format, 255, 255, 255));
-
-      rect.x = x + g.x;
-      rect.y = y + _fontBaseline + g.y;
-      SDL_SetSurfaceColorMod(g.surface, 0, 0, 0);
-      SDL_BlitSurface(g.surface, nullptr, screen, &rect);
-
-      x += _fontAdvance;
-
-
-      ++msg;
-    }
-    */
 
     SDL_UpdateWindowSurface(_window);
+  }
+
+  inline Keys toKeys(SDL_Keysym symb)
+  {
+    if (symb.mod & KMOD_CTRL)
+    {
+      switch (symb.sym)
+      {
+        case SDLK_2: return KEY_CTRL_2;
+        case SDLK_a: return KEY_CTRL_A;
+        case SDLK_b: return KEY_CTRL_B;
+        case SDLK_c: return KEY_CTRL_C;
+        case SDLK_d: return KEY_CTRL_D;
+        case SDLK_e: return KEY_CTRL_E;
+        case SDLK_f: return KEY_CTRL_F;
+        case SDLK_g: return KEY_CTRL_G;
+        case SDLK_h: return KEY_CTRL_H;
+        case SDLK_i: return KEY_CTRL_I;
+        case SDLK_j: return KEY_CTRL_J;
+        case SDLK_k: return KEY_CTRL_K;
+        case SDLK_l: return KEY_CTRL_L;
+        case SDLK_m: return KEY_CTRL_M;
+        case SDLK_n: return KEY_CTRL_N;
+        case SDLK_o: return KEY_CTRL_O;
+        case SDLK_p: return KEY_CTRL_P;
+        case SDLK_q: return KEY_CTRL_Q;
+        case SDLK_r: return KEY_CTRL_R;
+        case SDLK_s: return KEY_CTRL_S;
+        case SDLK_t: return KEY_CTRL_T;
+        case SDLK_u: return KEY_CTRL_U;
+        case SDLK_v: return KEY_CTRL_V;
+        case SDLK_w: return KEY_CTRL_W;
+        case SDLK_x: return KEY_CTRL_X;
+        case SDLK_y: return KEY_CTRL_Y;
+        case SDLK_z: return KEY_CTRL_Z;
+        case SDLK_3: return KEY_CTRL_3;
+        case SDLK_4: return KEY_CTRL_4;
+        case SDLK_5: return KEY_CTRL_5;
+        case SDLK_6: return KEY_CTRL_6;
+        case SDLK_7: return KEY_CTRL_7;
+        case SDLK_8: return KEY_CTRL_8;
+      }
+    }
+    else
+    {
+      switch (symb.sym)
+      {
+        case SDLK_F1: return KEY_F1;
+        case SDLK_F2: return KEY_F2;
+        case SDLK_F3: return KEY_F3;
+        case SDLK_F4: return KEY_F4;
+        case SDLK_F5: return KEY_F5;
+        case SDLK_F6: return KEY_F6;
+        case SDLK_F7: return KEY_F7;
+        case SDLK_F8: return KEY_F8;
+        case SDLK_F9: return KEY_F9;
+        case SDLK_F10: return KEY_F10;
+        case SDLK_F11: return KEY_F11;
+        case SDLK_F12: return KEY_F12;
+        case SDLK_INSERT: return KEY_INSERT;
+        case SDLK_DELETE: return KEY_DELETE;
+        case SDLK_HOME: return KEY_HOME;
+        case SDLK_END: return KEY_END;
+        case SDLK_PAGEUP: return KEY_PGUP;
+        case SDLK_PAGEDOWN: return KEY_PGDN;
+        case SDLK_UP: return KEY_ARROW_UP;
+        case SDLK_DOWN: return KEY_ARROW_DOWN;
+        case SDLK_LEFT: return KEY_ARROW_LEFT;
+        case SDLK_RIGHT: return KEY_ARROW_RIGHT;
+        case SDLK_BACKSPACE: return KEY_BACKSPACE;
+        case SDLK_TAB: return KEY_TAB;
+        case SDLK_RETURN: return KEY_ENTER;
+        case SDLK_ESCAPE: return KEY_ESC;
+        //case SDLK_SPACE: return KEY_SPACE;
+      }
+    }
+
+    return KEY_NONE;
   }
 
   bool peekEvent(Event * event, int timeout)
@@ -235,6 +292,20 @@ namespace view {
 
               event->type = EVENT_RESIZE;
             }
+          }
+          break;
+
+        case SDL_KEYDOWN:
+          {
+            event->type = EVENT_KEY;
+            event->key = toKeys(sdlEvent.key.keysym);
+          }
+          break;
+
+        case SDL_TEXTINPUT:
+          {
+            event->type = EVENT_KEY;
+            event->ch = sdlEvent.text.text[0];
           }
           break;
       }     

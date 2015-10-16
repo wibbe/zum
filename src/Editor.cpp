@@ -324,21 +324,21 @@ void handleNavigateEvent(view::Event * event)
       pushEditCommandKey('j');
       break;
 
-    //case view::KEY_CTRL_R:
-    //  pushEditCommandKey('U');
-    //  break;
+    case view::KEY_CTRL_R:
+      pushEditCommandKey('U');
+      break;
 
     case view::KEY_ESC:
       clearEditCommandSequence();
       break;
 
     case view::KEY_PGUP:
-    //case view::KEY_CTRL_B:
+    case view::KEY_CTRL_B:
       navigatePageUp();
       break;
 
     case view::KEY_PGDN:
-    //case view::KEY_CTRL_F:
+    case view::KEY_CTRL_F:
       navigatePageDown();
       break;
 

@@ -60,7 +60,7 @@ int main(int argc, char * argv[])
       switch (event.type)
       {
         case view::EVENT_KEY:
-          //handleKeyEvent(&event);
+          handleKeyEvent(&event);
           break;
 
         case view::EVENT_RESIZE:
