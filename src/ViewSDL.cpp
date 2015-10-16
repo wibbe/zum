@@ -138,8 +138,6 @@ namespace view {
 
     SDL_FillRect(screen, NULL, SDL_MapRGB(screen->format, 0, 0, 0));
 
-    const char * msg = "Hello World 123%4/{}+,l.";
-
     int xPos = 0;
     int yPos = 0;
 

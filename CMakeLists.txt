@@ -65,6 +65,7 @@ set(ZUM_SOURCE
     src/3rdparty/jimtcl/jim-format.c
     src/3rdparty/jimtcl/jimregexp.c
     src/3rdparty/jimtcl/utf8.c
+    src/3rdparty/termbox/utf8.c
     src/3rdparty/stb/stb_truetype.c
     ${CMAKE_CURRENT_BINARY_DIR}/ScriptingLib.tcl.h
     ${CMAKE_CURRENT_BINARY_DIR}/UbuntuMono.ttf.h
@@ -75,7 +76,6 @@ if(${ConsoleApp})
       ${ZUM_SOURCE}
       src/ViewTermbox.cpp
       src/3rdparty/termbox/termbox.c
-      src/3rdparty/termbox/utf8.c
   )
 
   set(ZUM_LIBRARIES)
