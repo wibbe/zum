@@ -11,7 +11,7 @@
 
 namespace view {
 
-  static const tcl::Variable FONT_SIZE("view_fontSize", 15);
+  static const tcl::Variable FONT_SIZE("view_fontSize", 16);
 
   struct Glyph
   {
@@ -33,6 +33,7 @@ namespace view {
   static int _fontBaseline;
   static int _fontLineHeight;
   static int _fontAdvance;
+  static float _fontScale;
 
   static int _width = 0;
   static int _height = 0;
@@ -43,6 +44,7 @@ namespace view {
   static std::vector<Cell> _cells;
 
   static bool initializeFont();
+  static void initGlyph(int ch);
 
   bool init(int preferredWidth, int preferredHeight, const char * title)
   {
@@ -146,31 +148,31 @@ namespace view {
       for (int x = 0; x < _width; ++x)
       {
         Cell & cell = _cells[y * _width + x];
-        if (cell.ch < _glyphCache.size())
+
+        if (cell.ch >= _glyphCache.size() || _glyphCache[cell.ch].surface == nullptr)
+          initGlyph(cell.ch);
+
+        SDL_Rect rect;
+        Glyph & glyph = _glyphCache[cell.ch];
+
+        if (cell.bg & COLOR_REVERSE)
         {
-          SDL_Rect rect;
-          Glyph & glyph = _glyphCache[cell.ch];
-
-          if (cell.bg & COLOR_REVERSE)
-          {
-            rect.x = xPos;
-            rect.y = yPos;
-            rect.w = _fontAdvance;
-            rect.h = _fontLineHeight;
-            SDL_FillRect(screen, &rect, SDL_MapRGB(screen->format, 255, 255, 255));
-          }
-
-          rect.x = xPos + glyph.x;
-          rect.y = yPos + _fontBaseline + glyph.y;
-
-          if (cell.fg & COLOR_REVERSE)
-            SDL_SetSurfaceColorMod(glyph.surface, 0, 0, 0);
-          else
-            SDL_SetSurfaceColorMod(glyph.surface, 255, 255, 255);
-
-          SDL_BlitSurface(glyph.surface, nullptr, screen, &rect);
+          rect.x = xPos;
+          rect.y = yPos;
+          rect.w = _fontAdvance;
+          rect.h = _fontLineHeight;
+          SDL_FillRect(screen, &rect, SDL_MapRGB(screen->format, 255, 255, 255));
         }
 
+        rect.x = xPos + glyph.x;
+        rect.y = yPos + _fontBaseline + glyph.y;
+
+        if (cell.fg & COLOR_REVERSE)
+          SDL_SetSurfaceColorMod(glyph.surface, 0, 0, 0);
+        else
+          SDL_SetSurfaceColorMod(glyph.surface, 255, 255, 255);
+
+        SDL_BlitSurface(glyph.surface, nullptr, screen, &rect);
 
         xPos += _fontAdvance;
       }
@@ -253,7 +255,6 @@ namespace view {
         case SDLK_TAB: return KEY_TAB;
         case SDLK_RETURN: return KEY_ENTER;
         case SDLK_ESCAPE: return KEY_ESC;
-        //case SDLK_SPACE: return KEY_SPACE;
       }
     }
 
@@ -302,8 +303,13 @@ namespace view {
 
         case SDL_TEXTINPUT:
           {
-            event->type = EVENT_KEY;
-            event->ch = sdlEvent.text.text[0];
+            uint32_t text[4];
+
+            if (str::toUTF32(std::string(sdlEvent.text.text), text, 4) > 0)
+            {
+              event->type = EVENT_KEY;
+              event->ch = text[0];
+            }
           }
           break;
       }     
@@ -312,12 +318,12 @@ namespace view {
     return event->type != EVENT_NONE;
   }
 
-  static void initGlyph(int ch, float scale)
+  static void initGlyph(int ch)
   {
     Glyph glyph;
     int width, height;
 
-    unsigned char * pixels = stbtt_GetCodepointBitmap(&_font, scale, scale, ch, &width, &height, &glyph.x, &glyph.y);
+    unsigned char * pixels = stbtt_GetCodepointBitmap(&_font, _fontScale, _fontScale, ch, &width, &height, &glyph.x, &glyph.y);
 
 #if SDL_BYTEORDER == SDL_BIG_ENDIAN
     uint32_t rmask = 0xff000000;
@@ -365,22 +371,19 @@ namespace view {
     // Font size
     int ascent, decent, lineGap, advance;
 
-    float scale = stbtt_ScaleForPixelHeight(&_font, FONT_SIZE.toInt());
+    _fontScale = stbtt_ScaleForPixelHeight(&_font, FONT_SIZE.toInt());
 
     stbtt_GetFontVMetrics(&_font, &ascent, &decent, &lineGap);
     stbtt_GetCodepointHMetrics(&_font, '0', &advance, nullptr);
 
-    _fontBaseline = ascent * scale;
-    _fontLineHeight = (ascent - decent + lineGap) * scale;
-    _fontAdvance = advance * scale;
+    _fontBaseline = ascent * _fontScale;
+    _fontLineHeight = (ascent - decent + lineGap) * _fontScale;
+    _fontAdvance = advance * _fontScale;
 
     // Initialize some default glyphs
-    const char * defaultGlyphs = " 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ,.-;:()=+-*/!\"'#$%&{[]}<>|";
-    while (*defaultGlyphs)
-    {
-      initGlyph(*defaultGlyphs, scale);
-      ++defaultGlyphs;
-    }
+    const Str DEFAULT_GLYPHS(" 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ,.-;:()=+-*/!\"'#$%&{[]}<>|");
+    for (auto ch : DEFAULT_GLYPHS)
+      initGlyph(ch);
 
     return true;
   }

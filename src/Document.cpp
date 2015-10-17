@@ -462,6 +462,7 @@ namespace doc {
     std::ifstream file(filename.c_str());
     if (!file.is_open())
     {
+      logError("Could not open document '", filename, "'");
       flashMessage("Could not open document!");
       return false;
     }
@@ -476,15 +477,17 @@ namespace doc {
     file.read(&buffer[0], length);
     buffer[length] = '\0';
 
-    // Did we succeed in reading the file
-    if (!file)
-      return false;
-
     if (length == 0)
+    {
+      logError("No data in file '", filename, "'");
       return false;
+    }
 
     if (!loadDocument(std::string(buffer.begin(), buffer.end()), 0))
+    {
+      logError("Could not parse document '", filename, "'");
       return false;
+    }
 
     currentDoc().filename_ = filename;
     currentDoc().readOnly_ = false;
@@ -873,6 +876,8 @@ namespace doc {
     TCL_CHECK_ARG(2);
     TCL_STRING_ARG(1, filename);
 
+    logInfo("Trying to load document ", filename);
+
     const bool loaded = load(filename);
     TCL_INT_RESULT(loaded ? 1 : 0);
   }
@@ -909,7 +914,7 @@ namespace doc {
     TCL_INT_RESULT(currentBufferIndex());
   }
 
-  TCL_FUNC(undo, "Undo the last command")
+  TCL_FUNC(undo, "", "Undo the last command")
   {
     if (undo())
       return JIM_OK;

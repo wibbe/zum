@@ -12,6 +12,9 @@
 static bool applicationRunning_ = true;
 static int timeout_ = 0;
 
+static const tcl::Variable DEFAULT_WIDTH("app_defaultWidth", 120);
+static const tcl::Variable DEFAULT_HEIGHT("app_defaultHeight", 40);
+
 TCL_FUNC(quit, "", "Quit the application")
 {
   applicationRunning_ = false;
@@ -31,7 +34,7 @@ int main(int argc, char * argv[])
   tcl::initialize();
 
   logInfo("Initializing view...");
-  if (!view::init(80, 25, "Zum"))
+  if (!view::init(DEFAULT_WIDTH.toInt(), DEFAULT_HEIGHT.toInt(), "Zum"))
   {
     logError("Faild to initialize the view");
     return 1;

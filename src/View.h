@@ -105,7 +105,7 @@ namespace view {
   {
     EventType type;
     Keys key;
-    char ch;
+    uint32_t ch;
   };
 
 	bool init(int preferredWidth, int preferredHeight, const char * title);
