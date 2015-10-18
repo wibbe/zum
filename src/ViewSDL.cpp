@@ -2,6 +2,7 @@
 #include "View.h"
 #include "Log.h"
 #include "Tcl.h"
+#include "Index.h"
 
 #include "UbuntuMono.ttf.h"
 
@@ -27,6 +28,13 @@ namespace view {
     uint16_t bg = COLOR_DEFAULT;
   };
 
+  struct Color
+  {
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+  };
+
   static SDL_Window * _window = nullptr;
   
   static stbtt_fontinfo _font;
@@ -37,8 +45,12 @@ namespace view {
 
   static int _width = 0;
   static int _height = 0;
+  static Index _cursor;
   static uint16_t _clearForeground = COLOR_DEFAULT;
   static uint16_t _clearBackground = COLOR_DEFAULT;
+
+  static Color BACKGROUND_COLOR = {39, 40, 34};
+  static Color TEXT_COLOR = {248, 248, 242};
 
   static std::vector<Glyph> _glyphCache;
   static std::vector<Cell> _cells;
@@ -87,12 +99,14 @@ namespace view {
 
   void setCursor(int x, int y)
   {
-
+    _cursor.x = x;
+    _cursor.y = y;
   }
 
   void hideCursor()
   {
-
+    _cursor.x = -1;
+    _cursor.y = -1;
   }
 
   void setClearAttributes(uint16_t fg, uint16_t bg)
@@ -138,7 +152,7 @@ namespace view {
   {
     SDL_Surface * screen = SDL_GetWindowSurface(_window);
 
-    SDL_FillRect(screen, NULL, SDL_MapRGB(screen->format, 0, 0, 0));
+    SDL_FillRect(screen, NULL, SDL_MapRGB(screen->format, BACKGROUND_COLOR.r, BACKGROUND_COLOR.g, BACKGROUND_COLOR.b));
 
     int xPos = 0;
     int yPos = 0;
@@ -161,16 +175,16 @@ namespace view {
           rect.y = yPos;
           rect.w = _fontAdvance;
           rect.h = _fontLineHeight;
-          SDL_FillRect(screen, &rect, SDL_MapRGB(screen->format, 255, 255, 255));
+          SDL_FillRect(screen, &rect, SDL_MapRGB(screen->format, TEXT_COLOR.r, TEXT_COLOR.g, TEXT_COLOR.b));
         }
 
         rect.x = xPos + glyph.x;
         rect.y = yPos + _fontBaseline + glyph.y;
 
         if (cell.fg & COLOR_REVERSE)
-          SDL_SetSurfaceColorMod(glyph.surface, 0, 0, 0);
+          SDL_SetSurfaceColorMod(glyph.surface, BACKGROUND_COLOR.r, BACKGROUND_COLOR.g, BACKGROUND_COLOR.b);
         else
-          SDL_SetSurfaceColorMod(glyph.surface, 255, 255, 255);
+          SDL_SetSurfaceColorMod(glyph.surface, TEXT_COLOR.r, TEXT_COLOR.g, TEXT_COLOR.b);
 
         SDL_BlitSurface(glyph.surface, nullptr, screen, &rect);
 
@@ -179,6 +193,17 @@ namespace view {
 
       xPos = 0;
       yPos += _fontLineHeight;
+    }
+
+    if (_cursor.x >= 0 && _cursor.y >= 0)
+    {
+      SDL_Rect rect;
+      rect.x = _fontAdvance * _cursor.x;
+      rect.y = _fontLineHeight * _cursor.y;
+      rect.w = 1;
+      rect.h = _fontLineHeight;
+
+      SDL_FillRect(screen, &rect, SDL_MapRGB(screen->format, 255, 255, 255));
     }
 
     SDL_UpdateWindowSurface(_window);
@@ -298,6 +323,12 @@ namespace view {
           {
             event->type = EVENT_KEY;
             event->key = toKeys(sdlEvent.key.keysym);
+
+            if (event->key == 0)
+            {
+              event->type = EVENT_NONE;
+              event->key = KEY_NONE;
+            }
           }
           break;
 

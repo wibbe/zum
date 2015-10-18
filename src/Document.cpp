@@ -603,13 +603,7 @@ namespace doc {
         }
       }
     }
-/*
-    FILE * f = _logBegin();
-    _logValue(f, "Start order: ");
-    for (auto const& idx : toEvaluate)
-      _logValue(f, idx.toStr(), " ");
-    _logEnd(f);
-*/
+
     // Sort the cells that needs to be evaluated
     std::sort(begin(toEvaluate), end(toEvaluate),
               [&cellDeps] (Index const& a, Index const& b) -> bool
@@ -617,13 +611,7 @@ namespace doc {
                 std::unordered_set<Index> & deps = cellDeps[b];
                 return deps.count(a) > 0;
               });
-/*
-    f = _logBegin();
-    _logValue(f, "Final order: ");
-    for (auto const& idx : toEvaluate)
-      _logValue(f, idx.toStr(), " ");
-    _logEnd(f);
-*/
+
     // Evaluate the cells
     for (auto const& idx : toEvaluate)
     {

@@ -78,7 +78,7 @@ void _logValue(FILE * file, std::string const& value)
 
 FILE * _logBegin()
 {
-  return fopen(logFile().c_str(), "a");
+  return fopen(logFile().c_str(), "at");
 }
 
 void _logEnd(FILE * file)
@@ -89,14 +89,14 @@ void _logEnd(FILE * file)
 
 void logInfo(Str const& message)
 {
-  FILE * file = fopen(logFile().c_str(), "a");
+  FILE * file = fopen(logFile().c_str(), "at");
   fprintf(file, "INFO: %s\n", message.utf8().c_str());
   fclose(file);
 }
 
 void logError(Str const& message)
 {
-  FILE * file = fopen(logFile().c_str(), "a");
+  FILE * file = fopen(logFile().c_str(), "at");
   fprintf(file, "ERROR: %s\n", message.utf8().c_str());
   fclose(file);
 }
