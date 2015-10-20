@@ -565,11 +565,19 @@ namespace doc {
     }
   }
 
+  void evaluateCell(Cell & cell)
+  {
+    cell.evaluated = true;
+
+    if (cell.hasExpression)
+    {
+      cell.value = evaluate(cell.expression); 
+      cell.display = str::fromDouble(cell.value);
+    }
+  }
+
   void evaluateDocument()
   {
-    std::unordered_map<Index, std::unordered_set<Index>> cellDeps;
-    std::vector<Index> toEvaluate;
-
     Document & doc = currentDoc();
 
     for (auto & it : doc.cells_)
@@ -582,20 +590,20 @@ namespace doc {
         if (cell.expression.empty())
         {
           cell.display = "#ERROR";
+          cell.evaluated = true;
           cell.value = 0.0;
         }
         else
         {
-          toEvaluate.push_back(idx);
-          std::unordered_set<Index> & deps = cellDeps[idx];
-
-          collectDependencies(cell, idx, deps);
+          cell.evaluated = false;
+          cell.display = "";
         }
       }
       else
       {
         cell.display = cell.text;
         cell.value = 0.0;
+        cell.evaluated = true;
 
         try {
           cell.value = std::stod(cell.text);
@@ -604,32 +612,8 @@ namespace doc {
       }
     }
 
-    // Sort the cells that needs to be evaluated
-    std::sort(begin(toEvaluate), end(toEvaluate),
-              [&cellDeps] (Index const& a, Index const& b) -> bool
-              {
-                std::unordered_set<Index> & deps = cellDeps[b];
-                return deps.count(a) > 0;
-              });
-
-    // Evaluate the cells
-    for (auto const& idx : toEvaluate)
-    {
-      Cell & cell = doc.cells_[idx];
-
-      cell.value = evaluate(cell.expression);
-      cell.display = str::fromDouble(cell.value);
-
-      std::unordered_set<Index> & deps = cellDeps[idx];
-
-      FILE * f = _logBegin();
-
-      _logValue(f, "Evaluating cell(", idx.toStr(), ") ", cell.value, " - ", cell.text, " deps: ");
-      for (auto cell : deps)
-        _logValue(f, cell.toStr(), ", ");
-
-      _logEnd(f);
-    }
+    for (auto & it : doc.cells_)
+      evaluateCell(it.second);
   }
 
   std::string getCellText(Index const& idx)
@@ -658,7 +642,11 @@ namespace doc {
     if (idx.x < 0 || idx.x >= currentDoc().width_ || idx.y < 0 || idx.y >= currentDoc().height_)
       return 0.0;
 
-    return currentDoc().cells_[idx].value;
+    Cell & cell = currentDoc().cells_[idx];
+    if (!cell.evaluated)
+      evaluateCell(cell);
+
+    return cell.value;
   }
 
   uint32_t getCellFormat(Index const& idx)

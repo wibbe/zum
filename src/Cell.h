@@ -23,5 +23,6 @@ struct Cell
 
   double value = 0.0;
   bool hasExpression = false;
+  bool evaluated = false;
   std::vector<Expr> expression;
 };
