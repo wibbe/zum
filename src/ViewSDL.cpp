@@ -13,6 +13,7 @@
 namespace view {
 
   static const tcl::Variable FONT_SIZE("view_fontSize", 16);
+  static const tcl::Variable BLINK_RATE("view_cursorBlinkRate", 400);
 
   struct Glyph
   {
@@ -46,6 +47,8 @@ namespace view {
   static int _width = 0;
   static int _height = 0;
   static Index _cursor;
+  static int _cursorBlinkTimeout = 0;
+  static int _cursorBlinkVisible = true;
   static uint16_t _clearForeground = COLOR_DEFAULT;
   static uint16_t _clearBackground = COLOR_DEFAULT;
 
@@ -195,7 +198,7 @@ namespace view {
       yPos += _fontLineHeight;
     }
 
-    if (_cursor.x >= 0 && _cursor.y >= 0)
+    if (_cursor.x >= 0 && _cursor.y >= 0 && _cursorBlinkVisible)
     {
       SDL_Rect rect;
       rect.x = _fontAdvance * _cursor.x;
@@ -294,59 +297,93 @@ namespace view {
     event->key = KEY_NONE;
     event->ch = 0;
 
-    if (SDL_WaitEventTimeout(&sdlEvent, timeout))
+    int timeLeft = timeout;
+    while (timeLeft > 0)
     {
-      switch (sdlEvent.type)
+      if (SDL_PollEvent(&sdlEvent))
       {
-        case SDL_QUIT:
-          event->type = EVENT_QUIT;
-          break;
+        event->type = EVENT_NONE;
+        event->key = KEY_NONE;
+        event->ch = 0;
 
-        case SDL_WINDOWEVENT:
-          {
-            if (sdlEvent.window.event == SDL_WINDOWEVENT_RESIZED)
+        switch (sdlEvent.type)
+        {
+          case SDL_QUIT:
+            event->type = EVENT_QUIT;
+            break;
+
+          case SDL_WINDOWEVENT:
             {
-              _width = sdlEvent.window.data1 / _fontAdvance;
-              _height = sdlEvent.window.data2 / _fontLineHeight;
+              if (sdlEvent.window.event == SDL_WINDOWEVENT_RESIZED)
+              {
+                _width = sdlEvent.window.data1 / _fontAdvance;
+                _height = sdlEvent.window.data2 / _fontLineHeight;
 
-              if (_width == 0) _width = 1;
-              if (_height == 0) _height = 1;
+                if (_width == 0) _width = 1;
+                if (_height == 0) _height = 1;
 
-              _cells.resize(_width * _height);
+                _cells.resize(_width * _height);
 
-              event->type = EVENT_RESIZE;
+                event->type = EVENT_RESIZE;
+              }
             }
-          }
-          break;
+            break;
 
-        case SDL_KEYDOWN:
-          {
-            event->type = EVENT_KEY;
-            event->key = toKeys(sdlEvent.key.keysym);
-
-            if (event->key == 0)
-            {
-              event->type = EVENT_NONE;
-              event->key = KEY_NONE;
-            }
-          }
-          break;
-
-        case SDL_TEXTINPUT:
-          {
-            uint32_t text[4];
-
-            if (str::toUTF32(std::string(sdlEvent.text.text), text, 4) > 0)
+          case SDL_KEYDOWN:
             {
               event->type = EVENT_KEY;
-              event->ch = text[0];
+              event->key = toKeys(sdlEvent.key.keysym);
+
+              if (event->key == 0)
+              {
+                event->type = EVENT_NONE;
+                event->key = KEY_NONE;
+              }
             }
+            break;
+
+          case SDL_TEXTINPUT:
+            {
+              uint32_t text[4];
+
+              if (str::toUTF32(std::string(sdlEvent.text.text), text, 4) > 0)
+              {
+                event->type = EVENT_KEY;
+                event->ch = text[0];
+              }
+            }
+            break;
+        }
+
+        if (event->type != EVENT_NONE)
+        {
+          // Always reset the cursor blink rate if we press a key
+          if (event->type == EVENT_KEY)
+          {
+            _cursorBlinkTimeout = 0;
+            _cursorBlinkVisible = true;
           }
-          break;
-      }     
+
+          return true;
+        }
+      }
+      else
+      {
+        SDL_Delay(10);
+        timeLeft -= 10;
+
+        _cursorBlinkTimeout += 10;
+        if (_cursorBlinkTimeout > BLINK_RATE.toInt())
+        {
+          _cursorBlinkVisible = !_cursorBlinkVisible;
+          _cursorBlinkTimeout = 0;
+        }
+
+        present();
+      }
     }
 
-    return event->type != EVENT_NONE;
+    return false;
   }
 
   static void initGlyph(int ch)

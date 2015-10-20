@@ -397,3 +397,10 @@ TCL_FUNC(bind, "keysequence command ?description?", "Bind a command to a specifi
 
   return JIM_OK;
 }
+
+TCL_FUNC(flashMessage, "message")
+{
+  TCL_CHECK_ARG(2);
+  TCL_STRING_ARG(1, message);
+  flashMessage(message);
+}
