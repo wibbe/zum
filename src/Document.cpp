@@ -585,13 +585,14 @@ namespace doc {
       const Index idx = it.first;
       Cell & cell = it.second;
 
+      cell.value = 0.0;
+
       if (cell.hasExpression)
       {
         if (cell.expression.empty())
         {
           cell.display = "#ERROR";
           cell.evaluated = true;
-          cell.value = 0.0;
         }
         else
         {
@@ -602,7 +603,6 @@ namespace doc {
       else
       {
         cell.display = cell.text;
-        cell.value = 0.0;
         cell.evaluated = true;
 
         try {
