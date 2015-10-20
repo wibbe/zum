@@ -732,10 +732,20 @@ namespace doc {
       if (cell.first.x > column)
         cell.first.x++;
 
+      for (auto & expr : cell.second.expression)
+      {
+        if (expr.startIndex_.x > column)
+          expr.startIndex_.x++;
+
+        if (expr.endIndex_.x > column)
+          expr.endIndex_.x++;
+      }
+
       newCells.insert(cell);
     }
 
     currentDoc().cells_ = std::move(newCells);
+    evaluateDocument();
   }
 
   void addRow(int row)
@@ -756,10 +766,20 @@ namespace doc {
       if (cell.first.y > row)
         cell.first.y++;
 
+      for (auto & expr : cell.second.expression)
+      {
+        if (expr.startIndex_.y > row)
+          expr.startIndex_.y++;
+
+        if (expr.endIndex_.y > row)
+          expr.endIndex_.y++;
+      }
+
       newCells.insert(cell);
     }
 
     currentDoc().cells_ = std::move(newCells);
+    evaluateDocument();
   }
 
   void removeColumn(int column)
@@ -788,11 +808,21 @@ namespace doc {
         if (cell.first.x > column)
           cell.first.x--;
 
+        for (auto & expr : cell.second.expression)
+        {
+          if (expr.startIndex_.x > column)
+            expr.startIndex_.x--;
+
+          if (expr.endIndex_.x > column)
+            expr.endIndex_.x--;
+        }
+
         newCells.insert(cell);
       }
     }
 
     currentDoc().cells_ = std::move(newCells);
+    evaluateDocument();
   }
 
   void removeRow(int row)
@@ -816,11 +846,21 @@ namespace doc {
         if (cell.first.y > row)
           cell.first.y--;
 
+      for (auto & expr : cell.second.expression)
+      {
+        if (expr.startIndex_.y > row)
+          expr.startIndex_.y--;
+
+        if (expr.endIndex_.y > row)
+          expr.endIndex_.y--;
+      }
+
         newCells.insert(cell);
       }
     }
 
     currentDoc().cells_ = std::move(newCells);
+    evaluateDocument();
   }
 
   // -- Tcl bindings --
