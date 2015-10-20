@@ -410,12 +410,12 @@ namespace view {
 
     SDL_LockSurface(glyph.surface);
 
+    int * p = (int *)glyph.surface->pixels;
+
     for (int y = 0; y < height; ++y)
       for (int x = 0; x < width; ++x)
       {
         const int idx = y * width + x;
-
-        int * p = (int *)glyph.surface->pixels;
         p[idx] = SDL_MapRGBA(glyph.surface->format, 255, 255, 255, pixels[idx]);
       }
 
@@ -449,7 +449,7 @@ namespace view {
     _fontAdvance = advance * _fontScale;
 
     // Initialize some default glyphs
-    const Str DEFAULT_GLYPHS(" 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ,.-;:()=+-*/!\"'#$%&{[]}<>|");
+    const Str DEFAULT_GLYPHS(" 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ,.-;:()=+-*/!\"'#$%&{[]}<>|~");
     for (auto ch : DEFAULT_GLYPHS)
       initGlyph(ch);
 
