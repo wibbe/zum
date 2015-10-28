@@ -171,19 +171,6 @@ namespace tcl {
 
     logInfo("Loading config file: ", configFile);
     Jim_EvalFileGlobal(interpreter_, configFile.c_str());
-
-/*
-    evaluate(Str(std::string((char *)&ScriptingLib_tcl[0], ScriptingLib_tcl_len).c_str()));
-
-
-    logInfo("Evaluating ~/.zumrc");
-    // Try to load the config file
-    char * home = getenv("HOME");
-    if (home)
-      execFile(std::string(home) + CONFIG_FILE);
-    else
-      execFile("~" + CONFIG_FILE);
-*/
   }
 
   void shutdown()
