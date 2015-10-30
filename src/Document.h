@@ -18,6 +18,8 @@ namespace doc {
 
   Index & cursorPos();
   Index & scroll();
+  Index & selectionStart();
+  Index & selectionEnd();
 
   int getColumnWidth(int column);
   void setColumnWidth(int column, int width);

@@ -28,9 +28,19 @@ struct ColumnInfo
   int width_;
 };
 
+enum class SelectionMode
+{
+  NONE,
+  BLOCK,
+  ROW,
+};
+
 EditorMode editMode_ = EditorMode::NAVIGATE;
 
 static std::vector<ColumnInfo> drawColumnInfo_;
+
+static SelectionMode selectionMode_ = SelectionMode::NONE;
+static Index selectionStart_;
 
 int editLinePos_ = 0;
 static Str editLine_;   //< Edit line if a string of utf32
@@ -121,12 +131,46 @@ void yankCurrentCell()
   yankBuffer_ = doc::getCellText(doc::cursorPos());
 }
 
+static void updateSelection()
+{
+  switch (selectionMode_)
+  {
+    case SelectionMode::BLOCK:
+      {
+        Index cursor = doc::cursorPos();
+
+        doc::selectionStart().x = std::min(selectionStart_.x, cursor.x);
+        doc::selectionStart().y = std::min(selectionStart_.y, cursor.y);
+
+        doc::selectionEnd().x = std::max(selectionStart_.x, cursor.x);
+        doc::selectionEnd().y = std::max(selectionStart_.y, cursor.y);
+      }
+      break;
+
+    case SelectionMode::ROW:
+      {
+        Index cursor = doc::cursorPos();
+
+        doc::selectionStart().x = 0;
+        doc::selectionStart().y = std::min(selectionStart_.y, cursor.y);
+
+        doc::selectionEnd().x = doc::getColumnCount();
+        doc::selectionEnd().y = std::max(selectionStart_.y, cursor.y);
+      }
+      break;
+
+    default:
+      break;
+  }
+}
+
 void navigateLeft()
 {
   if (doc::cursorPos().x > 0)
    doc::cursorPos().x--;
 
   ensureCursorVisibility();
+  updateSelection();
 }
 
 void navigateRight()
@@ -135,6 +179,7 @@ void navigateRight()
    doc::cursorPos().x++;
 
   ensureCursorVisibility();
+  updateSelection();
 }
 
 void navigateUp()
@@ -143,6 +188,7 @@ void navigateUp()
     doc::cursorPos().y--;
 
   ensureCursorVisibility();
+  updateSelection();
 }
 
 void navigateDown()
@@ -151,6 +197,7 @@ void navigateDown()
     doc::cursorPos().y++;
 
   ensureCursorVisibility();
+  updateSelection();
 }
 
 void navigatePageUp()
@@ -165,6 +212,7 @@ void navigatePageUp()
   }
 
   ensureCursorVisibility();
+  updateSelection();
 }
 
 void navigatePageDown()
@@ -175,6 +223,7 @@ void navigatePageDown()
     doc::cursorPos().y = doc::getRowCount() - 1;
 
   ensureCursorVisibility();
+  updateSelection();
 }
 
 bool findNextMatch()
@@ -328,7 +377,19 @@ void handleNavigateEvent(view::Event * event)
       pushEditCommandKey('U');
       break;
 
+    case view::KEY_CTRL_V:
+      selectionMode_ = SelectionMode::BLOCK;
+      selectionStart_ = doc::cursorPos();
+      updateSelection();
+      break;
+
     case view::KEY_ESC:
+      if (selectionMode_ != SelectionMode::NONE)
+        doc::cursorPos() = selectionStart_;
+
+      selectionMode_ = SelectionMode::NONE;
+      doc::selectionStart() = Index(-1, -1);
+      doc::selectionEnd() = Index(-1, -1);
       clearEditCommandSequence();
       break;
 
@@ -344,6 +405,11 @@ void handleNavigateEvent(view::Event * event)
 
     case view::KEY_SPACE:
       pushEditCommandKey(' ');
+      break;
+
+    case view::KEY_ENTER:
+      updateSelection();
+      selectionMode_ = SelectionMode::NONE;
       break;
 
     default:
@@ -370,6 +436,12 @@ void handleNavigateEvent(view::Event * event)
 
           case 'i':
             editCurrentCell();
+            break;
+
+          case 'V':
+            selectionMode_ = SelectionMode::ROW;
+            selectionStart_ = doc::cursorPos();
+            updateSelection();
             break;
 
           default:
@@ -653,17 +725,25 @@ void drawWorkspace()
     for (int x = 0; x < drawColumnInfo_.size(); ++x)
     {
       int row = y + doc::scroll().y - 1;
-      const int selected = drawColumnInfo_[x].column_ == doc::cursorPos().x && row == doc::cursorPos().y;
-      const uint16_t color = selected ? view::COLOR_REVERSE | view::COLOR_DEFAULT : view::COLOR_DEFAULT;
 
       if (y == 1 && ALWAYS_SHOW_HEADER.toBool())
         row = 0;
+
+      const bool cursorHere = drawColumnInfo_[x].column_ == doc::cursorPos().x && row == doc::cursorPos().y;
+      const bool selected = drawColumnInfo_[x].column_ >= doc::selectionStart().x && drawColumnInfo_[x].column_ <= doc::selectionEnd().x &&
+                            row >= doc::selectionStart().y && row <= doc::selectionEnd().y;
+
+      uint16_t color = view::COLOR_DEFAULT;
+      if (selected)
+        color ^= view::COLOR_REVERSE;
+      if (cursorHere && selectionMode_ == SelectionMode::NONE)
+        color ^= view::COLOR_REVERSE;
 
       const int width = doc::getColumnWidth(drawColumnInfo_[x].column_);
 
       if (row < doc::getRowCount())
       {
-        if (selected && editMode_ == EditorMode::EDIT)
+        if (cursorHere && editMode_ == EditorMode::EDIT)
           drawText(drawColumnInfo_[x].x_, y, width, color, color, editLine_.utf8());
         else
         {

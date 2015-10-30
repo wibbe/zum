@@ -73,6 +73,8 @@ namespace doc {
     Document doc_;
     Index cursorPos_ = Index(0, 0);
     Index scroll_ = Index(0, 0);
+    Index selectionStart_ = Index(-1, -1);
+    Index selectionEnd_ = Index(-1, -1);
     std::vector<UndoState> undoStack_;
     std::vector<UndoState> redoStack_;
   };
@@ -104,6 +106,16 @@ namespace doc {
   Index & scroll()
   {
     return currentBuffer().scroll_;
+  }
+
+  Index & selectionStart()
+  {
+    return currentBuffer().selectionStart_;
+  }
+
+  Index & selectionEnd()
+  {
+    return currentBuffer().selectionEnd_;
   }
 
   void nextBuffer()
