@@ -118,6 +118,11 @@ namespace doc {
     return currentBuffer().selectionEnd_;
   }
 
+  bool hasSelection()
+  {
+    return currentBuffer().selectionStart_.x >= 0 && currentBuffer().selectionStart_.y >= 0;
+  }
+
   std::vector<Index> selectedCells()
   {
     std::vector<Index> selection;

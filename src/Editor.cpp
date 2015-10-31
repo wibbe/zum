@@ -226,6 +226,28 @@ void navigatePageDown()
   updateSelection();
 }
 
+void moveCursorInSelection(int x, int y)
+{
+  if (doc::hasSelection())
+  {
+    doc::cursorPos().x += x;
+    doc::cursorPos().y += y;
+
+    if (doc::cursorPos().x > doc::selectionEnd().x)
+      doc::cursorPos().y++;
+
+    if (doc::cursorPos().y > doc::selectionEnd().y)
+      doc::cursorPos().x++;
+
+    if (doc::cursorPos().x > doc::selectionEnd().x)
+      doc::cursorPos().x = doc::selectionStart().x;
+    if (doc::cursorPos().y > doc::selectionEnd().y)
+      doc::cursorPos().y = doc::selectionStart().y;
+
+    ensureCursorVisibility();
+  }
+}
+
 bool findNextMatch()
 {
   if (searchTerm_.empty())
@@ -409,6 +431,7 @@ void handleNavigateEvent(view::Event * event)
 
     case view::KEY_ENTER:
       updateSelection();
+      doc::cursorPos() = doc::selectionStart();
       selectionMode_ = SelectionMode::NONE;
       break;
 
@@ -465,15 +488,33 @@ void handleEditEvent(view::Event * event)
     case view::KEY_TAB:
       doc::setCellText(doc::cursorPos(), editLine_.utf8());
       editLine_.clear();
-      navigateRight();
-      editMode_ = EditorMode::NAVIGATE;
+
+      if (doc::hasSelection())
+      {
+        moveCursorInSelection(1, 0);
+        editCurrentCell();
+      }
+      else
+      {
+        navigateRight();
+        editMode_ = EditorMode::NAVIGATE;
+      }
       break;
 
     case view::KEY_ENTER:
       doc::setCellText(doc::cursorPos(), editLine_.utf8());
       editLine_.clear();
-      navigateDown();
-      editMode_ = EditorMode::NAVIGATE;
+
+      if (doc::hasSelection())
+      {
+        moveCursorInSelection(0, 1);
+        editCurrentCell();
+      }
+      else
+      {
+        navigateDown();
+        editMode_ = EditorMode::NAVIGATE;
+      }
       break;
   }
 }
