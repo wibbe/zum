@@ -118,6 +118,84 @@ namespace doc {
     return currentBuffer().selectionEnd_;
   }
 
+  std::vector<Index> selectedCells()
+  {
+    std::vector<Index> selection;
+
+    Index const& start = currentBuffer().selectionStart_;
+
+    const int width = currentBuffer().selectionEnd_.x - start.x;
+    const int height = currentBuffer().selectionEnd_.y - start.y;
+
+    selection.reserve(width * height);
+
+    if (width == 0 && height == 0)
+    {
+      selection.push_back(currentBuffer().cursorPos_);
+    }
+    else
+    {
+      for (int y = 0; y <= height; ++y)
+        for (int x = 0; x <= width; ++x)
+          selection.emplace_back(start.x + x, start.y + y);
+    }
+
+      return selection;
+  }
+
+  std::vector<Index> selectedColumns()
+  {
+    std::vector<Index> selection;
+
+    Index const& start = currentBuffer().selectionStart_;
+    const int width = currentBuffer().selectionEnd_.x - start.x;
+
+    if (width == 0)
+    {
+      selection.push_back(currentBuffer().cursorPos_);
+    }
+    else
+    {
+      selection.reserve(width);
+
+      for (int x = 0; x <= width; ++x)
+        selection.emplace_back(start.x + x, start.y);
+    }
+
+    return selection;
+  }
+
+  std::vector<Index> selectedRows()
+  {
+    std::vector<Index> selection;
+
+    Index const& start = currentBuffer().selectionStart_;
+    const int height = currentBuffer().selectionEnd_.y - start.y;
+
+    if (height == 0)
+    {
+      selection.push_back(currentBuffer().cursorPos_);
+    }
+    else
+    {
+      selection.reserve(height);
+
+      for (int y = 0; y <= height; ++y)
+        selection.emplace_back(start.x, start.y + y);
+    }
+
+    return selection;
+  }
+
+  Index selectionIndex(Index const& idx)
+  {
+    Index const& start = currentBuffer().selectionStart_;
+    if (start.x < 0)
+      return Index();
+
+    return Index(idx.x - start.x, idx.y - start.y);
+  }
+
   void nextBuffer()
   {
     currentBufferIndex_++;

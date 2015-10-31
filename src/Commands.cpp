@@ -62,9 +62,10 @@ static std::vector<EditCommand> editCommands_ = {
   },
   { // Clear current cell
     {'d', 'w'}, false,
-    "Clear the current cell",
+    "Clear the selected cells",
     [] (int) {
-      doc::setCellText(doc::cursorPos(), "");
+      for (auto const& idx : doc::selectedCells())
+        doc::setCellText(idx, "");
     }
   },
   {
@@ -117,12 +118,18 @@ static std::vector<EditCommand> editCommands_ = {
   { // Increase column width
     {'+', 0}, false,
     "Increase current column with",
-    [] (int) { doc::increaseColumnWidth(doc::cursorPos().x); }
+    [] (int) { 
+      for (auto const& idx : doc::selectedColumns())
+        doc::increaseColumnWidth(idx.x);
+    }
   },
   { // Decrease column with
     {'-', 0}, false,
     "Decrease current column width",
-    [] (int) { doc::decreaseColumnWidth(doc::cursorPos().x); }
+    [] (int) { 
+      for (auto const& idx : doc::selectedColumns())
+        doc::decreaseColumnWidth(idx.x);
+    }
   },
   { // Undo
     {'u', 0}, false,
@@ -201,60 +208,72 @@ static std::vector<EditCommand> editCommands_ = {
     {'f', 'r'}, false,
     "Right-justify the text in the current cell",
     [] (int) {
-      const Index idx = doc::cursorPos();
-      const uint32_t oldFormat = doc::getCellFormat(idx);
-      const uint32_t newFormat = (oldFormat & ~ALIGN_MASK) | ALIGN_RIGHT;
-      doc::setCellFormat(idx, newFormat);
+      for (auto const& idx : doc::selectedCells())
+      {
+        const uint32_t oldFormat = doc::getCellFormat(idx);
+        const uint32_t newFormat = (oldFormat & ~ALIGN_MASK) | ALIGN_RIGHT;
+        doc::setCellFormat(idx, newFormat);
+      }
     }
   },
   {
     {'f', 'c'}, false,
     "Center-justify the text in the current cell",
     [] (int) {
-      const Index idx = doc::cursorPos();
-      const uint32_t oldFormat = doc::getCellFormat(idx);
-      const uint32_t newFormat = (oldFormat & ~ALIGN_MASK) | ALIGN_CENTER;
-      doc::setCellFormat(idx, newFormat);
+      for (auto const& idx : doc::selectedCells())
+      {
+        const uint32_t oldFormat = doc::getCellFormat(idx);
+        const uint32_t newFormat = (oldFormat & ~ALIGN_MASK) | ALIGN_CENTER;
+        doc::setCellFormat(idx, newFormat);
+      }
     }
   },
   {
     {'f', 'l'}, false,
     "Left-justify the text in the current cell",
     [] (int) {
-      const Index idx = doc::cursorPos();
-      const uint32_t oldFormat = doc::getCellFormat(idx);
-      const uint32_t newFormat = (oldFormat & ~ALIGN_MASK) | ALIGN_LEFT;
-      doc::setCellFormat(idx, newFormat);
+      for (auto const& idx : doc::selectedCells())
+      {
+        const uint32_t oldFormat = doc::getCellFormat(idx);
+        const uint32_t newFormat = (oldFormat & ~ALIGN_MASK) | ALIGN_LEFT;
+        doc::setCellFormat(idx, newFormat);
+      }
     }
   },
   {
     {'f', 'n'}, false,
     "Normal font in the current cell",
     [] (int) {
-      const Index idx = doc::cursorPos();
-      const uint32_t oldFormat = doc::getCellFormat(idx);
-      const uint32_t newFormat = oldFormat & ~FONT_MASK;
-      doc::setCellFormat(idx, newFormat);
+      for (auto const& idx : doc::selectedCells())
+      {
+        const uint32_t oldFormat = doc::getCellFormat(idx);
+        const uint32_t newFormat = oldFormat & ~FONT_MASK;
+        doc::setCellFormat(idx, newFormat);
+      }
     }
   },
   {
     {'f', 'b'}, false,
     "Bold font in the current cell",
     [] (int) {
-      const Index idx = doc::cursorPos();
-      const uint32_t oldFormat = doc::getCellFormat(idx);
-      const uint32_t newFormat = oldFormat ^ FONT_BOLD;
-      doc::setCellFormat(idx, newFormat);
+      for (auto const& idx : doc::selectedCells())
+      {
+        const uint32_t oldFormat = doc::getCellFormat(idx);
+        const uint32_t newFormat = oldFormat ^ FONT_BOLD;
+        doc::setCellFormat(idx, newFormat);
+      }
     }
   },
   {
     {'f', 'u'}, false,
     "Underline the font in the current cell",
     [] (int) {
-      const Index idx = doc::cursorPos();
-      const uint32_t oldFormat = doc::getCellFormat(idx);
-      const uint32_t newFormat = oldFormat ^ FONT_UNDERLINE;
-      doc::setCellFormat(idx, newFormat);
+      for (auto const& idx : doc::selectedCells())
+      {
+        const uint32_t oldFormat = doc::getCellFormat(idx);
+        const uint32_t newFormat = oldFormat ^ FONT_UNDERLINE;
+        doc::setCellFormat(idx, newFormat);
+      }
     }
   },
 };

@@ -21,6 +21,11 @@ namespace doc {
   Index & selectionStart();
   Index & selectionEnd();
 
+  std::vector<Index> selectedCells();
+  std::vector<Index> selectedColumns();
+  std::vector<Index> selectedRows();
+  Index selectionIndex(Index const& idx);
+
   int getColumnWidth(int column);
   void setColumnWidth(int column, int width);
 
