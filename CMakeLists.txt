@@ -20,6 +20,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src
                     ${CMAKE_CURRENT_BINARY_DIR}
                     ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/termbox
                     ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/stb
+                    ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/sqlite
                     ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/bx/include
                     ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/jimtcl)
 
@@ -39,6 +40,11 @@ endif()
 
 set(BIN2C_SOURCE
     src/3rdparty/bx/bin2c/bin2c.cpp
+)
+
+set(SQLITE3_SOURCE
+    src/3rdparty/sqlite/shell.c
+    src/3rdparty/sqlite/sqlite3.c
 )
 
 
@@ -67,6 +73,7 @@ set(ZUM_SOURCE
     src/3rdparty/jimtcl/utf8.c
     src/3rdparty/termbox/utf8.c
     src/3rdparty/stb/stb_truetype.c
+    src/3rdparty/sqlite/sqlite3.c
     ${CMAKE_CURRENT_BINARY_DIR}/ScriptingLib.tcl.h
     ${CMAKE_CURRENT_BINARY_DIR}/UbuntuMono.ttf.h
 )
@@ -84,17 +91,17 @@ else()
   add_subdirectory(src/3rdparty/sdl2)
   include_directories(src/3rdparty/sdl2/include)
 
-  #find_package(OpenGL REQUIRED)
-
   set(ZUM_SOURCE
       ${ZUM_SOURCE}
       src/ViewSDL.cpp
   )
 
-  #set(ZUM_LIBRARIES ${SDL_LIBRARIES} ${OPENGL_LIBRARIES})
   set(ZUM_LIBRARIES ${SDL_LIBRARIES})
   set(ZUM_TYPE WIN32)
 endif()
+
+# Add some sqlite3 definitions
+add_definitions(-DSQLITE_ENABLE_FTS4 -DSQLITE_THREADSAFE=0 -DSQLITE_OMIT_LOAD_EXTENSION)
 
 add_custom_command(OUTPUT ScriptingLib.tcl.h COMMAND "${CMAKE_CURRENT_BINARY_DIR}/bin2c" -f ScriptingLib.tcl -o "${CMAKE_CURRENT_BINARY_DIR}/ScriptingLib.tcl.h" -n ScriptingLib
                    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src"
@@ -106,6 +113,9 @@ add_custom_command(OUTPUT UbuntuMono.ttf.h COMMAND "${CMAKE_CURRENT_BINARY_DIR}/
 
 add_executable(bin2c ${BIN2C_SOURCE})
 target_link_libraries(bin2c)
+
+add_executable(sqlite3 ${SQLITE3_SOURCE})
+target_link_libraries(sqlite3)
 
 add_executable(zum ${ZUM_TYPE} ${ZUM_SOURCE})
 target_link_libraries(zum ${ZUM_LIBRARIES})
