@@ -108,8 +108,8 @@ namespace view {
     uint32_t ch;
   };
 
-	bool init(int preferredWidth, int preferredHeight, const char * title);
-	void shutdown();
+  bool init(int preferredWidth, int preferredHeight, const char * title);
+  void shutdown();
 
   int width();
   int height();
