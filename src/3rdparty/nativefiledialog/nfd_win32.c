@@ -10,6 +10,8 @@ nfdresult_t NFD_OpenDialog( const nfdchar_t *filterList,
                             const nfdchar_t *defaultPath,
                             nfdchar_t **outPath )
 {
+  OPENFILENAME open;
+
   return NFD_ERROR;
 }
 
