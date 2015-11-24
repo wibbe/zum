@@ -21,16 +21,26 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src
                     ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/termbox
                     ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/stb
                     ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/sqlite
+                    ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/nativefiledialog
                     ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/bx/include
                     ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/jimtcl)
+
+set(PLATFORM_SOURCE)
 
 # Compiler compability
 if(UNIX)
   if(APPLE)
     include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/bx/include/compat/osx)
+    set(PLATFORM_SOURCE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/nativefiledialog/nfd_cocoa.m)
   else()
+    set(PLATFORM_SOURCE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/nativefiledialog/nfd_gtk.c)
   endif()
 elseif(WIN32)
+  set(PLATFORM_SOURCE
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/nativefiledialog/nfd_win32.c)
+
   if(MINGW)
     include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/bx/include/compat/mingw)
   elseif (MSVC)
@@ -72,10 +82,12 @@ set(ZUM_SOURCE
     src/3rdparty/jimtcl/jimregexp.c
     src/3rdparty/jimtcl/utf8.c
     src/3rdparty/termbox/utf8.c
+    src/3rdparty/nativefiledialog/nfd_common.c
     src/3rdparty/stb/stb_truetype.c
     src/3rdparty/sqlite/sqlite3.c
     ${CMAKE_CURRENT_BINARY_DIR}/ScriptingLib.tcl.h
     ${CMAKE_CURRENT_BINARY_DIR}/UbuntuMono.ttf.h
+    ${PLATFORM_SOURCE}
 )
 
 if(${ConsoleApp})
