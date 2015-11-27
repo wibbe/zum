@@ -3,7 +3,7 @@ set(TARGET_NAME SDL2)
 
 # Define source files
 file(GLOB C_FILES
-     src/*.c src/atomic/*.c src/audio/*.c src/audio/dummy/*.c src/cpuinfo/*.c src/events/*.c src/file/*.c src/joystick/*.c src/libm/*.c src/stdlib/*.c src/thread/*.c src/timer/*.c src/video/*.c src/video/dummy/*.c)
+     src/*.c src/atomic/*.c src/audio/*.c src/audio/dummy/*.c src/cpuinfo/*.c src/events/*.c src/file/*.c src/render/*.c src/render/software/*.c src/joystick/*.c src/libm/*.c src/stdlib/*.c src/thread/*.c src/timer/*.c src/video/*.c src/video/dummy/*.c)
 
 if(WIN32)
   file(GLOB SYS_C_FILES

@@ -31,7 +31,7 @@
  */
 
 #define SDL_POWER_DISABLED 1
-#define SDL_RENDER_DISABLED 1
+#define SDL_RENDER_DISABLED 0
 #define SDL_HAPTIC_DISABLED 1
 
 /* Add any platform that doesn't build using the configure system. */
@@ -39,7 +39,7 @@
 #include "SDL_config_windows.h"
 #elif defined(__MACOSX__)
 #include "SDL_config_macosx.h"
-#elif defined(__IPHONEOS__) 
+#elif defined(__IPHONEOS__)
 #include "SDL_config_iphoneos.h"
 #elif defined(__ANDROID__)
 #include "SDL_config_android.h"
