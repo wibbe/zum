@@ -36,27 +36,29 @@ namespace view {
     uint8_t b;
   };
 
-  static SDL_Window * _window = nullptr;
-  
-  static stbtt_fontinfo _font;
-  static int _fontBaseline;
-  static int _fontLineHeight;
-  static int _fontAdvance;
-  static float _fontScale;
+  static SDL_Window * window_ = nullptr;
 
-  static int _width = 0;
-  static int _height = 0;
-  static Index _cursor;
-  static int _cursorBlinkTimeout = 0;
-  static int _cursorBlinkVisible = true;
-  static uint16_t _clearForeground = COLOR_DEFAULT;
-  static uint16_t _clearBackground = COLOR_DEFAULT;
+  static stbtt_fontinfo font_;
+  static int fontBaseline_;
+  static int fontLineHeight_;
+  static int fontAdvance_;
+  static float fontScale_;
 
-  static Color BACKGROUND_COLOR = {39, 40, 34};
-  static Color TEXT_COLOR = {248, 248, 242};
+  static int width_ = 0;
+  static int height_ = 0;
+  static Index cursor_;
+  static int cursorBlinkTimeout_ = 0;
+  static int cursorBlinkVisible_ = true;
+  static uint16_t clearForeground_ = COLOR_DEFAULT;
+  static uint16_t clearBackground_ = COLOR_DEFAULT;
 
-  static std::vector<Glyph> _glyphCache;
-  static std::vector<Cell> _cells;
+  //static Color BACKGROUND_COLOR = {39, 40, 34};
+  //static Color TEXT_COLOR = {248, 248, 242};
+  static Color BACKGROUND_COLOR = {255, 255, 255};
+  static Color TEXT_COLOR = {10, 10, 10};
+
+  static std::vector<Glyph> glyphCache_;
+  static std::vector<Cell> cells_;
 
   static bool initializeFont();
   static void initGlyph(int ch);
@@ -73,69 +75,69 @@ namespace view {
     if (!initializeFont())
       return false;
 
-    _window = SDL_CreateWindow(title,
+    window_ = SDL_CreateWindow(title,
                                SDL_WINDOWPOS_CENTERED,
                                SDL_WINDOWPOS_CENTERED,
-                               _fontAdvance * preferredWidth, _fontLineHeight * preferredHeight,
+                               fontAdvance_ * preferredWidth, fontLineHeight_ * preferredHeight,
                                SDL_WINDOW_RESIZABLE);
 
-    if (_window == NULL)
+    if (window_ == NULL)
     {
       logError("Could not create SDL window: ", SDL_GetError());
       SDL_Quit();
       return false;
     }
 
-    _width = preferredWidth;
-    _height = preferredHeight;
+    width_ = preferredWidth;
+    height_ = preferredHeight;
 
-    _cells.resize(_width * _height);
+    cells_.resize(width_ * height_);
 
     return true;
   }
 
   void shutdown()
   {
-    SDL_DestroyWindow(_window);
+    SDL_DestroyWindow(window_);
     SDL_Quit();
   }
 
   void setCursor(int x, int y)
   {
-    _cursor.x = x;
-    _cursor.y = y;
+    cursor_.x = x;
+    cursor_.y = y;
   }
 
   void hideCursor()
   {
-    _cursor.x = -1;
-    _cursor.y = -1;
+    cursor_.x = -1;
+    cursor_.y = -1;
   }
 
   void setClearAttributes(uint16_t fg, uint16_t bg)
   {
-    _clearForeground = fg;
-    _clearBackground = bg;
+    clearForeground_ = fg;
+    clearBackground_ = bg;
   }
 
   void clear()
   {
-    for (uint32_t i = 0; i < _cells.size(); ++i)
+    for (uint32_t i = 0; i < cells_.size(); ++i)
     {
-      Cell & cell = _cells[i];
+      Cell & cell = cells_[i];
       cell.ch = ' ';
-      cell.fg = _clearForeground;
-      cell.bg = _clearBackground;
+      cell.fg = clearForeground_;
+      cell.bg = clearBackground_;
     }
   }
 
   void changeCell(int x, int y, uint32_t ch, uint16_t fg, uint16_t bg)
   {
-    if (x < 0 || x >= _width || y < 0 || y >= _height)
+    if (x < 0 || x >= width_ || y < 0 || y >= height_)
       return;
 
-    int idx = (y * _width) + x;
-    Cell & cell = _cells[idx];
+    int idx = (y * width_) + x;
+    Cell & cell = cells_[idx];
     cell.ch = ch;
     cell.fg = fg;
     cell.bg = bg;
@@ -143,46 +145,46 @@ namespace view {
 
   int width()
   {
-    return _width;
+    return width_;
   }
 
   int height()
   {
-    return _height;
+    return height_;
   }
 
   void present()
   {
-    SDL_Surface * screen = SDL_GetWindowSurface(_window);
+    SDL_Surface * screen = SDL_GetWindowSurface(window_);
 
     SDL_FillRect(screen, NULL, SDL_MapRGB(screen->format, BACKGROUND_COLOR.r, BACKGROUND_COLOR.g, BACKGROUND_COLOR.b));
 
     int xPos = 0;
     int yPos = 0;
 
-    for (int y = 0; y < _height; ++y)
+    for (int y = 0; y < height_; ++y)
     {
-      for (int x = 0; x < _width; ++x)
+      for (int x = 0; x < width_; ++x)
       {
-        Cell & cell = _cells[y * _width + x];
+        Cell & cell = cells_[y * width_ + x];
 
-        if (cell.ch >= _glyphCache.size() || _glyphCache[cell.ch].surface == nullptr)
+        if (cell.ch >= glyphCache_.size() || glyphCache_[cell.ch].surface == nullptr)
           initGlyph(cell.ch);
 
         SDL_Rect rect;
-        Glyph & glyph = _glyphCache[cell.ch];
+        Glyph & glyph = glyphCache_[cell.ch];
 
         if (cell.bg & COLOR_REVERSE)
         {
           rect.x = xPos;
           rect.y = yPos;
-          rect.w = _fontAdvance;
-          rect.h = _fontLineHeight;
+          rect.w = fontAdvance_;
+          rect.h = fontLineHeight_;
           SDL_FillRect(screen, &rect, SDL_MapRGB(screen->format, TEXT_COLOR.r, TEXT_COLOR.g, TEXT_COLOR.b));
         }
 
         rect.x = xPos + glyph.x;
-        rect.y = yPos + _fontBaseline + glyph.y;
+        rect.y = yPos + fontBaseline_ + glyph.y;
 
         if (cell.fg & COLOR_REVERSE)
           SDL_SetSurfaceColorMod(glyph.surface, BACKGROUND_COLOR.r, BACKGROUND_COLOR.g, BACKGROUND_COLOR.b);
@@ -191,25 +193,25 @@ namespace view {
 
         SDL_BlitSurface(glyph.surface, nullptr, screen, &rect);
 
-        xPos += _fontAdvance;
+        xPos += fontAdvance_;
       }
 
       xPos = 0;
-      yPos += _fontLineHeight;
+      yPos += fontLineHeight_;
     }
 
-    if (_cursor.x >= 0 && _cursor.y >= 0 && _cursorBlinkVisible)
+    if (cursor_.x >= 0 && cursor_.y >= 0 && cursorBlinkVisible_)
     {
       SDL_Rect rect;
-      rect.x = _fontAdvance * _cursor.x;
-      rect.y = _fontLineHeight * _cursor.y;
+      rect.x = fontAdvance_ * cursor_.x;
+      rect.y = fontLineHeight_ * cursor_.y;
       rect.w = 1;
-      rect.h = _fontLineHeight;
+      rect.h = fontLineHeight_;
 
       SDL_FillRect(screen, &rect, SDL_MapRGB(screen->format, 255, 255, 255));
     }
 
-    SDL_UpdateWindowSurface(_window);
+    SDL_UpdateWindowSurface(window_);
   }
 
   inline Keys toKeys(SDL_Keysym symb)
@@ -316,13 +318,13 @@ namespace view {
             {
               if (sdlEvent.window.event == SDL_WINDOWEVENT_RESIZED)
               {
-                _width = sdlEvent.window.data1 / _fontAdvance;
-                _height = sdlEvent.window.data2 / _fontLineHeight;
+                width_ = sdlEvent.window.data1 / fontAdvance_;
+                height_ = sdlEvent.window.data2 / fontLineHeight_;
 
-                if (_width == 0) _width = 1;
-                if (_height == 0) _height = 1;
+                if (width_ == 0) width_ = 1;
+                if (height_ == 0) height_ = 1;
 
-                _cells.resize(_width * _height);
+                cells_.resize(width_ * height_);
 
                 event->type = EVENT_RESIZE;
               }
@@ -360,8 +362,8 @@ namespace view {
           // Always reset the cursor blink rate if we press a key
           if (event->type == EVENT_KEY)
           {
-            _cursorBlinkTimeout = 0;
-            _cursorBlinkVisible = true;
+            cursorBlinkTimeout_ = 0;
+            cursorBlinkVisible_ = true;
           }
 
           return true;
@@ -372,11 +374,11 @@ namespace view {
         SDL_Delay(10);
         timeLeft -= 10;
 
-        _cursorBlinkTimeout += 10;
-        if (_cursorBlinkTimeout > BLINK_RATE.toInt())
+        cursorBlinkTimeout_ += 10;
+        if (cursorBlinkTimeout_ > BLINK_RATE.toInt())
         {
-          _cursorBlinkVisible = !_cursorBlinkVisible;
-          _cursorBlinkTimeout = 0;
+          cursorBlinkVisible_ = !cursorBlinkVisible_;
+          cursorBlinkTimeout_ = 0;
         }
 
         present();
@@ -391,7 +393,7 @@ namespace view {
     Glyph glyph;
     int width, height;
 
-    unsigned char * pixels = stbtt_GetCodepointBitmap(&_font, _fontScale, _fontScale, ch, &width, &height, &glyph.x, &glyph.y);
+    unsigned char * pixels = stbtt_GetCodepointBitmap(&font_, fontScale_, fontScale_, ch, &width, &height, &glyph.x, &glyph.y);
 
 #if SDL_BYTEORDER == SDL_BIG_ENDIAN
     uint32_t rmask = 0xff000000;
@@ -422,15 +424,15 @@ namespace view {
     SDL_UnlockSurface(glyph.surface);
     stbtt_FreeBitmap(pixels, nullptr);
 
-    if (ch >= _glyphCache.size())
-      _glyphCache.resize(ch + 1);
+    if (ch >= glyphCache_.size())
+      glyphCache_.resize(ch + 1);
 
-    _glyphCache[ch] = glyph;
+    glyphCache_[ch] = glyph;
   }
 
   static bool initializeFont()
   {
-    if (stbtt_InitFont(&_font, (unsigned char *)UbuntuMono, 0) == 0)
+    if (stbtt_InitFont(&font_, (unsigned char *)UbuntuMono, 0) == 0)
     {
       logError("Could not initialize the font");
       return false;
@@ -439,14 +441,14 @@ namespace view {
     // Font size
     int ascent, decent, lineGap, advance;
 
-    _fontScale = stbtt_ScaleForPixelHeight(&_font, FONT_SIZE.toInt());
+    fontScale_ = stbtt_ScaleForPixelHeight(&font_, FONT_SIZE.toInt());
 
-    stbtt_GetFontVMetrics(&_font, &ascent, &decent, &lineGap);
-    stbtt_GetCodepointHMetrics(&_font, '0', &advance, nullptr);
+    stbtt_GetFontVMetrics(&font_, &ascent, &decent, &lineGap);
+    stbtt_GetCodepointHMetrics(&font_, '0', &advance, nullptr);
 
-    _fontBaseline = ascent * _fontScale;
-    _fontLineHeight = (ascent - decent + lineGap) * _fontScale;
-    _fontAdvance = advance * _fontScale;
+    fontBaseline_ = ascent * fontScale_;
+    fontLineHeight_ = (ascent - decent + lineGap) * fontScale_;
+    fontAdvance_ = advance * fontScale_;
 
     // Initialize some default glyphs
     const Str DEFAULT_GLYPHS(" 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ,.-;:()=+-*/!\"'#$%&{[]}<>|~");

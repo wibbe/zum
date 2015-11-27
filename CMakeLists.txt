@@ -73,6 +73,7 @@ set(ZUM_SOURCE
     src/Completion.cpp
     src/Log.cpp
     src/Index.cpp
+    src/Surface.cpp
     src/3rdparty/jimtcl/jim.c
     src/3rdparty/jimtcl/jim-subcmd.c
     src/3rdparty/jimtcl/jim-win32compat.c
