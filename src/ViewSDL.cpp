@@ -37,6 +37,7 @@ namespace view {
   };
 
   static SDL_Window * window_ = nullptr;
+  static SDL_Renderer * render_ = nullptr;
 
   static stbtt_fontinfo font_;
   static int fontBaseline_;
@@ -88,6 +89,8 @@ namespace view {
       return false;
     }
 
+    render_ = SDL_CreateRenderer(window_, -1, 0);
+
     width_ = preferredWidth;
     height_ = preferredHeight;
 
@@ -98,6 +101,7 @@ namespace view {
 
   void shutdown()
   {
+    SDL_DestroyRenderer(render_);
     SDL_DestroyWindow(window_);
     SDL_Quit();
   }
