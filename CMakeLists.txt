@@ -20,6 +20,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src
                     ${CMAKE_CURRENT_BINARY_DIR}
                     ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/termbox
                     ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/stb
+                    ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/tigr
                     ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/sqlite
                     ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/bx/include
                     ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/jimtcl)
@@ -28,9 +29,11 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src
 if(UNIX)
   if(APPLE)
     include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/bx/include/compat/osx)
+    set(PLATFORM_LIBRARIES OpenGL)
   else()
   endif()
 elseif(WIN32)
+  set(PLATFORM_LIBRARIES d3d9)
   if(MINGW)
     include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/bx/include/compat/mingw)
   elseif (MSVC)
@@ -45,6 +48,10 @@ set(BIN2C_SOURCE
 set(SQLITE3_SOURCE
     src/3rdparty/sqlite/shell.c
     src/3rdparty/sqlite/sqlite3.c
+)
+
+set (TIGR_SOURCE
+     src/3rdparty/tigr/tigr.c
 )
 
 
@@ -88,15 +95,16 @@ if(${ConsoleApp})
   set(ZUM_LIBRARIES)
   set(ZUM_TYPE)
 else()
-  add_subdirectory(src/3rdparty/sdl2)
-  include_directories(src/3rdparty/sdl2/include)
+  #add_subdirectory(src/3rdparty/sdl2)
+  #include_directories(src/3rdparty/sdl2/include)
 
   set(ZUM_SOURCE
       ${ZUM_SOURCE}
-      src/ViewSDL.cpp
+      ${TIGR_SOURCE}
+      src/ViewTigr.cpp
   )
 
-  set(ZUM_LIBRARIES ${SDL_LIBRARIES})
+  set(ZUM_LIBRARIES ${PLATFORM_LIBRARIES})
   set(ZUM_TYPE WIN32)
 endif()
 
