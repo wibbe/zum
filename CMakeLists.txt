@@ -110,9 +110,6 @@ if(${ConsoleApp})
   set(ZUM_LIBRARIES)
   set(ZUM_TYPE)
 else()
-  #add_subdirectory(src/3rdparty/sdl2)
-  #include_directories(src/3rdparty/sdl2/include)
-
   set(ZUM_SOURCE
       ${ZUM_SOURCE}
       ${TIGR_SOURCE}
