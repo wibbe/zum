@@ -729,8 +729,9 @@ void drawHeaders()
   // Draw column header
   for (int x = 0; x < drawColumnInfo_.size(); ++x)
   {
-    const uint16_t color = (drawColumnInfo_[x].column_) == doc::cursorPos().x ? view::COLOR_REVERSE | view::COLOR_DEFAULT : view::COLOR_DEFAULT;
-    drawText(drawColumnInfo_[x].x_, 0, drawColumnInfo_[x].width_, color, color, Index::columnToStr(drawColumnInfo_[x].column_), ALIGN_CENTER);
+    const uint16_t bg = (drawColumnInfo_[x].column_) == doc::cursorPos().x ? view::COLOR_HIGHLIGHT : view::COLOR_BACKGROUND;
+    const uint16_t fg = (drawColumnInfo_[x].column_) == doc::cursorPos().x ? view::COLOR_WHITE : view::COLOR_TEXT;
+    drawText(drawColumnInfo_[x].x_, 0, drawColumnInfo_[x].width_, fg, bg, Index::columnToStr(drawColumnInfo_[x].column_), ALIGN_CENTER);
   }
 
   // Draw row header
@@ -738,7 +739,8 @@ void drawHeaders()
   for (int y = 1; y < view::height() - getCommandLineHeight(); ++y)
   {
     int row = y + doc::scroll().y - 1;
-    const uint16_t color = row == doc::cursorPos().y ? view::COLOR_REVERSE | view::COLOR_DEFAULT : view::COLOR_DEFAULT;
+    const uint16_t bg = row == doc::cursorPos().y ? view::COLOR_HIGHLIGHT : view::COLOR_BACKGROUND;
+    const uint16_t fg = row == doc::cursorPos().y ? view::COLOR_WHITE : view::COLOR_TEXT;
 
     if (y == 1 && ALWAYS_SHOW_HEADER.toBool())
       row = 0;
@@ -754,7 +756,7 @@ void drawHeaders()
       header.append(columnNumber)
             .append(1, ' ');
 
-      drawText(0, y, ROW_HEADER_WIDTH, color, color, header);
+      drawText(0, y, ROW_HEADER_WIDTH, fg, bg, header);
     }
   }
 }
@@ -771,21 +773,27 @@ void drawWorkspace()
         row = 0;
 
       const bool cursorHere = drawColumnInfo_[x].column_ == doc::cursorPos().x && row == doc::cursorPos().y;
+      const bool sameAsCursor = drawColumnInfo_[x].column_ == doc::cursorPos().x || row == doc::cursorPos().y;
       const bool selected = drawColumnInfo_[x].column_ >= doc::selectionStart().x && drawColumnInfo_[x].column_ <= doc::selectionEnd().x &&
                             row >= doc::selectionStart().y && row <= doc::selectionEnd().y;
 
-      uint16_t color = view::COLOR_DEFAULT;
-      if (selected)
-        color ^= view::COLOR_REVERSE;
-      if (cursorHere && selectionMode_ == SelectionMode::NONE)
-        color ^= view::COLOR_REVERSE;
+      uint16_t bg = sameAsCursor ? view::COLOR_SELECTION : view::COLOR_PANEL;
 
+      if (selected || cursorHere)
+      {
+        bg = view::COLOR_HIGHLIGHT;
+
+        if (selected && cursorHere)
+          bg = view::COLOR_SELECTION;
+      }
+
+      const uint16_t fg = bg == view::COLOR_HIGHLIGHT ? view::COLOR_WHITE : view::COLOR_TEXT;
       const int width = doc::getColumnWidth(drawColumnInfo_[x].column_);
 
       if (row < doc::getRowCount())
       {
         if (cursorHere && editMode_ == EditorMode::EDIT)
-          drawText(drawColumnInfo_[x].x_, y, width, color, color, editLine_.utf8());
+          drawText(drawColumnInfo_[x].x_, y, width, fg, bg, editLine_.utf8());
         else
         {
           std::string cellText = doc::getCellDisplayText(Index(drawColumnInfo_[x].column_, row));
@@ -797,7 +805,7 @@ void drawWorkspace()
             cellText.append(2, '.').append(1, ' ');
           }
 
-          drawText(drawColumnInfo_[x].x_, y, width, color, color, cellText, format);
+          drawText(drawColumnInfo_[x].x_, y, width, fg, bg, cellText, format);
         }
       }
     }
@@ -866,8 +874,8 @@ void drawCommandLine()
     commandLine = flashMessage_;
 
   for (int i = 0; i < completionHintLines_.size(); ++i)
-    drawText(0, view::height() - 1 - completionHintLines_.size() + i, view::width(), view::COLOR_DEFAULT, view::COLOR_DEFAULT, completionHintLines_[i]);
+    drawText(0, view::height() - 1 - completionHintLines_.size() + i, view::width(), view::COLOR_TEXT, view::COLOR_DEFAULT, completionHintLines_[i]);
 
-  drawText(0, view::height() - completionHintLines_.size() - 2, view::width(), view::COLOR_REVERSE | view::COLOR_DEFAULT, view::COLOR_REVERSE | view::COLOR_DEFAULT, infoLine);
-  drawText(0, view::height() - 1, view::width(), view::COLOR_DEFAULT, view::COLOR_DEFAULT, commandLine);
+  drawText(0, view::height() - completionHintLines_.size() - 2, view::width(), view::COLOR_WHITE, view::COLOR_HIGHLIGHT | view::COLOR_DEFAULT, infoLine);
+  drawText(0, view::height() - 1, view::width(), view::COLOR_TEXT, view::COLOR_BACKGROUND, commandLine);
 }

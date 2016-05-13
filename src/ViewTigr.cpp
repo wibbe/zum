@@ -51,8 +51,8 @@ namespace view {
   static Index _cursor;
   static int _cursorBlinkTimeout = 0;
   static int _cursorBlinkVisible = true;
-  static uint16_t _clearForeground = COLOR_DEFAULT;
-  static uint16_t _clearBackground = COLOR_DEFAULT;
+  static uint16_t _clearForeground = COLOR_TEXT;
+  static uint16_t _clearBackground = COLOR_BACKGROUND;
 
   static Color BACKGROUND_COLOR = {39, 40, 34};
   static Color TEXT_COLOR = {248, 248, 242};
@@ -77,8 +77,10 @@ namespace view {
       return false;
     }
 
-    _width = preferredWidth;
-    _height = preferredHeight;
+    tigrUpdate(_window);
+
+    _width = _window->w / _fontAdvance;
+    _height = _window->h / _fontLineHeight;
 
     _cells.resize(_width * _height);
     return true;
@@ -140,9 +142,23 @@ namespace view {
     return _height;
   }
 
+  inline TPixel colorFromEnum(uint16_t color)
+  {
+    switch (color & 0x00FF)
+    {
+      case COLOR_BACKGROUND:  return tigrRGB(33, 37, 43);
+      case COLOR_PANEL:       return tigrRGB(40, 44, 52);
+      case COLOR_HIGHLIGHT:   return tigrRGB(82, 139, 255);
+      case COLOR_TEXT:        return tigrRGB(174, 182, 195);
+      case COLOR_SELECTION:   return tigrRGB(44, 50, 60);
+      case COLOR_WHITE:       return tigrRGB(255, 255, 255);
+      default:                return tigrRGB(255, 255, 255);
+    }
+  }
+
   void present()
   {
-    tigrFill(_window, 0, 0, _window->w, _window->h, tigrRGB(BACKGROUND_COLOR.r, BACKGROUND_COLOR.g, BACKGROUND_COLOR.b));
+    tigrFill(_window, 0, 0, _window->w, _window->h, colorFromEnum(COLOR_BACKGROUND));
 
     int xPos = 0;
     int yPos = 0;
@@ -158,16 +174,15 @@ namespace view {
 
         Glyph & glyph = _glyphCache[cell.ch];
 
-        if (cell.bg & COLOR_REVERSE)
+        if (cell.bg != COLOR_DEFAULT)
         {
-          tigrFill(_window, xPos, yPos, _fontAdvance, _fontLineHeight, tigrRGB(TEXT_COLOR.r, TEXT_COLOR.g, TEXT_COLOR.b));
+          tigrFill(_window, xPos, yPos, _fontAdvance, _fontLineHeight, colorFromEnum(cell.bg));
         }
 
-        TPixel textColor = tigrRGB(TEXT_COLOR.r, TEXT_COLOR.g, TEXT_COLOR.b);
-        if (cell.fg & COLOR_REVERSE)
-          textColor = tigrRGB(BACKGROUND_COLOR.r, BACKGROUND_COLOR.g, BACKGROUND_COLOR.b);
+        //if (cell.fg & COLOR_REVERSE)
+        //  textColor = tigrRGB(BACKGROUND_COLOR.r, BACKGROUND_COLOR.g, BACKGROUND_COLOR.b);
 
-        tigrBlitTint(_window, glyph.surface, xPos + glyph.x, yPos + _fontBaseline + glyph.y, 0, 0, _fontAdvance, _fontLineHeight, textColor);
+        tigrBlitTint(_window, glyph.surface, xPos + glyph.x, yPos + _fontBaseline + glyph.y, 0, 0, _fontAdvance, _fontLineHeight, colorFromEnum(cell.fg));
 
         xPos += _fontAdvance;
       }
@@ -180,7 +195,7 @@ namespace view {
     {
       tigrLine(_window, _fontAdvance * _cursor.x, _fontLineHeight * _cursor.y,
                         _fontAdvance * _cursor.x, _fontLineHeight * (_cursor.y + 1),
-                        tigrRGB(255, 255, 255));
+                        colorFromEnum(COLOR_HIGHLIGHT));
     }
   }
 

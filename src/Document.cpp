@@ -29,8 +29,8 @@ namespace doc {
 
   static const tcl::Variable DELIMITERS("app_delimiters", ",;|");
   static const tcl::Variable IGNORE_FIRST_ROW("app_ignoreFirstRow", true);
-  static const tcl::Variable DEFAULT_ROW_COUNT("doc_defaultRowCount", 10);
-  static const tcl::Variable DEFAULT_COLUMN_COUNT("doc_defaultColumnCount", 5);
+  static const tcl::Variable DEFAULT_ROW_COUNT("doc_defaultRowCount", 40);
+  static const tcl::Variable DEFAULT_COLUMN_COUNT("doc_defaultColumnCount", 16);
   static const tcl::Variable DEFAULT_COLUMN_WIDTH("doc_defaultColumnWidth", 20);
 
   struct Document
@@ -666,7 +666,7 @@ namespace doc {
 
     if (cell.hasExpression)
     {
-      cell.value = evaluate(cell.expression); 
+      cell.value = evaluate(cell.expression);
       cell.display = str::fromDouble(cell.value);
     }
   }

@@ -87,18 +87,16 @@ namespace view {
 
   enum Colors
   {
-    COLOR_DEFAULT = 0x00,
-    COLOR_BLACK   = 0x01,
-    COLOR_RED     = 0x02,
-    COLOR_GREEN   = 0x03,
-    COLOR_YELLOW  = 0x04,
-    COLOR_BLUE    = 0x05,
-    COLOR_MAGENTA = 0x06,
-    COLOR_CYAN    = 0x07,
-    COLOR_WHITE   = 0x08,
-    COLOR_BOLD      = 0x0100,
-    COLOR_UNDERLINE = 0x0200,
-    COLOR_REVERSE   = 0x0400,
+    COLOR_DEFAULT     = 0x00,
+    COLOR_BACKGROUND  = 0x01,
+    COLOR_PANEL       = 0x02,
+    COLOR_HIGHLIGHT   = 0x03,
+    COLOR_TEXT        = 0x04,
+    COLOR_SELECTION   = 0x05,
+    COLOR_WHITE       = 0x08,
+    COLOR_BOLD        = 0x0100,
+    COLOR_UNDERLINE   = 0x0200,
+    COLOR_REVERSE     = 0x0400,
   };
 
   struct Event
