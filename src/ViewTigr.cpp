@@ -43,6 +43,7 @@ namespace view {
   static stbtt_fontinfo _font;
   static int _fontBaseline;
   static int _fontLineHeight;
+  static int _fontLinePadding = 2;
   static int _fontAdvance;
   static float _fontScale;
 
@@ -182,7 +183,7 @@ namespace view {
         //if (cell.fg & COLOR_REVERSE)
         //  textColor = tigrRGB(BACKGROUND_COLOR.r, BACKGROUND_COLOR.g, BACKGROUND_COLOR.b);
 
-        tigrBlitTint(_window, glyph.surface, xPos + glyph.x, yPos + _fontBaseline + glyph.y, 0, 0, _fontAdvance, _fontLineHeight, colorFromEnum(cell.fg));
+        tigrBlitTint(_window, glyph.surface, xPos + glyph.x, yPos + _fontBaseline + glyph.y + (_fontLinePadding / 2), 0, 0, _fontAdvance, _fontLineHeight, colorFromEnum(cell.fg));
 
         xPos += _fontAdvance;
       }
@@ -482,7 +483,7 @@ namespace view {
     stbtt_GetCodepointHMetrics(&_font, '0', &advance, nullptr);
 
     _fontBaseline = ascent * _fontScale;
-    _fontLineHeight = (ascent - decent + lineGap) * _fontScale;
+    _fontLineHeight = (ascent - decent + lineGap) * _fontScale + _fontLinePadding;
     _fontAdvance = advance * _fontScale;
 
     // Initialize some default glyphs
