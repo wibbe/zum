@@ -65,6 +65,7 @@ namespace view {
 
   static bool initializeFont();
   static void initGlyph(int ch);
+  static void keyboardEvent(int event, int key);
 
   bool init(int preferredWidth, int preferredHeight, const char * title)
   {
@@ -79,6 +80,7 @@ namespace view {
     }
 
     tigrUpdate(_window);
+    tigrSetKeyboardCallback(_window, keyboardEvent);
 
     _width = _window->w / _fontAdvance;
     _height = _window->h / _fontLineHeight;
@@ -150,7 +152,7 @@ namespace view {
       case COLOR_BACKGROUND:  return tigrRGB(33, 37, 43);
       case COLOR_PANEL:       return tigrRGB(40, 44, 52);
       case COLOR_HIGHLIGHT:   return tigrRGB(82, 139, 255);
-      case COLOR_TEXT:        return tigrRGB(174, 182, 195);
+      case COLOR_TEXT:        return tigrRGB(178, 186, 199);
       case COLOR_SELECTION:   return tigrRGB(44, 50, 60);
       case COLOR_WHITE:       return tigrRGB(255, 255, 255);
       default:                return tigrRGB(255, 255, 255);
@@ -200,36 +202,36 @@ namespace view {
     }
   }
 
-  inline Keys handleCtrl(uint32_t symb)
+  inline Keys handleCtrl(int symb)
   {
     switch (symb)
     {
-      case 'a': return KEY_CTRL_A;
-      case 'b': return KEY_CTRL_B;
-      case 'c': return KEY_CTRL_C;
-      case 'd': return KEY_CTRL_D;
-      case 'e': return KEY_CTRL_E;
-      case 'f': return KEY_CTRL_F;
-      case 'g': return KEY_CTRL_G;
-      case 'h': return KEY_CTRL_H;
-      case 'i': return KEY_CTRL_I;
-      case 'j': return KEY_CTRL_J;
-      case 'k': return KEY_CTRL_K;
-      case 'l': return KEY_CTRL_L;
-      case 'm': return KEY_CTRL_M;
-      case 'n': return KEY_CTRL_N;
-      case 'o': return KEY_CTRL_O;
-      case 'p': return KEY_CTRL_P;
-      case 'q': return KEY_CTRL_Q;
-      case 'r': return KEY_CTRL_R;
-      case 's': return KEY_CTRL_S;
-      case 't': return KEY_CTRL_T;
-      case 'u': return KEY_CTRL_U;
-      case 'v': return KEY_CTRL_V;
-      case 'w': return KEY_CTRL_W;
-      case 'x': return KEY_CTRL_X;
-      case 'y': return KEY_CTRL_Y;
-      case 'z': return KEY_CTRL_Z;
+      case 'A': return KEY_CTRL_A;
+      case 'B': return KEY_CTRL_B;
+      case 'C': return KEY_CTRL_C;
+      case 'D': return KEY_CTRL_D;
+      case 'E': return KEY_CTRL_E;
+      case 'F': return KEY_CTRL_F;
+      case 'G': return KEY_CTRL_G;
+      case 'H': return KEY_CTRL_H;
+      case 'I': return KEY_CTRL_I;
+      case 'J': return KEY_CTRL_J;
+      case 'K': return KEY_CTRL_K;
+      case 'L': return KEY_CTRL_L;
+      case 'M': return KEY_CTRL_M;
+      case 'N': return KEY_CTRL_N;
+      case 'O': return KEY_CTRL_O;
+      case 'P': return KEY_CTRL_P;
+      case 'Q': return KEY_CTRL_Q;
+      case 'R': return KEY_CTRL_R;
+      case 'S': return KEY_CTRL_S;
+      case 'T': return KEY_CTRL_T;
+      case 'U': return KEY_CTRL_U;
+      case 'V': return KEY_CTRL_V;
+      case 'W': return KEY_CTRL_W;
+      case 'X': return KEY_CTRL_X;
+      case 'Y': return KEY_CTRL_Y;
+      case 'Z': return KEY_CTRL_Z;
       case '2': return KEY_CTRL_2;
       case '3': return KEY_CTRL_3;
       case '4': return KEY_CTRL_4;
@@ -247,48 +249,94 @@ namespace view {
     Keys key;
   };
 
-  static const TigrToKey KEYS[] = {
-    { TK_F1, KEY_F1 },
-    { TK_F2, KEY_F2 },
-    { TK_F3, KEY_F3 },
-    { TK_F4, KEY_F4 },
-    { TK_F5, KEY_F5 },
-    { TK_F6, KEY_F6 },
-    { TK_F7, KEY_F7 },
-    { TK_F8, KEY_F8 },
-    { TK_F9, KEY_F9 },
-    { TK_F10, KEY_F10 },
-    { TK_F11, KEY_F11 },
-    { TK_F12, KEY_F12 },
-    { TK_INSERT, KEY_INSERT },
-    { TK_DELETE, KEY_DELETE },
-    { TK_HOME, KEY_HOME },
-    { TK_END, KEY_END },
-    { TK_PAGEUP, KEY_PGUP },
-    { TK_PAGEDN, KEY_PGDN },
-    { TK_UP, KEY_ARROW_UP },
-    { TK_DOWN, KEY_ARROW_DOWN },
-    { TK_LEFT, KEY_ARROW_LEFT },
-    { TK_RIGHT, KEY_ARROW_RIGHT },
-    { TK_BACKSPACE, KEY_BACKSPACE },
-    { TK_TAB, KEY_TAB },
-    { TK_RETURN, KEY_ENTER },
-    { TK_ESCAPE, KEY_ESC },
-    { 0, KEY_NONE },
-  };
+  inline Keys tigrToKey(int key)
+  {
+    switch (key)
+    {
+      case TK_F1: return KEY_F1;
+      case TK_F2: return KEY_F2;
+      case TK_F3: return KEY_F3;
+      case TK_F4: return KEY_F4;
+      case TK_F5: return KEY_F5;
+      case TK_F6: return KEY_F6;
+      case TK_F7: return KEY_F7;
+      case TK_F8: return KEY_F8;
+      case TK_F9: return KEY_F9;
+      case TK_F10: return KEY_F10;
+      case TK_F11: return KEY_F11;
+      case TK_F12: return KEY_F12;
+      case TK_INSERT: return KEY_INSERT;
+      case TK_DELETE: return KEY_DELETE;
+      case TK_HOME: return KEY_HOME;
+      case TK_END: return KEY_END;
+      case TK_PAGEUP: return KEY_PGUP;
+      case TK_PAGEDN: return KEY_PGDN;
+      case TK_UP: return KEY_ARROW_UP;
+      case TK_DOWN: return KEY_ARROW_DOWN;
+      case TK_LEFT: return KEY_ARROW_LEFT;
+      case TK_RIGHT: return KEY_ARROW_RIGHT;
+      case TK_BACKSPACE: return KEY_BACKSPACE;
+      case TK_TAB: return KEY_TAB;
+      case TK_RETURN: return KEY_ENTER;
+      case TK_ESCAPE: return KEY_ESC;
+    }
+
+    return KEY_NONE;
+  }
+
+  static bool _ctrlDown = false;
+
+  static void keyboardEvent(int event, int key)
+  {
+    switch (event)
+    {
+      case TIGR_EVENT_KEYDOWN:
+        {
+          if (key == TK_CONTROL)
+          {
+            _ctrlDown = true;
+          }
+          else
+          {
+            if (_ctrlDown)
+            {
+              Keys k = handleCtrl(key);
+              if (k != KEY_NONE)
+              {
+                _eventQueue.push_back(Event {EVENT_KEY, k, 0});
+              }
+            }
+            else
+            {
+              Keys k = tigrToKey(key);
+              if (k != KEY_NONE)
+              {
+                Event e = {EVENT_KEY, k, 0};
+                _eventQueue.push_back(e);
+              }
+            }
+          }
+        }
+        break;
+
+      case TIGR_EVENT_KEYUP:
+        {
+          if (key == TK_CONTROL)
+            _ctrlDown = false;
+        }
+        break;
+
+      case TIGR_EVENT_TEXT:
+        if (key != 10 && key != 27 && key != 8 && key != 9)
+        {
+          _eventQueue.push_back(Event {EVENT_KEY, KEY_NONE, (uint32_t)key});
+        }
+        break;
+    }
+  }
 
   bool peekEvent(Event * event, int timeout)
   {
-    //SDL_Event sdlEvent;
-
-
-    if (_eventQueue.size() > 0)
-    {
-      *event = _eventQueue.front();
-      _eventQueue.erase(_eventQueue.begin());
-      return true;
-    }
-
     int timeLeft = timeout;
     while (timeLeft > 0)
     {
@@ -296,6 +344,8 @@ namespace view {
 
       int lastW = _window->w;
       int lastH = _window->h;
+
+      present();
       tigrUpdate(_window);
 
       // Did the window size change?
@@ -320,35 +370,17 @@ namespace view {
         _eventQueue.push_back(e);
       }
 
-      // Keyboard input?
-      if (tigrKeyHeld(_window, TK_RCONTROL) || tigrKeyHeld(_window, TK_LCONTROL))
-      {
-        Keys key = handleCtrl(tigrReadChar(_window));
-        if (key != KEY_NONE)
-          _eventQueue.push_back(Event {EVENT_KEY, key, 0});
-      }
-      else
-      {
-        uint32_t ch = tigrReadChar(_window);
-        if (ch >  0 && ch != 10 && ch != 27 && ch != 8 && ch != 9)
-        {
-          Event e = {EVENT_KEY, KEY_NONE, ch};
-          logInfo("Ch: ", (int)ch);
-          _eventQueue.push_back(e);
-        }
-
-        for (int i = 0; KEYS[i].key != KEY_NONE; ++i)
-        {
-          if (tigrKeyDown(_window, KEYS[i].tigr))
-            _eventQueue.push_back(Event {EVENT_KEY, KEYS[i].key, 0});
-        }
-      }
-
       float endTime = tigrTime();
       int dt = (endTime - startTime) * 1000;
       timeLeft -= dt;
     }
 
+    if (_eventQueue.size() > 0)
+    {
+      *event = _eventQueue.front();
+      _eventQueue.erase(_eventQueue.begin());
+      return true;
+    }
 
     /*
     while (timeLeft > 0)

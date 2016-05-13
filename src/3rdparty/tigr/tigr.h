@@ -185,6 +185,15 @@ int tigrKeyHeld(Tigr *bmp, int key);
 // Returns the Unicode value of the last key pressed, or 0 if none.
 int tigrReadChar(Tigr *bmp);
 
+#define TIGR_EVENT_KEYDOWN 0
+#define TIGR_EVENT_KEYUP   1
+#define TIGR_EVENT_TEXT    2
+
+typedef void (*TIGR_KEYBOARD_EVENT_CALLBACK)(int event, int key);
+
+// Register a callback that will be called on all keyboard events
+void tigrSetKeyboardCallback(Tigr *bmp, TIGR_KEYBOARD_EVENT_CALLBACK callback);
+
 
 // Bitmap I/O -------------------------------------------------------------
 

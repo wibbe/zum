@@ -101,6 +101,8 @@ typedef struct {
 	#ifdef __APPLE__
 	int mouseButtons;
 	#endif
+
+  TIGR_KEYBOARD_EVENT_CALLBACK keyboard_callback;
 } TigrInternal;
 // ----------------------------------------------------------
 
@@ -2304,6 +2306,84 @@ static BOOL UnadjustWindowRectEx(LPRECT prc, DWORD dwStyle, BOOL fMenu, DWORD dw
 	return fRc;
 }
 
+static int tigrVK2TK(int key)
+{
+	if (key >= 'A' && key <= 'Z') return key;
+	if (key >= '0' && key <= '9') return key;
+	switch (key) {
+	case VK_BACK: return TK_BACKSPACE;
+	case VK_TAB: return TK_TAB;
+	case VK_RETURN: return TK_RETURN;
+	case VK_SHIFT: return TK_SHIFT;
+	case VK_CONTROL: return TK_CONTROL;
+	case VK_MENU: return TK_ALT;
+	case VK_PAUSE: return TK_PAUSE;
+	case VK_CAPITAL: return TK_CAPSLOCK;
+	case VK_ESCAPE: return TK_ESCAPE;
+	case VK_SPACE: return TK_SPACE;
+	case VK_PRIOR: return TK_PAGEUP;
+	case VK_NEXT: return TK_PAGEDN;
+	case VK_END: return TK_END;
+	case VK_HOME: return TK_HOME;
+	case VK_LEFT: return TK_LEFT;
+	case VK_UP: return TK_UP;
+	case VK_RIGHT: return TK_RIGHT;
+	case VK_DOWN: return TK_DOWN;
+	case VK_INSERT: return TK_INSERT;
+	case VK_DELETE: return TK_DELETE;
+	case VK_LWIN: return TK_LWIN;
+	case VK_RWIN: return TK_RWIN;
+	case VK_NUMPAD0: return TK_PAD0;
+	case VK_NUMPAD1: return TK_PAD1;
+	case VK_NUMPAD2: return TK_PAD2;
+	case VK_NUMPAD3: return TK_PAD3;
+	case VK_NUMPAD4: return TK_PAD4;
+	case VK_NUMPAD5: return TK_PAD5;
+	case VK_NUMPAD6: return TK_PAD6;
+	case VK_NUMPAD7: return TK_PAD7;
+	case VK_NUMPAD8: return TK_PAD8;
+	case VK_NUMPAD9: return TK_PAD9;
+	case VK_MULTIPLY: return TK_PADMUL;
+	case VK_ADD: return TK_PADADD;
+	case VK_SEPARATOR: return TK_PADENTER;
+	case VK_SUBTRACT: return TK_PADSUB;
+	case VK_DECIMAL: return TK_PADDOT;
+	case VK_DIVIDE: return TK_PADDIV;
+	case VK_F1: return TK_F1;
+	case VK_F2: return TK_F2;
+	case VK_F3: return TK_F3;
+	case VK_F4: return TK_F4;
+	case VK_F5: return TK_F5;
+	case VK_F6: return TK_F6;
+	case VK_F7: return TK_F7;
+	case VK_F8: return TK_F8;
+	case VK_F9: return TK_F9;
+	case VK_F10: return TK_F10;
+	case VK_F11: return TK_F11;
+	case VK_F12: return TK_F12;
+	case VK_NUMLOCK: return TK_NUMLOCK;
+	case VK_SCROLL: return TK_SCROLL;
+	case VK_LSHIFT: return TK_LSHIFT;
+	case VK_RSHIFT: return TK_RSHIFT;
+	case VK_LCONTROL: return TK_LCONTROL;
+	case VK_RCONTROL: return TK_RCONTROL;
+	case VK_LMENU: return TK_LALT;
+	case VK_RMENU: return TK_RALT;
+	case VK_OEM_1: return TK_SEMICOLON;
+	case VK_OEM_PLUS: return TK_EQUALS;
+	case VK_OEM_COMMA: return TK_COMMA;
+	case VK_OEM_MINUS: return TK_MINUS;
+	case VK_OEM_PERIOD: return TK_DOT;
+	case VK_OEM_2: return TK_SLASH;
+	case VK_OEM_3: return TK_BACKTICK;
+	case VK_OEM_4: return TK_LSQUARE;
+	case VK_OEM_5: return TK_BACKSLASH;
+	case VK_OEM_6: return TK_RSQUARE;
+	case VK_OEM_7: return TK_TICK;
+	}
+	return 0;
+}
+
 LRESULT CALLBACK tigrWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	Tigr *bmp;
@@ -2421,7 +2501,10 @@ LRESULT CALLBACK tigrWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 	case WM_CHAR:
 		if (win) {
 			if (wParam == '\r') wParam = '\n';
-				win->lastChar = wParam;
+			win->lastChar = wParam;
+
+      if (win->keyboard_callback)
+        win->keyboard_callback(TIGR_EVENT_TEXT, win->lastChar);
 		}
 		return DefWindowProcW(hWnd, message, wParam, lParam);
 	case WM_MENUCHAR:
@@ -2445,13 +2528,23 @@ LRESULT CALLBACK tigrWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 		// fall-thru
 	case WM_KEYDOWN:
 		if (win)
+    {
 			win->keys[wParam] = 1;
+      int key = tigrVK2TK(wParam);
+      if (win->keyboard_callback && key != 0)
+        win->keyboard_callback(TIGR_EVENT_KEYDOWN, key);
+    }
 		return DefWindowProcW(hWnd, message, wParam, lParam);
 	case WM_SYSKEYUP:
 		// fall-thru
 	case WM_KEYUP:
 		if (win)
+    {
 			win->keys[wParam] = 0;
+      int key = tigrVK2TK(wParam);
+      if (win->keyboard_callback && key != 0)
+        win->keyboard_callback(TIGR_EVENT_KEYUP, key);
+    }
 		return DefWindowProcW(hWnd, message, wParam, lParam);
 	default:
 		return DefWindowProcW(hWnd, message, wParam, lParam);
@@ -2542,6 +2635,7 @@ Tigr *tigrWindow(int w, int h, const char *title, int flags)
 	win->widgetAlpha = 0;
 	win->widgetsScale = WIDGET_SCALE;
 	win->widgets = tigrBitmap(40, 14);
+  win->keyboard_callback = NULL;
 
 	SetPropW(hWnd, L"Tigr", bmp);
 
@@ -2729,6 +2823,12 @@ int tigrReadChar(Tigr *bmp)
 	int c = win->lastChar;
 	win->lastChar = 0;
 	return c;
+}
+
+void tigrSetKeyboardCallback(Tigr *bmp, TIGR_KEYBOARD_EVENT_CALLBACK callback)
+{
+  TigrInternal *win = tigrInternal(bmp);
+  win->keyboard_callback = callback;
 }
 
 // We supply our own WinMain and just chain through to the user's
@@ -3992,7 +4092,7 @@ void tigrGAPIPresent(Tigr *bmp, int w, int h)
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		tigrGAPIDraw(gl->gl_legacy, gl->uniform_model, gl->tex[1], win->widgets,
-			(int)(w - win->widgets->w * win->widgetsScale), 0, 
+			(int)(w - win->widgets->w * win->widgetsScale), 0,
 			w, (int)(win->widgets->h * win->widgetsScale));
 	}
 
