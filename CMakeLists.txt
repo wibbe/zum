@@ -20,7 +20,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src
                     ${CMAKE_CURRENT_BINARY_DIR}
                     ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/termbox
                     ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/stb
-                    ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/tigr
+                    ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/sera
                     ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/sqlite
                     ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/nativefiledialog
                     ${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/bx/include
@@ -63,11 +63,6 @@ set(SQLITE3_SOURCE
     src/3rdparty/sqlite/sqlite3.c
 )
 
-set (TIGR_SOURCE
-     src/3rdparty/tigr/tigr.c
-)
-
-
 set(ZUM_SOURCE
     src/Zum.cpp
     src/Str.cpp
@@ -95,6 +90,7 @@ set(ZUM_SOURCE
     src/3rdparty/nativefiledialog/nfd_common.c
     src/3rdparty/stb/stb_truetype.c
     src/3rdparty/sqlite/sqlite3.c
+    src/3rdparty/sera/sera.c
     ${CMAKE_CURRENT_BINARY_DIR}/ScriptingLib.tcl.h
     ${CMAKE_CURRENT_BINARY_DIR}/UbuntuMono.ttf.h
     ${PLATFORM_SOURCE}
@@ -112,12 +108,25 @@ if(${ConsoleApp})
 else()
   set(ZUM_SOURCE
       ${ZUM_SOURCE}
-      ${TIGR_SOURCE}
-      src/ViewTigr.cpp
+      src/ViewGLFW.cpp
   )
 
-  set(ZUM_LIBRARIES ${PLATFORM_LIBRARIES})
-  set(ZUM_TYPE WIN32)
+  # We need OpenGL
+  find_package(OpenGL REQUIRED)
+
+  # Include GLFW in the build
+  set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+  set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+  set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src/3rdparty/glfw)
+
+  include_directories(${OPENGL_INCLUDE_DIR})
+  set(ZUM_LIBRARIES ${PLATFORM_LIBRARIES} ${OPENGL_gl_LIBRARY} glfw)
+
+  if(WIN32)
+    set(ZUM_TYPE WIN32)
+  endif()
 endif()
 
 # Add some sqlite3 definitions
