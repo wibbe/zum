@@ -7,7 +7,6 @@
 namespace doc {
 
   void createDefaultEmpty();
-  void createEmpty(int width, int height);
   void close();
 
   void nextBuffer();

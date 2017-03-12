@@ -14,6 +14,8 @@
 #include <regex>
 
 static const int ROW_HEADER_WIDTH = 8;
+static const int MAX_ROW_COUNT = 100000;
+static const int MAX_COLUMN_COUNT = 10000;
 
 struct ColumnInfo
 {
@@ -111,8 +113,8 @@ Index getCursorPos()
 
 void setCursorPos(Index const& idx)
 {
-  doc::cursorPos().x = std::min(std::max(idx.x, 0), doc::getColumnCount());
-  doc::cursorPos().y = std::min(std::max(idx.y, 0), doc::getRowCount());
+  doc::cursorPos().x = std::min(std::max(idx.x, 0), MAX_COLUMN_COUNT);
+  doc::cursorPos().y = std::min(std::max(idx.y, 0), MAX_ROW_COUNT);
   ensureCursorVisibility();
 }
 
@@ -175,7 +177,7 @@ void navigateLeft()
 
 void navigateRight()
 {
-  if (doc::cursorPos().x < (doc::getColumnCount() - 1))
+  if (doc::cursorPos().x < MAX_COLUMN_COUNT)
    doc::cursorPos().x++;
 
   ensureCursorVisibility();
@@ -193,7 +195,7 @@ void navigateUp()
 
 void navigateDown()
 {
-  if (doc::cursorPos().y < (doc::getRowCount() - 1))
+  if (doc::cursorPos().y < MAX_ROW_COUNT)
     doc::cursorPos().y++;
 
   ensureCursorVisibility();
@@ -219,8 +221,8 @@ void navigatePageDown()
 {
   doc::cursorPos().y += view::height() - getCommandLineHeight() - 1;
   doc::scroll().y += view::height() - getCommandLineHeight() - 1;
-  if (doc::cursorPos().y > (doc::getRowCount() - 1))
-    doc::cursorPos().y = doc::getRowCount() - 1;
+  if (doc::cursorPos().y > MAX_ROW_COUNT)
+    doc::cursorPos().y = MAX_ROW_COUNT - 1;
 
   ensureCursorVisibility();
   updateSelection();
@@ -643,7 +645,7 @@ void calculateColumDrawWidths()
   drawColumnInfo_.clear();
 
   int x = ROW_HEADER_WIDTH;
-  for (int i = doc::scroll().x; i < doc::getColumnCount(); ++i)
+  for (int i = doc::scroll().x; i < MAX_COLUMN_COUNT; ++i)
   {
     const int width = doc::getColumnWidth(i);
     drawColumnInfo_.emplace_back(i, x, width);
@@ -714,11 +716,8 @@ void drawInterface()
   view::setClearAttributes(view::COLOR_DEFAULT, view::COLOR_DEFAULT);
   view::clear();
 
-  if (doc::getColumnCount() > 0 && doc::getRowCount() > 0)
-  {
-    drawHeaders();
-    drawWorkspace();
-  }
+  drawHeaders();
+  drawWorkspace();
 
   drawCommandLine();
   view::present();
@@ -735,7 +734,6 @@ void drawHeaders()
   }
 
   // Draw row header
-  const int y_end = doc::getRowCount() < (view::height() - 2) ? doc::getRowCount() : view::height() - 2;
   for (int y = 1; y < view::height() - getCommandLineHeight(); ++y)
   {
     int row = y + doc::scroll().y - 1;
@@ -745,19 +743,16 @@ void drawHeaders()
     if (y == 1 && ALWAYS_SHOW_HEADER.toBool())
       row = 0;
 
-    if (row < doc::getRowCount())
-    {
-      const std::string columnNumber = Index::rowToStr(row);
+    const std::string columnNumber = Index::rowToStr(row);
 
-      std::string header;
-      while (header.size() < (ROW_HEADER_WIDTH - columnNumber.size() - 1))
-        header.append(1, ' ');
+    std::string header;
+    while (header.size() < (ROW_HEADER_WIDTH - columnNumber.size() - 1))
+      header.append(1, ' ');
 
-      header.append(columnNumber)
-            .append(1, ' ');
+    header.append(columnNumber)
+          .append(1, ' ');
 
-      drawText(0, y, ROW_HEADER_WIDTH, fg, bg, header);
-    }
+    drawText(0, y, ROW_HEADER_WIDTH, fg, bg, header);
   }
 }
 
@@ -790,7 +785,7 @@ void drawWorkspace()
       const uint16_t fg = bg == view::COLOR_HIGHLIGHT ? view::COLOR_WHITE : view::COLOR_TEXT;
       const int width = doc::getColumnWidth(drawColumnInfo_[x].column_);
 
-      if (row < doc::getRowCount())
+      //if (row < doc::getRowCount())
       {
         if (cursorHere && editMode_ == EditorMode::EDIT)
           drawText(drawColumnInfo_[x].x_, y, width, fg, bg, editLine_.utf8());
@@ -850,7 +845,7 @@ void drawCommandLine()
 
     const std::string pos(doc::cursorPos().toStr());
 
-    std::string progress = str::fromInt((int)(((double)(doc::cursorPos().y + 1) / (double)doc::getRowCount()) * 100.0)).append(1, '%');
+    std::string progress = "-"; //str::fromInt((int)(((double)(doc::cursorPos().y + 1) / (double)(doc::getRowCount()) * 100.0)).append(1, '%');
 
     const int maxFileAreaSize = view::width() - pos.size() - progress.size() - 5;
     if (filename.size() > maxFileAreaSize)

@@ -37,7 +37,7 @@ namespace doc {
   {
     int width_ = 0;
     int height_ = 0;
-    std::vector<int> columnWidth_ = {0};
+    std::unordered_map<int, int> columnWidth_;
     std::unordered_map<Index, Cell> cells_;
     std::string filename_;
     bool readOnly_ = false;
@@ -238,20 +238,11 @@ namespace doc {
     documentBuffers().push_back({});
     jumpToBuffer(documentBuffers().size() - 1);
 
-    currentDoc().width_ = std::max(DEFAULT_COLUMN_COUNT.toInt(), 1);
-    currentDoc().height_ = std::max(DEFAULT_ROW_COUNT.toInt(), 1);
-    currentDoc().columnWidth_ = std::vector<int>(currentDoc().width_, std::max(DEFAULT_COLUMN_WIDTH.toInt(), 3));
+    currentDoc().width_ = 0;
+    currentDoc().height_ = 0;
     currentDoc().filename_ = "[No Name]";
     currentDoc().delimiter_ = ',';
     currentDoc().readOnly_ = false;
-  }
-
-  void createEmpty(int width, int height)
-  {
-    createDefaultEmpty();
-    currentDoc().width_ = std::max(width, 1);
-    currentDoc().height_ = std::max(height, 1);
-    currentDoc().columnWidth_ = std::vector<int>(currentDoc().width_, std::max(DEFAULT_COLUMN_WIDTH.toInt(), 3));
   }
 
   void close()
@@ -267,6 +258,11 @@ namespace doc {
   static Cell & getCell(Index const& idx)
   {
     return currentDoc().cells_[idx];
+  }
+
+  static bool hasCell(Index const& idx)
+  {
+    return currentDoc().cells_.find(idx) != currentDoc().cells_.end();
   }
 
   static std::string getText(Cell const& cell)
@@ -352,11 +348,6 @@ namespace doc {
       return false;
     }
 
-    // Write header info
-    if (IGNORE_FIRST_ROW.toBool())
-      for (int i = 0; i < currentDoc().width_; ++i)
-        file << currentDoc().columnWidth_[i] << (i < (currentDoc().width_ - 1) ? (char)currentDoc().delimiter_ : '\n');
-
     // Write all the cells
     for (int y = 0; y < currentDoc().height_; ++y)
     {
@@ -403,7 +394,7 @@ namespace doc {
         return false;
 
       const bool newLine = data_[pos_++] == '\n';
-      return !newLine;
+      return newLine;
     }
 
     bool eof() const { return pos_ >= data_.size(); }
@@ -415,11 +406,16 @@ namespace doc {
 
   static void setText(Index const& idx, std::string const& text, bool forceFormat = false)
   {
+    //logInfo("setText(", idx.x, "x", idx.y, ", '", text, "')");
     Cell & cell = getCell(idx);
 
     if (forceFormat)
     {
       std::tie(cell.format, cell.text) = parseFormatAndValue(text);
+
+      int width = getColumnWidth(idx.x);
+      if (width < cell.text.size())
+        currentDoc().columnWidth_[idx.x] = cell.text.size();
     }
     else
     {
@@ -427,6 +423,11 @@ namespace doc {
       std::tie(format, cell.text) = parseFormatAndValue(text);
     }
 
+    if (currentDoc().width_ < (idx.x + 1))
+      currentDoc().width_ = idx.x + 1;
+
+    if (currentDoc().height_ < (idx.y + 1))
+      currentDoc().height_ = (idx.y + 1);
 
     if (cell.text.front() == '=')
     {
@@ -444,7 +445,6 @@ namespace doc {
     createDefaultEmpty();
     currentDoc().width_ = 0;
     currentDoc().height_ = 0;
-    currentDoc().columnWidth_.resize(0);
 
     // Examin document to determin delimiter type
     if (defaultDelimiter == 0)
@@ -481,6 +481,7 @@ namespace doc {
     Parser p(data, currentDoc().delimiter_);
 
     // Read column width
+    /*
     if (IGNORE_FIRST_ROW.toBool())
     {
       bool onlyNumbers = true;
@@ -523,28 +524,24 @@ namespace doc {
         currentDoc().height_ = 1;
       }
     }
+    */
 
     int column = 0;
+    int row = 0;
     while (!p.eof())
     {
-      std::string cellText;
-      const bool newLine = !p.next(cellText);
+      std::string cellText = "";
+      const bool newLine = p.next(cellText);
 
-      if (!cellText.empty())
-        setText(Index(column, currentDoc().height_), cellText, true);
+      if (!cellText.empty() && cellText != "\n")
+        setText(Index(column, row), cellText, true);
 
       column++;
-
-      if (column > currentDoc().width_)
-      {
-        currentDoc().width_ = column;
-        currentDoc().columnWidth_.push_back(DEFAULT_COLUMN_WIDTH.toInt());
-      }
 
       if (newLine)
       {
         column = 0;
-        currentDoc().height_++;
+        row++;
       }
     }
 
@@ -562,23 +559,18 @@ namespace doc {
       return false;
     }
 
-    // get length of file:
-    file.seekg (0, file.end);
-    const int length = file.tellg();
-    file.seekg (0, file.beg);
+    std::string data = "";
+    std::string line = "";
+    while (std::getline(file, line))
+      data += line + "\n";
 
-    std::vector<char> buffer;
-    buffer.resize(length + 1);
-    file.read(&buffer[0], length);
-    buffer[length] = '\0';
-
-    if (length == 0)
+    if (data.size() == 0)
     {
       logError("No data in file '", filename, "'");
       return false;
     }
 
-    if (!loadDocument(std::string(buffer.begin(), buffer.end()), 0))
+    if (!loadDocument(data, 0))
     {
       logError("Could not parse document '", filename, "'");
       return false;
@@ -603,17 +595,16 @@ namespace doc {
 
   int getColumnWidth(int column)
   {
-    if (column < 0 || column >= currentDoc().width_)
-      return -1;
+    auto col = currentDoc().columnWidth_.find(column);
 
-    return currentDoc().columnWidth_[column];
+    if (col == currentDoc().columnWidth_.end())
+      return DEFAULT_COLUMN_WIDTH.toInt();
+
+    return (*col).second;
   }
 
   void setColumnWidth(int column, int width)
   {
-    if (column < 0 || column >= currentDoc().width_)
-      return;
-
     if (currentDoc().readOnly_)
       return;
 
@@ -722,7 +713,7 @@ namespace doc {
 
   std::string getCellDisplayText(Index const& idx)
   {
-    if (idx.x < 0 || idx.x >= currentDoc().width_ || idx.y < 0 || idx.y >= currentDoc().height_)
+    if (!hasCell(idx))
       return "";
 
     Cell const& cell = currentDoc().cells_[idx];
@@ -755,9 +746,6 @@ namespace doc {
 
   void setCellText(Index const& idx, std::string const& text)
   {
-    if (idx.x < 0 || idx.x >= currentDoc().width_ || idx.y < 0 || idx.y >= currentDoc().height_)
-      return;
-
     if (currentDoc().readOnly_)
       return;
 
@@ -782,29 +770,26 @@ namespace doc {
 
   void increaseColumnWidth(int column)
   {
-    if (column < 0 || column >= currentDoc().width_)
-      return;
-
     if (currentDoc().readOnly_)
       return;
 
-    takeUndoSnapshot(EditAction::ColumnWidth, true);
+    int width = getColumnWidth(column);
 
-    currentDoc().columnWidth_[column]++;
+    takeUndoSnapshot(EditAction::ColumnWidth, true);
+    currentDoc().columnWidth_[column] = width + 1;
   }
 
   void decreaseColumnWidth(int column)
   {
-    if (column < 0 || column >= currentDoc().width_)
-      return;
-
     if (currentDoc().readOnly_)
       return;
 
-    if (currentDoc().columnWidth_[column] > 3)
+    int width = getColumnWidth(column);
+
+    if (width > 3)
     {
       takeUndoSnapshot(EditAction::ColumnWidth, true);
-      currentDoc().columnWidth_[column]--;
+      currentDoc().columnWidth_[column] = width - 1;
     }
   }
 
@@ -818,7 +803,6 @@ namespace doc {
     takeUndoSnapshot(EditAction::AddColumn, true);
 
     currentDoc().width_++;
-    currentDoc().columnWidth_.insert(currentDoc().columnWidth_.begin() + column + 1, DEFAULT_COLUMN_WIDTH.toInt());
 
     std::unordered_map<Index, Cell> newCells;
 
@@ -879,9 +863,6 @@ namespace doc {
 
   void removeColumn(int column)
   {
-    if (column < 0 || column >= getColumnCount())
-      return;
-
     if (currentDoc().readOnly_)
       return;
 
@@ -889,13 +870,22 @@ namespace doc {
 
     currentDoc().width_--;
 
-    if (column == currentDoc().columnWidth_.size() - 1)
-      currentDoc().columnWidth_.pop_back();
-    else
-      currentDoc().columnWidth_.erase(currentDoc().columnWidth_.begin() + column);
-
+    std::unordered_map<int, int> newColumnWidth;
     std::unordered_map<Index, Cell> newCells;
 
+    // Remove and update column info
+    for (std::pair<int, int> col : currentDoc().columnWidth_)
+    {
+      if (col.first != column)
+      {
+        if (col.first > column)
+          col.first--;
+
+        newColumnWidth.insert(col);
+      }
+    }
+
+    // Remove and update cells
     for (std::pair<Index, Cell> cell : currentDoc().cells_)
     {
       if (cell.first.x != column)
@@ -917,6 +907,7 @@ namespace doc {
     }
 
     currentDoc().cells_ = std::move(newCells);
+    currentDoc().columnWidth_ = std::move(newColumnWidth);
     evaluateDocument();
   }
 
@@ -960,17 +951,13 @@ namespace doc {
 
   // -- Tcl bindings --
 
-  TCL_FUNC(createEmpty, "columnCount rowCount", "Create a new empty document with the specified dimensions")
+  TCL_FUNC(createEmpty, "", "Create a new empty document")
   {
-    TCL_CHECK_ARG(3);
-    TCL_INT_ARG(1, columnCount);
-    TCL_INT_ARG(2, rowCount);
-
-    createEmpty(columnCount, rowCount);
+    createDefaultEmpty();
     return JIM_OK;
   }
 
-  TCL_FUNC(createDefaultEmpty, "", "Create a new default created document")
+  TCL_FUNC(createDefaultEmpty, "", "Deprecated function, use createEmpty instead")
   {
     createDefaultEmpty();
     return JIM_OK;
