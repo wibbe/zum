@@ -8,6 +8,8 @@ bind "l" navigateRight "Move cursor right"
 bind "k" navigateUp "Move cursor up"
 bind "j" navigateDown "Move cursor down"
 bind "y" yankCurrentCell "Copy the content from the current cell to the yank buffer"
+bind "n" findNextMatch "Find the next search match"
+bind "N" findPreviousMatch "Find the previous match"
 
 bind "p" {
   set str [getYankBuffer]
@@ -38,6 +40,26 @@ bind "-" {
     columnWidth $col [expr $width - 1]
   }
 } "Decrease width of selected columns"
+
+bind "ac" {
+  addColumn [index column [cursor]]
+} "Insert a new column where the cursor is"
+
+bind "ar" {
+  addRow [index row [cursor]]
+} "Insert a new row where the cursor is"
+
+bind "ap" {
+  set text [cell [cursor]]
+  append text [getYankBuffer]
+  cell [cursor] $text
+} "Append the yank-buffer to the current cell"
+
+bind "dw" {
+  foreach c [selection all] {
+    cell $c ""
+  }
+} "Clear the selected cells"
 
 # -- Vim bindings for the application --
 
@@ -84,12 +106,6 @@ proc bn {} { nextBuffer }
 proc bnext {} { nextBuffer }
 proc bp {} { prevBuffer }
 proc bprev {} { prevBuffer }
-
-expose bn
-expose bnext
-expose bp
-expose bprev
-
 
 # -- A Simple Task app plugin --
 

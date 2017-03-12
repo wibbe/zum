@@ -38,14 +38,6 @@ static std::vector<EditCommand> editCommands_ = {
       }
     }
   },
-  { // Clear current cell
-    {'d', 'w'}, false,
-    "Clear the selected cells",
-    [] (int) {
-      for (auto const& idx : doc::selectedCells())
-        doc::setCellText(idx, "");
-    }
-  },
   {
     {'d', 'c'}, false,
     "Delete the current column",
@@ -85,49 +77,6 @@ static std::vector<EditCommand> editCommands_ = {
         }
         else
           flashMessage("Not allowed to delete the last row");
-      }
-    }
-  },
-  { // Find next match
-    {'n', 0}, false,
-    "Find next match",
-    [] (int) { findNextMatch(); }
-  },
-  { // Find previous match
-    {'N', 0}, false,
-    "Find previous match",
-    [] (int) { findPreviousMatch(); }
-  },
-  {
-    {'a', 'c'}, false,
-    "Insert a new column after the current column",
-    [] (int) {
-      Index idx = doc::cursorPos();
-      doc::addColumn(idx.x);
-      idx.x += 1;
-      doc::cursorPos() = idx;
-    }
-  },
-  {
-    {'a', 'r'}, false,
-    "Insert a new row after the current row",
-    [] (int) {
-      Index idx = doc::cursorPos();
-      doc::addRow(idx.y);
-      idx.y += 1;
-      doc::cursorPos() = idx;
-    }
-  },
-  {
-    {'a', 'p'}, false,
-    "Append the yank-buffer to the current cell",
-    [] (int) {
-      if (!doc::isReadOnly())
-      {
-        std::string text = doc::getCellText(doc::cursorPos());
-        text.append(getYankBuffer());
-
-        doc::setCellText(doc::cursorPos(), text);
       }
     }
   },
@@ -313,18 +262,16 @@ TCL_FUNC(bind, "keysequence command ?description?", "Bind a command to a specifi
   TCL_STRING_ARG(2, commandStr);
   TCL_STRING_ARG(3, description);
 
-  static const uint32_t BUFFER_LEN = 2;
-  static uint32_t buffer[BUFFER_LEN];
-  const uint32_t len = str::toUTF32(keySequence, buffer, BUFFER_LEN);
+  const Str buffer = Str(keySequence);
 
-  if (len > 2)
+  if (buffer.size() == 0 || buffer.size() > 2)
   {
-    logError("error in keysequence '", keySequence, "', maximum length is 2");
+    logError("error in keysequence '", keySequence, "', must be 1 or 2 characters long");
     return JIM_ERR;
   }
 
   EditCommand * command = nullptr;
-  if (getEditCommand(buffer[0], buffer[1], &command))
+  if (getEditCommand(buffer[0], buffer.size() == 2 ? buffer[1] : 0, &command))
   {
     logInfo("Rebinding key-sequence '", keySequence, "' to ", commandStr);
 
@@ -335,7 +282,7 @@ TCL_FUNC(bind, "keysequence command ?description?", "Bind a command to a specifi
   else
   {
     editCommands_.push_back({
-      buffer[0], buffer[1], false,
+      buffer[0], buffer.size() == 2 ? buffer[1] : 0, false,
       description,
       [commandStr] (int) { tcl::evaluate(commandStr); }
     });

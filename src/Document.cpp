@@ -807,15 +807,15 @@ namespace doc {
 
     for (std::pair<Index, Cell> cell : currentDoc().cells_)
     {
-      if (cell.first.x > column)
+      if (cell.first.x >= column)
         cell.first.x++;
 
       for (auto & expr : cell.second.expression)
       {
-        if (expr.startIndex_.x > column)
+        if (expr.startIndex_.x >= column)
           expr.startIndex_.x++;
 
-        if (expr.endIndex_.x > column)
+        if (expr.endIndex_.x >= column)
           expr.endIndex_.x++;
       }
 
