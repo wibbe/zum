@@ -397,36 +397,6 @@ namespace tcl {
         result.push_back(varName);
     }
 
-/*
-    Jim_HashTableIterator * it = Jim_GetHashTableIterator(&interpreter_->commands);
-    Jim_HashEntry * entry = nullptr;
-
-    while ((entry = Jim_NextHashEntry(it)) != nullptr)
-    {
-      const std::string cmdName((const char *)Jim_GetHashEntryKey(entry));
-      Jim_Cmd * cmd = (Jim_Cmd *)Jim_GetHashEntryVal(entry);
-
-      if (cmdName.find(name) == 0)
-        result.push_back(cmdName);
-    }
-
-    Jim_Free(it);
-  
-
-    it = Jim_GetHashTableIterator(&interpreter_->topFramePtr->vars);
-
-    while ((entry = Jim_NextHashEntry(it)) != nullptr)
-    {
-      const std::string varName((const char *)Jim_GetHashEntryKey(entry));
-      //Jim_Cmd * cmd = (Jim_Cmd *)Jim_GetHashEntryVal(entry);
-
-      if (varName.find(name) == 0)
-        result.push_back(varName);
-    }
-
-    Jim_Free(it);
-*/
-
     return result;
   }
 
