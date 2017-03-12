@@ -5,8 +5,7 @@
 
 #include <string.h>
 
-static const char * helpStrHeader_ = R"RAW(80
-
+static const char * helpStrHeader_ = R"RAW(
                                ZUM DOCUMENTATION
 
 Zum is a spreadsheet application that can be used to edit CSV files.

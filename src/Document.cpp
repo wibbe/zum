@@ -406,7 +406,6 @@ namespace doc {
 
   static void setText(Index const& idx, std::string const& text, bool forceFormat = false)
   {
-    //logInfo("setText(", idx.x, "x", idx.y, ", '", text, "')");
     Cell & cell = getCell(idx);
 
     if (forceFormat)
@@ -415,7 +414,7 @@ namespace doc {
 
       int width = getColumnWidth(idx.x);
       if (width < cell.text.size())
-        currentDoc().columnWidth_[idx.x] = cell.text.size();
+        currentDoc().columnWidth_[idx.x] = cell.text.size() + 1;
     }
     else
     {

@@ -50,7 +50,7 @@ static std::string yankBuffer_;
 static std::string flashMessage_;
 static std::string searchTerm_;
 static std::vector<std::string> completionHints_;
-static std::vector<std::string> completionHintLines_;
+static std::vector<std::string> messageLines_;
 
 static const tcl::Variable ALWAYS_SHOW_HEADER("app_alwaysShowHeader", false);
 
@@ -58,7 +58,7 @@ extern void clearTimeout();
 
 static int getCommandLineHeight()
 {
-  return 2 + completionHintLines_.size();
+  return 2 + messageLines_.size();
 }
 
 void updateCursor()
@@ -169,7 +169,7 @@ static void updateSelection()
 void navigateLeft()
 {
   if (doc::cursorPos().x > 0)
-   doc::cursorPos().x--;
+    doc::cursorPos().x--;
 
   ensureCursorVisibility();
   updateSelection();
@@ -224,6 +224,20 @@ void navigatePageDown()
   if (doc::cursorPos().y > MAX_ROW_COUNT)
     doc::cursorPos().y = MAX_ROW_COUNT - 1;
 
+  ensureCursorVisibility();
+  updateSelection();
+}
+
+void navigateHome()
+{
+  doc::cursorPos().x = 0;
+  ensureCursorVisibility();
+  updateSelection();
+}
+
+void navigateEnd()
+{
+  doc::cursorPos().x = doc::getColumnCount() - 1;
   ensureCursorVisibility();
   updateSelection();
 }
@@ -427,14 +441,29 @@ void handleNavigateEvent(view::Event * event)
       navigatePageDown();
       break;
 
+    case view::KEY_HOME:
+      navigateHome();
+      break;
+
+    case view::KEY_END:
+      navigateEnd();
+      break;
+
     case view::KEY_SPACE:
       pushEditCommandKey(' ');
       break;
 
     case view::KEY_ENTER:
-      updateSelection();
-      doc::cursorPos() = doc::selectionStart();
-      selectionMode_ = SelectionMode::NONE;
+      if (selectionMode_ == SelectionMode::NONE)
+      {
+        editCurrentCell();
+      }
+      else
+      {
+        updateSelection();
+        doc::cursorPos() = doc::selectionStart();
+        selectionMode_ = SelectionMode::NONE;
+      }
       break;
 
     default:
@@ -446,7 +475,6 @@ void handleNavigateEvent(view::Event * event)
               editMode_ = EditorMode::COMMAND;
               editLine_.clear();
               editLinePos_ = 0;
-              clearFlashMessage();
             }
             break;
 
@@ -455,7 +483,6 @@ void handleNavigateEvent(view::Event * event)
               editMode_ = EditorMode::SEARCH;
               editLine_.clear();
               editLinePos_ = 0;
-              clearFlashMessage();
             }
             break;
 
@@ -475,11 +502,15 @@ void handleNavigateEvent(view::Event * event)
       }
       break;
   }
+
+  if (editMode_ != EditorMode::COMMAND)
+    clearMessageLines();
 }
 
 void handleEditEvent(view::Event * event)
 {
   handleTextInput(event);
+  clearMessageLines();
 
   switch (event->key)
   {
@@ -540,10 +571,10 @@ void handleCommandEvent(view::Event * event)
       break;
 
     case view::KEY_ESC:
-      if (completionHints_.empty())
+      if (messageLines_.empty())
         editMode_ = EditorMode::NAVIGATE;
       else
-        clearCompletionHints();
+        clearMessageLines();
       break;
   }
 }
@@ -551,6 +582,7 @@ void handleCommandEvent(view::Event * event)
 void handleSearchEvent(view::Event * event)
 {
   handleTextInput(event);
+  clearMessageLines();
 
   switch (event->key)
   {
@@ -658,19 +690,35 @@ void calculateColumDrawWidths()
 
 void clearFlashMessage()
 {
-  flashMessage_.clear();
-  clearTimeout();
+  messageLines_.clear();
 }
 
 void flashMessage(std::string const& message)
 {
-  flashMessage_ = message;
-  clearTimeout();
+  messageLines_.clear();
+  std::string line = "";
+
+  for (size_t i = 0; i < message.size(); ++i)
+  {
+    if (message[i] == '\n')
+    {
+      if (!line.empty())
+        messageLines_.push_back(line);
+      line = "";
+    }
+    else
+    {
+      line += message[i];
+    }
+  }
+
+  if (!line.empty())
+    messageLines_.push_back(line);
 }
 
-static void buildCompletionHintLines()
+static void buildCompletionMessageLines()
 {
-  completionHintLines_.clear();
+  messageLines_.clear();
 
   const int width = view::width();
 
@@ -684,7 +732,7 @@ static void buildCompletionHintLines()
   {
     if (currentLine.size() + hint.size() > width)
     {
-      completionHintLines_.push_back(currentLine);
+      messageLines_.push_back(currentLine);
       currentLine = hint;
     }
     else
@@ -695,23 +743,23 @@ static void buildCompletionHintLines()
   }
 
   if (!currentLine.empty())
-    completionHintLines_.push_back(currentLine);
+    messageLines_.push_back(currentLine);
 }
 
-void clearCompletionHints()
+void clearMessageLines()
 {
-  completionHints_.clear();
+  messageLines_.clear();
 }
 
 void setCompletionHints(std::vector<std::string> const& hints)
 {
   completionHints_ = hints;
+  buildCompletionMessageLines();
 }
 
 void drawInterface()
 {
   calculateColumDrawWidths();
-  buildCompletionHintLines();
 
   view::setClearAttributes(view::COLOR_DEFAULT, view::COLOR_DEFAULT);
   view::clear();
@@ -813,6 +861,8 @@ void drawCommandLine()
   std::string commandLine;
   char mode;
 
+  const std::string pos(doc::cursorPos().toStr());
+
   switch (editMode_)
   {
     case EditorMode::NAVIGATE:
@@ -843,9 +893,8 @@ void drawCommandLine()
     if (filename.empty())
       filename = "[No Name]";
 
-    const std::string pos(doc::cursorPos().toStr());
 
-    std::string progress = "-"; //str::fromInt((int)(((double)(doc::cursorPos().y + 1) / (double)(doc::getRowCount()) * 100.0)).append(1, '%');
+    std::string progress = str::fromInt(std::min(100, std::max(0, (int)((double)(doc::cursorPos().y + 1) / (double)(doc::getRowCount() == 0 ? 1 : doc::getRowCount()) * 100.0)))).append(1, '%');
 
     const int maxFileAreaSize = view::width() - pos.size() - progress.size() - 5;
     if (filename.size() > maxFileAreaSize)
@@ -865,12 +914,9 @@ void drawCommandLine()
             .append(1, ' ');
   }
 
-  if (!flashMessage_.empty())
-    commandLine = flashMessage_;
+  for (int i = 0; i < messageLines_.size(); ++i)
+    drawText(0, view::height() - 1 - messageLines_.size() + i, view::width(), view::COLOR_TEXT, view::COLOR_SELECTION, messageLines_[i]);
 
-  for (int i = 0; i < completionHintLines_.size(); ++i)
-    drawText(0, view::height() - 1 - completionHintLines_.size() + i, view::width(), view::COLOR_TEXT, view::COLOR_DEFAULT, completionHintLines_[i]);
-
-  drawText(0, view::height() - completionHintLines_.size() - 2, view::width(), view::COLOR_WHITE, view::COLOR_HIGHLIGHT | view::COLOR_DEFAULT, infoLine);
+  drawText(0, view::height() - messageLines_.size() - 2, view::width(), view::COLOR_WHITE, view::COLOR_HIGHLIGHT | view::COLOR_DEFAULT, infoLine);
   drawText(0, view::height() - 1, view::width(), view::COLOR_TEXT, view::COLOR_BACKGROUND, commandLine);
 }

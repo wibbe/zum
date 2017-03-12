@@ -12,6 +12,7 @@
 #include <functional>
 #include <cstring>
 #include <cassert>
+#include <string.h>
 #include <map>
 
 #include "bx/os.h"
@@ -29,7 +30,7 @@ namespace tcl {
 
   // -- Variable --
 
-  static std::vector<Variable *> & buildInVariables()
+  static std::vector<Variable *> & builtInVariables()
   {
     static std::vector<Variable *> vars;
     return vars;
@@ -40,7 +41,7 @@ namespace tcl {
       type_(ValueType::STRING),
       defaultStrValue_(defaultValue)
   {
-    buildInVariables().push_back(this);
+    builtInVariables().push_back(this);
   }
 
   Variable::Variable(const char * name, int defaultValue)
@@ -48,7 +49,7 @@ namespace tcl {
       type_(ValueType::INT),
       defaultIntValue_(defaultValue)
   {
-    buildInVariables().push_back(this);
+    builtInVariables().push_back(this);
   }
 
   Variable::Variable(const char * name, bool defaultValue)
@@ -56,7 +57,7 @@ namespace tcl {
       type_(ValueType::BOOL),
       defaultBoolValue_(defaultValue)
   {
-    buildInVariables().push_back(this);
+    builtInVariables().push_back(this);
   }
 
   Jim_Obj * Variable::value() const
@@ -132,6 +133,189 @@ namespace tcl {
     builtInProcs().push_back({this, proc});
   }
 
+  // -- BuiltInSubProc
+
+  class SubCmdProc
+  {
+    public:
+      SubCmdProc(const char * name)
+        : name_(name)
+      { }
+
+      std::vector<BuiltInSubProc *> subProcs_;
+
+      const char * name() const { return name_; }
+
+    private:
+      const char * name_ = nullptr;
+  };
+
+  static std::vector<SubCmdProc> & builtInSubCmdProcs()
+  {
+    static std::vector<SubCmdProc> procs;
+    return procs;
+  }
+
+
+  static int subCmdProc(Jim_Interp * interp, int argc, Jim_Obj * const * argv)
+  {
+#if 0
+    SubCmdProc * subCmd = static_cast<SubCmdProc *>(Jim_CmdPrivData(interp));
+
+    const jim_subcmd_type *ct;
+    const jim_subcmd_type *partial = 0;
+    int cmdlen;
+    const char *cmdstr;
+    bool help = false;
+
+    if (argc < 2)
+    {
+      const char * cmdName = Jim_String(argv[0]);
+      Jim_SetResult(interp, Jim_NewEmptyStringObj(interp));
+      Jim_AppendStrings(interp, Jim_GetResult(interp), "wrong # args: should be \"", cmdName, " command ...\"\n", NULL);
+      Jim_AppendStrings(interp, Jim_GetResult(interp), "Use \"", cmdName, " -help ?command?\" for help", NULL);
+      
+      return JIM_ERR;
+    }
+
+    Jim_Obj * cmd = argv[1];
+
+    /* Check for the help command */
+    if (Jim_CompareStringImmediate(interp, cmd, "-help"))
+    {
+      if (argc == 2)
+      {
+          /* Usage for the command, not the subcommand */
+          show_cmd_usage(interp, command_table, argc, argv);
+          return JIM_OK;
+      }
+
+      help = true;
+
+      /* Skip the 'help' command */
+      cmd = argv[2];
+    }
+
+    /* Check for special builtin '-commands' command first */
+    if (Jim_CompareStringImmediate(interp, cmd, "-commands")) {
+        /* Build the result here */
+        Jim_SetResult(interp, Jim_NewEmptyStringObj(interp));
+        add_commands(interp, command_table, " ");
+        return &dummy_subcmd;
+    }
+
+    cmdstr = Jim_GetString(cmd, &cmdlen);
+
+    for (ct = command_table; ct->cmd; ct++) {
+        if (Jim_CompareStringImmediate(interp, cmd, ct->cmd)) {
+            /* Found an exact match */
+            break;
+        }
+        if (strncmp(cmdstr, ct->cmd, cmdlen) == 0) {
+            if (partial) {
+                /* Ambiguous */
+                if (help) {
+                    /* Just show the top level help here */
+                    show_cmd_usage(interp, command_table, argc, argv);
+                    return &dummy_subcmd;
+                }
+                bad_subcmd(interp, command_table, "ambiguous", argv[0], argv[1 + help]);
+                return 0;
+            }
+            partial = ct;
+        }
+        continue;
+    }
+
+    /* If we had an unambiguous partial match */
+    if (partial && !ct->cmd) {
+        ct = partial;
+    }
+
+    if (!ct->cmd) {
+        /* No matching command */
+        if (help) {
+            /* Just show the top level help here */
+            show_cmd_usage(interp, command_table, argc, argv);
+            return &dummy_subcmd;
+        }
+        bad_subcmd(interp, command_table, "unknown", argv[0], argv[1 + help]);
+        return 0;
+    }
+
+    if (help) {
+        Jim_SetResultString(interp, "Usage: ", -1);
+        /* subcmd */
+        add_cmd_usage(interp, ct, argv[0]);
+        return &dummy_subcmd;
+    }
+
+    /* Check the number of args */
+    if (argc - 2 < ct->minargs || (ct->maxargs >= 0 && argc - 2 > ct->maxargs)) {
+        Jim_SetResultString(interp, "wrong # args: should be \"", -1);
+        /* subcmd */
+        add_cmd_usage(interp, ct, argv[0]);
+        Jim_AppendStrings(interp, Jim_GetResult(interp), "\"", NULL);
+
+        return 0;
+    }
+
+    /* Good command */
+    return ct;
+#endif
+
+    return JIM_OK;
+  }
+
+  BuiltInSubProc::BuiltInSubProc(const char * mainName, const char * subName, const char * args, const char * desc, Jim_CmdProc * proc)
+    : name_(subName),
+      args_(args),
+      desc_(desc),
+      proc_(proc)
+  {
+    auto & procs = builtInSubCmdProcs();
+    bool found = false;
+
+    for (auto & proc : procs)
+    {
+      if (strcmp(mainName, proc.name()) == 0)
+      {
+        proc.subProcs_.push_back(this);
+        found = true;
+        break;
+      }
+    }
+
+    if (!found)
+    {
+      SubCmdProc subCmd(mainName);
+      subCmd.subProcs_.push_back(this);
+      procs.push_back(subCmd);
+    }
+  }
+
+  int BuiltInSubProc::call(Jim_Interp * interp, int argc, Jim_Obj * const * argv)
+  {
+    proc_(interp, argc, argv);
+  }
+
+  // -- Exposed procs --
+
+  class ExposedProc
+  {
+    public:
+      ExposedProc(std::string const& name)
+        : name_(name)
+      { }
+
+      std::string name() const { return name_; }
+
+    private:
+      std::string name_;
+  };
+
+  static std::vector<ExposedProc> exposedProcs_;
+
   // -- Interface --
 
   static const std::string CONFIG_FILE = "zum.conf";
@@ -145,12 +329,12 @@ namespace tcl {
     ::Jim_clockInit(interpreter_);
     ::Jim_regexpInit(interpreter_);
 
-    // Register build in commands
+    // Register built in commands
     for (auto const& it : builtInProcs())
       Jim_CreateCommand(interpreter_, it.first->name_, it.second, it.first, nullptr);
 
-    // Register build in variables
-    for (auto * var : buildInVariables())
+    // Register built in variables
+    for (auto * var : builtInVariables())
       Jim_SetGlobalVariableStr(interpreter_, var->name(), var->defaultValue());
 
     Jim_EvalSource(interpreter_, __FILE__, __LINE__, std::string((char *)&ScriptingLib[0], BX_COUNTOF(ScriptingLib)).c_str());
@@ -198,6 +382,28 @@ namespace tcl {
     std::vector<std::string> result;
 
     // Search for matching procs
+    for (auto const& it : builtInProcs())
+    {
+      const std::string cmdName(it.first->name());
+      if (cmdName.find(name) == 0)
+        result.push_back(cmdName);
+    }
+
+    for (auto const& it : exposedProcs_)
+    {
+      if (it.name().find(name) == 0)
+        result.push_back(it.name());
+    }
+
+    // Search for matching global variables
+    for (auto * var : builtInVariables())
+    {
+      const std::string varName(var->name());
+      if (varName.find(name) == 0)
+        result.push_back(varName);
+    }
+
+/*
     Jim_HashTableIterator * it = Jim_GetHashTableIterator(&interpreter_->commands);
     Jim_HashEntry * entry = nullptr;
 
@@ -211,8 +417,8 @@ namespace tcl {
     }
 
     Jim_Free(it);
+  
 
-    // Search for matching global variables
     it = Jim_GetHashTableIterator(&interpreter_->topFramePtr->vars);
 
     while ((entry = Jim_NextHashEntry(it)) != nullptr)
@@ -225,6 +431,7 @@ namespace tcl {
     }
 
     Jim_Free(it);
+*/
 
     return result;
   }
@@ -241,5 +448,13 @@ namespace tcl {
     flashMessage(log);
 
     return JIM_OK;
+  }
+
+  TCL_FUNC(expose, "string", "Expose a tcl function to command auto-completion")
+  {
+    TCL_CHECK_ARG(2);
+    TCL_STRING_ARG(1, procName);
+
+    exposedProcs_.push_back(ExposedProc(procName));
   }
 }

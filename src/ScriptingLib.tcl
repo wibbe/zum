@@ -1,4 +1,9 @@
 
+# -- Command bindnings --
+
+bind "u" {undo} "Undo the last operation"
+bind "U" {redo} "Redo the last operation"
+
 # -- Vim bindings for the application --
 
 proc q {} {
@@ -44,6 +49,11 @@ proc bn {} { nextBuffer }
 proc bnext {} { nextBuffer }
 proc bp {} { prevBuffer }
 proc bprev {} { prevBuffer }
+
+expose bn
+expose bnext
+expose bp
+expose bprev
 
 
 # -- A Simple Task app plugin --

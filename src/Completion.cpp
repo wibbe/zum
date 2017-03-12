@@ -23,54 +23,45 @@ void completeEditLine(Str & editLine)
 
   const std::vector<std::string> hints = tcl::findMatches(word);
 
-  if (hints.empty())
+  if (hints.size() == 1)
   {
-    clearCompletionHints();
-  }
-  else
-  {
-    if (hints.size() == 1)
-    {
-      clearCompletionHints();
+    editLine.clear();
+    for (int i = 0; i < (parts.size() - 1); ++i)
+      editLine.append(parts[i]);
 
+    editLine.append(Str(removedPart + hints.front())).append(' ');
+  }
+  else if (hints.size() > 1)
+  {
+    // See if we append to the search word
+    int len = word.size();
+    while (true)
+    {
+      char ch = 0;
+      if (len < hints.front().size())
+        ch = hints.front()[len];
+      else
+        break;
+
+      bool matches = true;
+      for (auto const& hint : hints)
+        matches &= (len < hint.size()) && (hint[len] == ch);
+
+      if (!matches)
+        break;
+
+      ++len;
+    }
+
+    if (len > 0)
+    {
       editLine.clear();
       for (int i = 0; i < (parts.size() - 1); ++i)
         editLine.append(parts[i]);
 
-      editLine.append(Str(removedPart + hints.front())).append(' ');
-    }
-    else
-    {
-      // See if we append to the search word
-      int len = word.size();
-      while (true)
-      {
-        char ch = 0;
-        if (len < hints.front().size())
-          ch = hints.front()[len];
-        else
-          break;
-
-        bool matches = true;
-        for (auto const& hint : hints)
-          matches &= (len < hint.size()) && (hint[len] == ch);
-
-        if (!matches)
-          break;
-
-        ++len;
-      }
-
-      if (len > 0)
-      {
-        editLine.clear();
-        for (int i = 0; i < (parts.size() - 1); ++i)
-          editLine.append(parts[i]);
-
-        editLine.append(Str(removedPart + hints.front().substr(0, len)));
-      }
-
-      setCompletionHints(hints);
+      editLine.append(Str(removedPart + hints.front().substr(0, len)));
     }
   }
+
+  setCompletionHints(hints);
 }

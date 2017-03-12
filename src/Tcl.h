@@ -15,10 +15,28 @@ namespace tcl {
       BuiltInProc(const char * name, const char * args, Jim_CmdProc * proc);
       BuiltInProc(const char * name, const char * args, const char * desc, Jim_CmdProc * proc);
 
+      const char * name() const { return name_; }
+
     public:
       const char * name_ = nullptr;
       const char * args_ = nullptr;
       const char * desc_ = nullptr;
+  };
+
+  class BuiltInSubProc
+  {
+    public:
+      BuiltInSubProc(const char * mainName, const char * subName, const char * args, const char * desc, Jim_CmdProc * proc);
+
+      int call(Jim_Interp * interp, int argc, Jim_Obj * const * argv);
+
+      const char * name() const { return name_; }
+
+    private:
+      const char * name_ = nullptr;
+      const char * args_ = nullptr;
+      const char * desc_ = nullptr;
+      Jim_CmdProc * proc_ = nullptr;
   };
 
   class Variable

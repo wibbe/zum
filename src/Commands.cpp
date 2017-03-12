@@ -131,16 +131,6 @@ static std::vector<EditCommand> editCommands_ = {
         doc::decreaseColumnWidth(idx.x);
     }
   },
-  { // Undo
-    {'u', 0}, false,
-    "Undo",
-    [] (int) { doc::undo(); }
-  },
-  { // Redo
-    {'U', 0}, false,
-    "Redo",
-    [] (int) { doc::redo(); }
-  },
   { // Left
     {'h', 0}, false,
     "Move left",

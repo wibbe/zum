@@ -37,7 +37,7 @@ void updateCursor();
 void clearFlashMessage();
 void flashMessage(std::string const& message);
 
-void clearCompletionHints();
+void clearMessageLines();
 void setCompletionHints(std::vector<std::string> const& hints);
 
 void drawInterface();

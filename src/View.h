@@ -121,5 +121,5 @@ namespace view {
   void clear();
   void present();
 
-  bool peekEvent(Event * event, int timeout);
+  void waitEvent(Event * event);
 }

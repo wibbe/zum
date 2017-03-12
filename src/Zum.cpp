@@ -58,40 +58,29 @@ int main(int argc, char * argv[])
 
   while (applicationRunning_)
   {
-    if (view::peekEvent(&event, 100))
+    view::waitEvent(&event);
+
+    switch (event.type)
     {
-      switch (event.type)
-      {
-        case view::EVENT_KEY:
-          handleKeyEvent(&event);
-          break;
+      case view::EVENT_KEY:
+        handleKeyEvent(&event);
+        break;
 
-        case view::EVENT_RESIZE:
-          break;
+      case view::EVENT_RESIZE:
+        break;
 
-        case view::EVENT_QUIT:
-          applicationRunning_ = false;
-          break;
+      case view::EVENT_QUIT:
+        applicationRunning_ = false;
+        break;
 
-        default:
-          break;
-      }
-
-      // Only update cursor and redraw interface when we have recievied an event
-      executeEditCommands();
-      updateCursor();
-      drawInterface();
+      default:
+        break;
     }
-    else
-    {
-      timeout_++;
-      if (timeout_ > 20)
-      {
-        clearFlashMessage();
-        drawInterface();
-        clearTimeout();
-      }
-    }
+
+    // Only update cursor and redraw interface when we have recievied an event
+    executeEditCommands();
+    updateCursor();
+    drawInterface();
   }
 
   tcl::shutdown();

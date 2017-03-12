@@ -405,49 +405,38 @@ namespace view {
     _canvas = sr_newBuffer(width, height);
   }
 
-  bool peekEvent(Event * event, int timeLeft)
+  void waitEvent(Event * event)
   {
-    if (glfwWindowShouldClose(_window))
-    {
-      Event e = {EVENT_QUIT, KEY_NONE, 0};
-      _eventQueue.push_back(e);
-    }
-
-    // If we have pending events to process, we poll for new events
+    // If we have pending events to process, we poll for new events and then return the oldest one
     if (_eventQueue.size() > 0)
     {
       glfwPollEvents();
       *event = _eventQueue.front();
       _eventQueue.erase(_eventQueue.begin());
-      return true;
+      return;
     }
 
-    while (timeLeft > 0)
+    while (_eventQueue.size() == 0)
     {
       glfwWaitEventsTimeout(0.01);
 
-      if (_eventQueue.size() > 0)
+      if (glfwWindowShouldClose(_window))
       {
-        *event = _eventQueue.front();
-        _eventQueue.erase(_eventQueue.begin());
-        return true;
+        Event e = {EVENT_QUIT, KEY_NONE, 0};
+        _eventQueue.push_back(e);
       }
-      else
+
+      _cursorBlinkTimeout += 10;
+      if (_cursorBlinkTimeout > BLINK_RATE.toInt())
       {
-        timeLeft -= 10;
-
-        _cursorBlinkTimeout += 10;
-        if (_cursorBlinkTimeout > BLINK_RATE.toInt())
-        {
-          _cursorBlinkVisible = !_cursorBlinkVisible;
-          _cursorBlinkTimeout = 0;
-        }
-
+        _cursorBlinkVisible = !_cursorBlinkVisible;
+        _cursorBlinkTimeout = 0;
         present();
       }
     }
 
-    return false;
+    *event = _eventQueue.front();
+    _eventQueue.erase(_eventQueue.begin());
   }
 
   static void initGlyph(int ch)
