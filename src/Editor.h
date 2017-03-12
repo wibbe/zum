@@ -25,6 +25,8 @@ void navigateUp();
 void navigateDown();
 void navigatePageUp();
 void navigatePageDown();
+void navigateHome();
+void navigateEnd();
 
 bool findNextMatch();
 bool findPreviousMatch();

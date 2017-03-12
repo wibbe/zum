@@ -110,46 +110,35 @@ Index Index::fromStr(std::string const& str)
 
 
 namespace tcl {
-  TCL_FUNC(index, "subcommand ?argument ...?")
+  TCL_SUBFUNC(index, "new",     "column row", "Construct a new index",
+                     "row",     "index",      "Returns the row in the supplied index",
+                     "column",  "index",      "Returns the column in the supplied index")
   {
-    TCL_CHECK_ARGS(2, 1000);
+    enum { CMD_NEW, CMD_ROW, CMD_COLUMN };
 
-    int subcommand;
-    static const char * const subcommands[] = {
-      "new", "row", "column", nullptr
-    };
-
-    enum
-    {
-      CMD_NEW, CMD_ROW, CMD_COLUMN
-    };
-
-    if (Jim_GetEnum(interp, argv[1], subcommands, &subcommand, nullptr, JIM_ERRMSG | JIM_ENUM_ABBREV) != JIM_OK)
-        return JIM_ERR;
-
-    switch (subcommand)
+    switch (subCommand)
     {
       case CMD_NEW:
         {
-          TCL_CHECK_ARG_DESC(4, "new column row");
-          TCL_INT_ARG(2, column);
-          TCL_INT_ARG(3, row);
+          TCL_CHECK_ARG_DESC(2, "column row");
+          TCL_INT_ARG(0, column);
+          TCL_INT_ARG(1, row);
           TCL_STRING_RESULT(Index(column, row).toStr());
         }
         break;
 
       case CMD_ROW:
         {
-          TCL_CHECK_ARG_DESC(3, "row index");
-          TCL_STRING_ARG(2, index);
+          TCL_CHECK_ARG_DESC(1, "index");
+          TCL_STRING_ARG(0, index);
           TCL_INT_RESULT(Index::fromStr(index).y);
         }
         break;
 
       case CMD_COLUMN:
         {
-          TCL_CHECK_ARG_DESC(3, "column index");
-          TCL_STRING_ARG(2, index);
+          TCL_CHECK_ARG_DESC(1, "index");
+          TCL_STRING_ARG(0, index);
           TCL_INT_RESULT(Index::fromStr(index).x);
         }
         break;

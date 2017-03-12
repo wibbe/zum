@@ -1099,6 +1099,41 @@ namespace doc {
     TCL_STRING_UTF8_RESULT(getCellText(idx));
   }
 
+  TCL_SUBFUNC(selection, "all",     "", "Returns the index of all the selected cells",
+                         "row",     "", "Returns the index of selected rows",
+                         "column",  "", "Returns the index of selected columns")
+  {
+    enum { CMD_ALL, CMD_ROW, CMD_COLUMN };
+
+    std::vector<Index> cells;
+
+    switch (subCommand)
+    {
+      case CMD_ALL:
+        cells = selectedCells();
+        break;
+
+      case CMD_ROW:
+        cells = selectedRows();
+        break;
+
+      case CMD_COLUMN:
+        cells = selectedColumns();
+        break;
+    }
+
+    Jim_Obj * list = Jim_NewListObj(interp, nullptr, 0);
+
+    for (auto cell : cells)
+    {
+      const std::string idx = cell.toStr();
+      Jim_ListAppendElement(interp, list, Jim_NewStringObj(interp, idx.c_str(), idx.size()));
+    }
+
+    Jim_SetResult(interp, list);
+    return JIM_OK;
+  }
+
   enum class FilterOp
   {
     Equal,

@@ -23,21 +23,25 @@ namespace tcl {
       const char * desc_ = nullptr;
   };
 
+
+  typedef int SubCmdProc(struct Jim_Interp * interp, int subCommand, int argc, Jim_Obj * const * argv);
+
+
   class BuiltInSubProc
   {
     public:
-      BuiltInSubProc(const char * mainName, const char * subName, const char * args, const char * desc, Jim_CmdProc * proc);
-
-      int call(Jim_Interp * interp, int argc, Jim_Obj * const * argv);
+      BuiltInSubProc(const char * name, std::vector<const char *> subCommands, SubCmdProc * proc);
 
       const char * name() const { return name_; }
 
+      int call(struct Jim_Interp * interp, int argc, Jim_Obj * const * argv);
+
     private:
       const char * name_ = nullptr;
-      const char * args_ = nullptr;
-      const char * desc_ = nullptr;
-      Jim_CmdProc * proc_ = nullptr;
+      std::vector<const char *> subCommands_;
+      SubCmdProc * proc_ = nullptr;
   };
+
 
   class Variable
   {
@@ -91,6 +95,15 @@ namespace tcl {
   int tclBuiltIn__##name(Jim_Interp *, int argc, Jim_Obj * const *); \
   namespace { const tcl::BuiltInProc _buildInProc__##name(#name, ##__VA_ARGS__, &tclBuiltIn__##name); } \
   int tclBuiltIn__##name(Jim_Interp * interp, int argc, Jim_Obj * const * argv)
+
+#define TCL_SUBFUNC(name, ...) \
+  int tclBuiltInSub__##name(Jim_Interp *, int subCommand, int argc, Jim_Obj * const *); \
+  namespace { const tcl::BuiltInSubProc _buildInSubProc__##name(#name, std::vector<const char *>{ __VA_ARGS__ }, &tclBuiltInSub__##name); } \
+  int tclBuiltInSub__##name(Jim_Interp * interp, int subCommand, int argc, Jim_Obj * const * argv)
+
+#define TCL_EXPOSE_FUNC(name, desc) \
+  int tclBuiltInExposed__##name(Jim_Interp *, int argc, Jim_Obj * const *)  { name(); } \
+  namespace { const tcl::BuiltInProc _buildInExposedProc__##name(#name, "", desc, &tclBuiltInExposed__##name); } \
 
 #define TCL_CHECK_ARG(count) \
   do { if (argc != count) { Jim_WrongNumArgs(interp, 1, argv, static_cast<tcl::BuiltInProc *>(Jim_CmdPrivData(interp))->args_); return JIM_ERR; } } while (false)

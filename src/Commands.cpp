@@ -12,28 +12,6 @@ static Str commandSequence_;
 
 // List of all commands we support
 static std::vector<EditCommand> editCommands_ = {
-  { // Paste into current cell and move down
-    {'p', 0}, false,
-    "Paste to the current cell and move down",
-    [] (int) {
-      if (!doc::isReadOnly())
-      {
-        doc::setCellText(doc::cursorPos(), getYankBuffer());
-        navigateDown();
-      }
-    }
-  },
-  { // Paste into current cell and move right
-    {'P', 0}, false,
-    "Paste to the current cell and move right",
-    [] (int) {
-      if (!doc::isReadOnly())
-      {
-        doc::setCellText(doc::cursorPos(), getYankBuffer());
-        navigateRight();
-      }
-    }
-  },
   {
     {'o', 0}, true,
     "Add new row below the current and start editing that row",

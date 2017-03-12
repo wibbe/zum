@@ -920,3 +920,20 @@ void drawCommandLine()
   drawText(0, view::height() - messageLines_.size() - 2, view::width(), view::COLOR_WHITE, view::COLOR_HIGHLIGHT | view::COLOR_DEFAULT, infoLine);
   drawText(0, view::height() - 1, view::width(), view::COLOR_TEXT, view::COLOR_BACKGROUND, commandLine);
 }
+
+namespace tcl {
+  TCL_EXPOSE_FUNC(navigateLeft, "Move the cursor to previous column");
+  TCL_EXPOSE_FUNC(navigateRight, "Move the cursor to next column");
+  TCL_EXPOSE_FUNC(navigateUp, "Move the cursor to the previous row");
+  TCL_EXPOSE_FUNC(navigateDown, "Move the cursor to the next row");
+  TCL_EXPOSE_FUNC(navigatePageUp, "Move the cursor one page up");
+  TCL_EXPOSE_FUNC(navigatePageDown, "Move the cursor one page down");
+  TCL_EXPOSE_FUNC(navigateHome, "Move the cursor to the first column in the document");
+  TCL_EXPOSE_FUNC(navigateEnd, "Move the cursor to the last column in the document");
+  TCL_EXPOSE_FUNC(yankCurrentCell, "Copy the content from the current cell to the yank buffer");
+
+  TCL_FUNC(getYankBuffer, "", "Returns the content in the yank buffer")
+  {
+    TCL_STRING_UTF8_RESULT(getYankBuffer());
+  }
+}

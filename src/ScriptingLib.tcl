@@ -1,6 +1,22 @@
 
 # -- Command bindnings --
 
+bind "p" {
+  set str [getYankBuffer]
+  if {[string length $str] > 0} {
+    cell [cursor] $str
+    navigateDown
+  }
+} "Paste to the current cell and move to the next row"
+
+bind "P" {
+  set str [getYankBuffer]
+  if {[string length $str] > 0} {
+    cell [cursor] $str
+    navigateRight
+  }
+} "Paste to the current cell and move to the next column"
+
 bind "u" {undo} "Undo the last operation"
 bind "U" {redo} "Redo the last operation"
 
