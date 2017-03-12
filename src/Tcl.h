@@ -16,11 +16,15 @@ namespace tcl {
       BuiltInProc(const char * name, const char * args, const char * desc, Jim_CmdProc * proc);
 
       const char * name() const { return name_; }
+      const char * args() const { return args_; }
 
-    public:
+      int call(struct Jim_Interp * interp, int argc, Jim_Obj * const * argv);
+
+    private:
       const char * name_ = nullptr;
       const char * args_ = nullptr;
       const char * desc_ = nullptr;
+      Jim_CmdProc * proc_ = nullptr;
   };
 
 
@@ -106,13 +110,13 @@ namespace tcl {
   namespace { const tcl::BuiltInProc _buildInExposedProc__##name(#name, "", desc, &tclBuiltInExposed__##name); } \
 
 #define TCL_CHECK_ARG(count) \
-  do { if (argc != count) { Jim_WrongNumArgs(interp, 1, argv, static_cast<tcl::BuiltInProc *>(Jim_CmdPrivData(interp))->args_); return JIM_ERR; } } while (false)
+  do { if (argc != count) { Jim_WrongNumArgs(interp, 1, argv, static_cast<tcl::BuiltInProc *>(Jim_CmdPrivData(interp))->args()); return JIM_ERR; } } while (false)
 
 #define TCL_CHECK_ARG_DESC(count, desc) \
   do { if (argc != count) { Jim_WrongNumArgs(interp, 1, argv, desc); return JIM_ERR; } } while (false)
 
 #define TCL_CHECK_ARGS(min, max) \
-  do { if (argc < min || argc > max) { Jim_WrongNumArgs(interp, 1, argv, static_cast<tcl::BuiltInProc *>(Jim_CmdPrivData(interp))->args_); return JIM_ERR; } } while (false)
+  do { if (argc < min || argc > max) { Jim_WrongNumArgs(interp, 1, argv, static_cast<tcl::BuiltInProc *>(Jim_CmdPrivData(interp))->args()); return JIM_ERR; } } while (false)
 
 #define TCL_CHECK_ARGS_DESC(min, max, desc) \
   do { if (argc < min || argc > max) { Jim_WrongNumArgs(interp, 1, argv, desc); return JIM_ERR; } } while (false)

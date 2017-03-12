@@ -106,31 +106,63 @@ namespace tcl {
 
   // -- BuiltInProc --
 
-  static std::vector<std::pair<BuiltInProc *, Jim_CmdProc *>> & builtInProcs()
+  static std::vector<BuiltInProc *> & builtInProcs()
   {
-    static std::vector<std::pair<BuiltInProc *, Jim_CmdProc *>> procs;
+    static std::vector<BuiltInProc *> procs;
     return procs;
   }
 
   BuiltInProc::BuiltInProc(const char * name, Jim_CmdProc * proc)
-    : name_(name)
+    : name_(name),
+      proc_(proc)
   {
-    builtInProcs().push_back({this, proc});
+    builtInProcs().push_back(this);
   }
 
   BuiltInProc::BuiltInProc(const char * name, const char * args, Jim_CmdProc * proc)
     : name_(name),
-      args_(args)
+      args_(args),
+      proc_(proc)
   {
-    builtInProcs().push_back({this, proc});
+    builtInProcs().push_back(this);
   }
 
   BuiltInProc::BuiltInProc(const char * name, const char * args, const char * desc, Jim_CmdProc * proc)
     : name_(name),
       args_(args),
-      desc_(desc)
+      desc_(desc),
+      proc_(proc)
   {
-    builtInProcs().push_back({this, proc});
+    builtInProcs().push_back(this);
+  }
+
+  int BuiltInProc::call(struct Jim_Interp * interp, int argc, Jim_Obj * const * argv)
+  {
+    // Check for the help command
+    if (argc == 2 && Jim_CompareStringImmediate(interp, argv[1], "-help"))
+    {
+      Jim_SetResult(interp, Jim_NewEmptyStringObj(interp));
+      Jim_AppendStrings(interp, Jim_GetResult(interp), "Usage: \"", Jim_String(argv[0]), NULL);
+
+      if (strlen(args_) > 0)
+        Jim_AppendStrings(interp, Jim_GetResult(interp), " ", args_, NULL);
+      
+      Jim_AppendStrings(interp, Jim_GetResult(interp), "\"");
+
+      if (strlen(desc_) > 0)
+        Jim_AppendStrings(interp, Jim_GetResult(interp), " ", desc_, NULL);
+
+      return JIM_OK;
+    }
+
+    return proc_(interp, argc, argv);
+  }
+
+
+  static int cmdProc(Jim_Interp * interp, int argc, Jim_Obj * const * argv)
+  {
+    BuiltInProc * cmd = static_cast<BuiltInProc *>(Jim_CmdPrivData(interp));
+    return cmd->call(interp, argc, argv);
   }
 
   // -- BuiltInSubProc
@@ -171,10 +203,6 @@ namespace tcl {
 
   int BuiltInSubProc::call(struct Jim_Interp * interp, int argc, Jim_Obj * const * argv)
   {
-    //const jim_subcmd_type *ct;
-    //const jim_subcmd_type *partial = 0;
-    //int cmdlen;
-    //const char *cmdstr;
     bool help = false;
     const char * cmdName = Jim_String(argv[0]);
 
@@ -217,13 +245,15 @@ namespace tcl {
         if (help)
         {
           Jim_SetResult(interp, Jim_NewEmptyStringObj(interp));
-          Jim_AppendStrings(interp, Jim_GetResult(interp), "Usage: ", cmdName, " ", subCommands_[i * 3], NULL);
+          Jim_AppendStrings(interp, Jim_GetResult(interp), "Usage: \"", cmdName, " ", subCommands_[i * 3], NULL);
 
           if (strlen(subCommands_[i * 3 + 1]) > 0)
             Jim_AppendStrings(interp, Jim_GetResult(interp), " ", subCommands_[i * 3 + 1], NULL);
+          
+          Jim_AppendStrings(interp, Jim_GetResult(interp), "\"");
 
           if (strlen(subCommands_[i * 3 + 2]) > 0)
-            Jim_AppendStrings(interp, Jim_GetResult(interp), " - ", subCommands_[i * 3 + 2], NULL);
+            Jim_AppendStrings(interp, Jim_GetResult(interp), " ", subCommands_[i * 3 + 2], NULL);
 
           return JIM_OK;
         }
@@ -235,7 +265,7 @@ namespace tcl {
     }
 
     Jim_SetResult(interp, Jim_NewEmptyStringObj(interp));
-    Jim_AppendStrings(interp, Jim_GetResult(interp), cmdName, ", unknown command \"", Jim_String(cmd), "\": should be ", NULL);
+    Jim_AppendStrings(interp, Jim_GetResult(interp), cmdName, ", unknown command \"", Jim_String(cmd), "\" should be one of: ", NULL);
     addSubCommands(interp, subCommands_, ", ");
 
     return JIM_ERR;
@@ -278,8 +308,8 @@ namespace tcl {
     ::Jim_regexpInit(interpreter_);
 
     // Register built in commands
-    for (auto const& it : builtInProcs())
-      Jim_CreateCommand(interpreter_, it.first->name_, it.second, it.first, nullptr);
+    for (auto * cmd : builtInProcs())
+      Jim_CreateCommand(interpreter_, cmd->name(), cmdProc, cmd, nullptr);
 
     for (auto * cmd : builtInSubCmdProcs())
       Jim_CreateCommand(interpreter_, cmd->name(), subCmdProc, cmd, nullptr);
@@ -288,7 +318,12 @@ namespace tcl {
     for (auto * var : builtInVariables())
       Jim_SetGlobalVariableStr(interpreter_, var->name(), var->defaultValue());
 
+#if DEBUG
+    // Use the file from the source directory
+    Jim_EvalFileGlobal(interpreter_, "../src/ScriptingLib.tcl");
+#else
     Jim_EvalSource(interpreter_, __FILE__, __LINE__, std::string((char *)&ScriptingLib[0], BX_COUNTOF(ScriptingLib)).c_str());
+#endif
 
 
     std::string configFile = "";
@@ -333,9 +368,9 @@ namespace tcl {
     std::vector<std::string> result;
 
     // Search for matching procs
-    for (auto const& it : builtInProcs())
+    for (auto * cmd : builtInProcs())
     {
-      const std::string cmdName(it.first->name());
+      const std::string cmdName(cmd->name());
       if (cmdName.find(name) == 0)
         result.push_back(cmdName);
     }
@@ -343,9 +378,9 @@ namespace tcl {
     // Search for matching global variables
     for (auto * cmd : builtInSubCmdProcs())
     {
-      const std::string varName(cmd->name());
-      if (varName.find(name) == 0)
-        result.push_back(varName);
+      const std::string cmdName(cmd->name());
+      if (cmdName.find(name) == 0)
+        result.push_back(cmdName);
     }
 
     for (auto const& it : exposedProcs_)

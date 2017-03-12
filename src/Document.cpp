@@ -950,13 +950,7 @@ namespace doc {
 
   // -- Tcl bindings --
 
-  TCL_FUNC(createEmpty, "", "Create a new empty document")
-  {
-    createDefaultEmpty();
-    return JIM_OK;
-  }
-
-  TCL_FUNC(createDefaultEmpty, "", "Deprecated function, use createEmpty instead")
+  TCL_FUNC(newDocument, "", "Create a new empty document")
   {
     createDefaultEmpty();
     return JIM_OK;
@@ -1081,6 +1075,10 @@ namespace doc {
 
     if (argc == 3)
       setColumnWidth(column, width);
+
+    const int w = getColumnWidth(column);
+
+    logInfo("Column: ", column, " is ", w);
 
     TCL_INT_RESULT(getColumnWidth(column));
   }

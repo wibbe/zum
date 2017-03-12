@@ -1,5 +1,5 @@
 
-# -- Command bindnings --
+# -- Navigation command bindnings --
 
 bind "p" {
   set str [getYankBuffer]
@@ -17,8 +17,27 @@ bind "P" {
   }
 } "Paste to the current cell and move to the next column"
 
-bind "u" {undo} "Undo the last operation"
-bind "U" {redo} "Redo the last operation"
+bind "+" {
+  foreach col [selection column] {
+    set width [columnWidth $col]
+    columnWidth $col [expr $width + 1]
+  }
+} "Increase width of selected columns"
+
+bind "-" {
+  foreach col [selection column] {
+    set width [columnWidth $col]
+    columnWidth $col [expr $width - 1]
+  }
+} "Decrease width of selected columns"
+
+bind "u" undo "Undo the last operation"
+bind "U" redo "Redo the last operation"
+bind "h" navigateLeft "Move cursor left"
+bind "l" navigateRight "Move cursor right"
+bind "k" navigateUp "Move cursor up"
+bind "j" navigateDown "Move cursor down"
+bind "y" yankCurrentCell "Copy the content from the current cell to the yank buffer"
 
 # -- Vim bindings for the application --
 
@@ -27,7 +46,7 @@ proc q {} {
 }
 
 proc n {} {
-  createDefaultEmpty
+  newDocument
 }
 
 proc e {filename} {
@@ -77,7 +96,7 @@ expose bprev
 # Create a new document
 proc task_createDocument {} {
   # Create a new empty document
-  createEmpty 3 1
+  newDocument
   columnWidth A 5
   columnWidth B 12
   columnWidth C 100

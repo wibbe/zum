@@ -1,5 +1,5 @@
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.1)
 project(zum)
 
 option(ConsoleApp "Build a console application using Termbox" OFF)
@@ -91,10 +91,21 @@ set(ZUM_SOURCE
     src/3rdparty/stb/stb_truetype.c
     src/3rdparty/sqlite/sqlite3.c
     src/3rdparty/sera/sera.c
-    ${CMAKE_CURRENT_BINARY_DIR}/ScriptingLib.tcl.h
     ${CMAKE_CURRENT_BINARY_DIR}/UbuntuMono.ttf.h
     ${PLATFORM_SOURCE}
 )
+
+if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+  add_definitions(-DDEBUG)
+elseif()
+  set(ZUM_SOURCE 
+      ${ZUM_SOURCE}
+      ${CMAKE_CURRENT_BINARY_DIR}/ScriptingLib.tcl.h)
+
+  add_custom_command(OUTPUT ScriptingLib.tcl.h COMMAND "${CMAKE_CURRENT_BINARY_DIR}/bin2c" -f ScriptingLib.tcl -o "${CMAKE_CURRENT_BINARY_DIR}/ScriptingLib.tcl.h" -n ScriptingLib
+                     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src"
+                     DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/ScriptingLib.tcl" bin2c)
+endif()
 
 if(${ConsoleApp})
   set(ZUM_SOURCE
@@ -131,10 +142,6 @@ endif()
 
 # Add some sqlite3 definitions
 add_definitions(-DSQLITE_ENABLE_FTS4 -DSQLITE_THREADSAFE=0 -DSQLITE_OMIT_LOAD_EXTENSION)
-
-add_custom_command(OUTPUT ScriptingLib.tcl.h COMMAND "${CMAKE_CURRENT_BINARY_DIR}/bin2c" -f ScriptingLib.tcl -o "${CMAKE_CURRENT_BINARY_DIR}/ScriptingLib.tcl.h" -n ScriptingLib
-                   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src"
-                   DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/ScriptingLib.tcl" bin2c)
 
 add_custom_command(OUTPUT UbuntuMono.ttf.h COMMAND "${CMAKE_CURRENT_BINARY_DIR}/bin2c" -f UbuntuMono.ttf -o "${CMAKE_CURRENT_BINARY_DIR}/UbuntuMono.ttf.h" -n UbuntuMono
                    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src"

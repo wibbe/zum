@@ -88,47 +88,6 @@ static std::vector<EditCommand> editCommands_ = {
       }
     }
   },
-  { // Yank the current cell
-    {'y', 0}, false,
-    "Yank from the current cell",
-    [] (int) { yankCurrentCell(); }
-  },
-  { // Increase column width
-    {'+', 0}, false,
-    "Increase current column with",
-    [] (int) { 
-      for (auto const& idx : doc::selectedColumns())
-        doc::increaseColumnWidth(idx.x);
-    }
-  },
-  { // Decrease column with
-    {'-', 0}, false,
-    "Decrease current column width",
-    [] (int) { 
-      for (auto const& idx : doc::selectedColumns())
-        doc::decreaseColumnWidth(idx.x);
-    }
-  },
-  { // Left
-    {'h', 0}, false,
-    "Move left",
-    [] (int) { navigateLeft(); }
-  },
-  { // Right
-    {'l', 0}, false,
-    "Move right",
-    [] (int) { navigateRight(); }
-  },
-  { // Up
-    {'k', 0}, false,
-    "Move up",
-    [] (int) { navigateUp(); }
-  },
-  { // Down
-    {'j', 0}, false,
-    "Move down",
-    [] (int) { navigateDown(); }
-  },
   { // Find next match
     {'n', 0}, false,
     "Find next match",
