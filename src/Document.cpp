@@ -273,6 +273,8 @@ namespace doc {
     return cell.text;
   }
 
+  static bool forceUndoMerge_ = false;
+
   static void takeUndoSnapshot(EditAction action, bool canMerge)
   {
     bool createNew = true;
@@ -281,7 +283,7 @@ namespace doc {
     {
       UndoState & state = currentBuffer().undoStack_.back();
 
-      if (state.action_ == action && canMerge)
+      if (state.action_ == action && (canMerge || forceUndoMerge_))
         createNew = false;
     }
 
@@ -1134,6 +1136,18 @@ namespace doc {
     }
 
     Jim_SetResult(interp, list);
+    return JIM_OK;
+  }
+
+  TCL_FUNC(execWithUndoMerge, "command", "Executes the supplied command while any changes to the document are merge to the same undo state")
+  {
+    TCL_CHECK_ARG(2);
+    TCL_STRING_ARG(1, command);
+
+    forceUndoMerge_ = true;
+    tcl::evaluate(command);
+    forceUndoMerge_ = false;
+
     return JIM_OK;
   }
 

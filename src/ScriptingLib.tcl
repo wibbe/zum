@@ -28,16 +28,20 @@ bind "P" {
 } "Paste to the current cell and move to the next column"
 
 bind "+" {
-  foreach col [selection column] {
-    set width [columnWidth $col]
-    columnWidth $col [expr $width + 1]
+  execWithUndoMerge {
+    foreach col [selection column] {
+      set width [columnWidth $col]
+      columnWidth $col [expr $width + 1]
+    }
   }
 } "Increase width of selected columns"
 
 bind "-" {
-  foreach col [selection column] {
-    set width [columnWidth $col]
-    columnWidth $col [expr $width - 1]
+  execWithUndoMerge {
+    foreach col [selection column] {
+      set width [columnWidth $col]
+      columnWidth $col [expr $width - 1]
+    }
   }
 } "Decrease width of selected columns"
 
@@ -56,8 +60,10 @@ bind "ap" {
 } "Append the yank-buffer to the current cell"
 
 bind "dw" {
-  foreach c [selection all] {
-    cell $c ""
+  execWithUndoMerge {
+    foreach c [selection all] {
+      cell $c ""
+    }
   }
 } "Clear the selected cells"
 
