@@ -1099,7 +1099,7 @@ namespace doc {
 
   TCL_FUNC(isReadOnly, "", "Returns true if the current document is read only")
   {
-    TCL_INT_RESULT()
+    TCL_INT_RESULT(isReadOnly() ? 1 : 0);
   }
 
   TCL_SUBFUNC(selection, "all",     "", "Returns the index of all the selected cells",

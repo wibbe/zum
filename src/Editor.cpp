@@ -931,6 +931,8 @@ namespace tcl {
   TCL_EXPOSE_FUNC(navigateHome, "Move the cursor to the first column in the document");
   TCL_EXPOSE_FUNC(navigateEnd, "Move the cursor to the last column in the document");
   TCL_EXPOSE_FUNC(yankCurrentCell, "Copy the content from the current cell to the yank buffer");
+  TCL_EXPOSE_FUNC(findNextMatch, "Jump to the next search result");
+  TCL_EXPOSE_FUNC(findPreviousMatch, "Jump to the previous search result");
 
   TCL_FUNC(getYankBuffer, "", "Returns the content in the yank buffer")
   {
