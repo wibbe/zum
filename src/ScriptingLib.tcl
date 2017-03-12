@@ -1,6 +1,14 @@
 
 # -- Navigation command bindnings --
 
+bind "u" undo "Undo the last operation"
+bind "U" redo "Redo the last operation"
+bind "h" navigateLeft "Move cursor left"
+bind "l" navigateRight "Move cursor right"
+bind "k" navigateUp "Move cursor up"
+bind "j" navigateDown "Move cursor down"
+bind "y" yankCurrentCell "Copy the content from the current cell to the yank buffer"
+
 bind "p" {
   set str [getYankBuffer]
   if {[string length $str] > 0} {
@@ -30,14 +38,6 @@ bind "-" {
     columnWidth $col [expr $width - 1]
   }
 } "Decrease width of selected columns"
-
-bind "u" undo "Undo the last operation"
-bind "U" redo "Redo the last operation"
-bind "h" navigateLeft "Move cursor left"
-bind "l" navigateRight "Move cursor right"
-bind "k" navigateUp "Move cursor up"
-bind "j" navigateDown "Move cursor down"
-bind "y" yankCurrentCell "Copy the content from the current cell to the yank buffer"
 
 # -- Vim bindings for the application --
 

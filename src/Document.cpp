@@ -1097,6 +1097,11 @@ namespace doc {
     TCL_STRING_UTF8_RESULT(getCellText(idx));
   }
 
+  TCL_FUNC(isReadOnly, "", "Returns true if the current document is read only")
+  {
+    TCL_INT_RESULT()
+  }
+
   TCL_SUBFUNC(selection, "all",     "", "Returns the index of all the selected cells",
                          "row",     "", "Returns the index of selected rows",
                          "column",  "", "Returns the index of selected columns")
