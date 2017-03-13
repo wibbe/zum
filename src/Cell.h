@@ -13,6 +13,7 @@ static const uint32_t FONT_BOLD       = 0x00000010;
 static const uint32_t FONT_UNDERLINE  = 0x00000020;
 
 std::tuple<uint32_t, std::string> parseFormatAndValue(std::string const& str);
+uint32_t parseFormat(std::string const& str);
 std::string formatToStr(uint32_t format);
 
 struct Cell

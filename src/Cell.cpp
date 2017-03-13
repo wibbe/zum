@@ -17,6 +17,14 @@ std::tuple<uint32_t, std::string> parseFormatAndValue(std::string const& str)
   return std::make_tuple(format, value);
 }
 
+uint32_t parseFormat(std::string const& str)
+{
+  if (str.size() < 3)
+    return 0;
+
+  return std::stod(str.substr(START.size(), str.size() - END.size()));
+}
+
 std::string formatToStr(uint32_t format)
 {
   if (format == 0)

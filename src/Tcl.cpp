@@ -1,8 +1,11 @@
 
 #include "Tcl.h"
-#include "ScriptingLib.tcl.h"
 #include "Editor.h"
 #include "Log.h"
+
+#ifndef DEBUG
+#include "ScriptingLib.tcl.h"
+#endif
 
 #include "bx/bx.h"
 

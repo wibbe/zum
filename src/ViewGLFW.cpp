@@ -381,7 +381,7 @@ namespace view {
 
   static void errorCallback(int error, const char * description)
   {
-    logError("Error: ", description);
+    logError("Error ", error, " ", description);
   }
 
   static void windowSizeCallback(GLFWwindow * window, int width, int height)

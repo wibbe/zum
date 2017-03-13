@@ -21,7 +21,7 @@ namespace doc {
   Index & selectionEnd();
 
   bool hasSelection();
-
+  
   std::vector<Index> selectedCells();
   std::vector<Index> selectedColumns();
   std::vector<Index> selectedRows();

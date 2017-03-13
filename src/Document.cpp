@@ -23,6 +23,8 @@
 #include <algorithm>
 #include <cmath>
 
+#include <ini.h>
+
 #include "Tcl.h"
 
 namespace doc {
@@ -339,10 +341,8 @@ namespace doc {
     return currentDoc().readOnly_;
   }
 
-  bool save(std::string const& filename)
+  static bool exportCSV(std::string const& filename)
   {
-    logInfo("Saving document: ", filename);
-
     std::ofstream file(filename.c_str());
     if (!file.is_open())
     {
@@ -357,7 +357,7 @@ namespace doc {
       {
         Cell const& cell = getCell(Index(x, y));
 
-        file << getText(cell) << formatToStr(cell.format);
+        file << getText(cell);
 
         if (x < (currentDoc().width_ - 1))
         {
@@ -370,6 +370,70 @@ namespace doc {
         }
       }
     }
+
+    return true;
+  }
+
+  bool save(std::string const& filename)
+  {
+    logInfo("Saving document: ", filename);
+
+    std::ofstream file(filename.c_str());
+    if (!file.is_open())
+    {
+      flashMessage("Could not save document!");
+      return false;
+    }
+
+
+    // Collect and sort the cells, so they are saved in the same order
+    std::vector<Index> allCells;
+    allCells.reserve(currentDoc().cells_.size());
+
+    for (auto it : currentDoc().cells_)
+      allCells.push_back(it.first);
+
+    std::stable_sort(allCells.begin(), allCells.end(), [](Index const& lhs, Index const& rhs) -> bool { return lhs.y < rhs.y; });
+    std::stable_sort(allCells.begin(), allCells.end(), [](Index const& lhs, Index const& rhs) -> bool { return lhs.x < rhs.x; });
+
+    // Collect and sort all columns so they are saved in the same order
+    std::vector<int> allColumns;
+    allColumns.reserve(currentDoc().columnWidth_.size());
+    for (auto it : currentDoc().columnWidth_)
+      allColumns.push_back(it.first);
+
+    std::stable_sort(allColumns.begin(), allColumns.end());
+
+
+    // Write file header
+    file << "ZUM1" << std::endl;
+
+    // Write column information section
+    file << std::endl << "[columns]" << std::endl;
+    for (auto col : allColumns)
+      file << Index::columnToStr(col) << " = " << currentDoc().columnWidth_[col] << std::endl;
+    
+    // Write cell content
+    file << std::endl << "[data]" << std::endl;
+    for (auto idx: allCells)
+    {
+      const std::string text = getText(getCell(idx));
+
+      if (!text.empty())
+        file << idx.toStr() << " = " << text << std::endl;
+    }
+
+    // Write cell format
+    file << std::endl << "[format]" << std::endl;
+    for (auto idx: allCells)
+    { 
+      const Cell & cell = getCell(idx);
+
+      if (cell.format != 0)
+        file << idx.toStr() << " = " << formatToStr(cell.format) << std::endl;
+    }
+
+    file << std::endl;
 
     currentDoc().filename_ = filename;
     return true;
@@ -441,7 +505,7 @@ namespace doc {
     }
   }
 
-  static bool loadDocument(std::string const& data, char defaultDelimiter)
+  static bool loadCSV(std::string const& data, char defaultDelimiter)
   {
     createDefaultEmpty();
     currentDoc().width_ = 0;
@@ -481,52 +545,6 @@ namespace doc {
 
     Parser p(data, currentDoc().delimiter_);
 
-    // Read column width
-    /*
-    if (IGNORE_FIRST_ROW.toBool())
-    {
-      bool onlyNumbers = true;
-      bool firstLine = true;
-
-      std::vector<std::string> cells;
-
-      while (firstLine)
-      {
-        std::string cellText;
-        firstLine = p.next(cellText);
-
-        cells.push_back(cellText);
-
-        for (auto ch : cellText)
-          onlyNumbers &= std::isdigit(ch) != 0;
-      }
-
-      if (onlyNumbers)
-      {
-        for (auto const& cellText : cells)
-        {
-          const int width = std::max(cellText.empty() ? DEFAULT_COLUMN_WIDTH.toInt() : std::stoi(cellText), 3);
-          currentDoc().columnWidth_.push_back(width);
-        }
-
-        currentDoc().width_ = currentDoc().columnWidth_.size();
-        currentDoc().height_ = 0;
-      }
-      else
-      {
-        for (uint32_t i = 0; i < cells.size(); ++i)
-        {
-          setText(Index(i, 0), cells[i], true);
-
-          currentDoc().columnWidth_.push_back(DEFAULT_COLUMN_WIDTH.toInt());
-        }
-
-        currentDoc().width_ = cells.size();
-        currentDoc().height_ = 1;
-      }
-    }
-    */
-
     int column = 0;
     int row = 0;
     while (!p.eof())
@@ -545,6 +563,73 @@ namespace doc {
         row++;
       }
     }
+
+    evaluateDocument();
+    return true;
+  }
+
+  static bool loadZum1(std::string const& dataIn)
+  {
+    // Remove the header data
+    const std::string data = dataIn.substr(5);
+
+    createDefaultEmpty();
+    currentDoc().width_ = 0;
+    currentDoc().height_ = 0;
+
+    ini_t * ini = ini_load(data.c_str(), nullptr);
+
+    { // Load columns section
+      const int columnsSection = ini_find_section(ini, "columns", 0);
+      if (columnsSection != INI_NOT_FOUND)
+      {
+        const int columnsCount = ini_property_count(ini, columnsSection);
+        for (int i = 0; i < columnsCount; ++i)
+        {
+          const int col = Index::strToColumn(std::string(ini_property_name(ini, columnsSection, i)));
+          const int width = std::atoi(ini_property_value(ini, columnsSection, i));
+
+          currentDoc().columnWidth_[col] = width;
+        }
+      }      
+    }
+
+    { // Load data section
+      const int dataSection = ini_find_section(ini, "data", 0);
+      if (dataSection == INI_NOT_FOUND)
+      {
+        logError("Could not locate the data section in the document");
+        ini_destroy(ini);
+        return false;
+      }
+
+      const int dataCount = ini_property_count(ini, dataSection);
+      
+      for (int i = 0; i < dataCount; ++i)
+      {
+        const Index idx = Index::fromStr(std::string(ini_property_name(ini, dataSection, i)));
+        const std::string value = ini_property_value(ini, dataSection, i);
+
+        setText(idx, value);
+      }
+    }
+
+    { // Load format section
+      const int formatSection = ini_find_section(ini, "format", 0);
+      if (formatSection != INI_NOT_FOUND)
+      {
+        const int formatCount = ini_property_count(ini, formatSection);
+        for (int i = 0; i < formatCount; ++i)
+        {
+          const Index idx = Index::fromStr(std::string(ini_property_name(ini, formatSection, i)));
+          const std::string value = ini_property_value(ini, formatSection, i);
+
+          getCell(idx).format = parseFormat(value);
+        }
+      }
+    }
+
+    ini_destroy(ini);
 
     evaluateDocument();
     return true;
@@ -571,10 +656,22 @@ namespace doc {
       return false;
     }
 
-    if (!loadDocument(data, 0))
+    // Determin if we are reading a zum file, of a csv type of file.
+    if (data.size() > 5 && data[0] == 'Z' && data[1] == 'U' && data[2] == 'M' && data[3] == '1' && data[4] == '\n')
     {
-      logError("Could not parse document '", filename, "'");
-      return false;
+      if (!loadZum1(data))
+      {
+        logError("Could not parse document '", filename, "'");
+        return false;
+      }
+    }
+    else
+    {
+      if (!loadCSV(data, 0))
+      {
+        logError("Could not parse document '", filename, "'");
+        return false;
+      }
     }
 
     currentDoc().filename_ = filename;
@@ -585,7 +682,7 @@ namespace doc {
 
   bool loadRaw(std::string const& data, std::string const& filename, char delimiter)
   {
-    if (!loadDocument(data, delimiter))
+    if (!loadCSV(data, delimiter))
       return false;
 
     currentDoc().filename_ = filename;
@@ -981,6 +1078,15 @@ namespace doc {
     TCL_STRING_ARG(1, filename);
 
     const bool saved = save(filename);
+    TCL_INT_RESULT(saved ? 1 : 0);
+  }
+
+  TCL_FUNC(export, "filename", "Export the document to a CSV file")
+  {
+    TCL_CHECK_ARG(2);
+    TCL_STRING_ARG(1, filename);
+
+    const bool saved = exportCSV(filename);
     TCL_INT_RESULT(saved ? 1 : 0);
   }
 
