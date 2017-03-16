@@ -41,3 +41,58 @@ struct Expr
 std::vector<Expr> parseExpression(std::string const& source);
 double evaluate(std::vector<Expr> const& expr);
 std::string exprToString(std::vector<Expr> const& expr);
+
+
+namespace exp {
+
+  class Expr
+  {
+    public:
+      virtual double evaluate() const = 0;
+  };
+
+  class Constant : Expr
+  {
+    public:
+      double evaluate() const { return value_; }
+
+    private:
+      double value_ = 0.0;
+  };
+
+  class Cell : Expr
+  {
+    public:
+      virtual std::vector<Index> indices() const = 0;
+  };
+
+  class CellRef : Cell
+  {
+    public:
+  };
+
+  class CellRange : Cell
+  {
+    public:
+  };
+
+  class Function : Expr
+  {
+    public:
+      Function(std::vector<std::unique_ptr<Expr>> && args)
+        : arguments_(std::move(args))
+      { }
+
+    private:
+      std::vector<std::unique_ptr<Expr>> arguments_;
+  };
+
+  class BinaryOp : Expr
+  {
+    public:
+
+    private:
+      std::unique_ptr<Expr> leftHandSide_;
+      std::unique_ptr<Expr> rightHandSide_;
+  };
+}
